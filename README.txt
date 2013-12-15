@@ -13,8 +13,8 @@ INST -> 'if' '(' EXPR ')' INST ['else' INST]
 INST -> 'for' '(' ID ',' EXPR ')' INST
 INST -> 'while' '(' EXPR ')' INST
 INST -> '{' { INST } '}'
-INST -> 'break'
-INST -> 'continue'
+INST -> 'break' ';'
+INST -> 'continue' ';'
 
 EXPR -> ORR_EXPR
 ORR_EXPR -> AND_EXPR {'||' AND_EXPR}
