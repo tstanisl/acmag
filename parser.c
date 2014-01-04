@@ -175,6 +175,11 @@ enum lex_state {
 
 #define LEX_MAX_SIZE 4096
 
+struct token_desc {
+	enum token_id id;
+	
+} char2token[128];
+
 struct token *lexer_get_token(struct lexer *l)
 {
 	enum lex_state state = LST_NONE;
@@ -220,7 +225,7 @@ struct token *lexer_get_token(struct lexer *l)
 			else if (c == '"')
 				lst = LST_STR;
 			else if (c == '|' || c == '&' || c == '='
-			    c == '!' || c == '<' || c == '>')
+			         c == '!' || c == '<' || c == '>')
 				lst = LST_OP;
 			else if (isdigit(c))
 				lst = LST_INT;
@@ -237,7 +242,24 @@ struct token *lexer_get_token(struct lexer *l)
 				ungetc(c, l->f);
 				return &base_token[TOK_DIV];
 			}
-		} else if (lst == LST_SL_COMM)
+		} else if (lst == LST_SL_COMM) {
+			if (c == EOF)
+				return &base_token[TOK_EOS];
+			if (c == '\n')
+				lst = LST_NONE;
+		} else if (lst == LST_ML_COMM) {
+			if (c == EOF)
+				return &base_token[TOK_EOS];
+			if (c == '*')
+				lst = LST_ML_STAR;
+		} else if (lst == LST_ML_STAR) {
+			if (c == EOF)
+				return &base_token[TOK_EOS];
+			if (c == '/')
+				lst = LST_NONE;
+		} else if (lst == LST_OP) {
+			if (c == 
+		}
 	}
 }
 
