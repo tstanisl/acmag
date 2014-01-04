@@ -443,6 +443,12 @@ int parse_top_expr(struct parser *p)
 		parse_consume(p);
 		return reg;
 	}
+	if (p->next == TOK_INT || p->next == TOK_STR) {
+		int reg = p->n_regs++;
+		printf("$%d = \"%s\"\n", reg, p->buffer);
+		parse_consume(p);
+		return reg;
+	}
 	return -1;
 }
 
