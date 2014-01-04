@@ -415,11 +415,11 @@ static int token_buffered(enum token t)
 void parse_consume(struct parser *p)
 {
 	p->next = lxr_get_token(&p->lxr, p->buffer, SIZE);
-	if (token_buffered(p->next))
+	/*if (token_buffered(p->next))
 		printf(" got %s: %s\n", token_descr[p->next],
 			p->buffer);
 	else
-		printf(" got %s\n", token_descr[p->next]);
+		printf(" got %s\n", token_descr[p->next]);*/
 }
 
 int parse_top_expr(struct parser *p)
