@@ -207,6 +207,8 @@ enum token lxr_get_token(struct lxr *lxr, char *buffer, int size)
 				st = LST_NONE;
 			else if (c == EOF)
 				return lxr_error(buffer, size, "unfinished comment");
+			else if (c != '*')
+				st = LST_ML_COMM;
 		} else if (st == LST_OR) {
 			if (c == '|')
 				return TOK_OR;
