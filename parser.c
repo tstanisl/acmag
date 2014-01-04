@@ -404,11 +404,16 @@ struct parser {
 	int n_labels;
 };
 
+static int token_buffered(enum token t)
+{
+	return t == TOK_STR || t == TOK_INT ||
+		t == TOK_ID || t == TOK_ERR;
+}
+
 void parse_consume(struct parser *p)
 {
 	p->next = lxr_get_token(&p->lxr, p->buffer, SIZE);
-	if (p->next == TOK_STR || p->next == TOK_INT ||
-		p->next == TOK_ID || p->next == TOK_ERR)
+	if (token_buffered(p->next))
 		printf(" got %s: %s\n", token_descr[p->next],
 			p->buffer);
 	else
@@ -697,7 +702,7 @@ int parse_file(struct parser *p, FILE *file)
 	}
 	if (p->next != TOK_EOF) {
 		printf("error(%d): token '%s' outside function\n",
-			p->lxr.line, p->buffer);
+			p->lxr.line, token_buffered(p->next) ? p->buffer : token_descr[p->next]);
 		return -1;
 	}
 	return 0;
