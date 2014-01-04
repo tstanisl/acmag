@@ -1,6 +1,27 @@
 
 // first function
 
+while0()
+{
+	while (a);
+}
+
+while1(a,b)
+{
+	while (b)
+		b = 0;
+}
+
+while2(a,b)
+{
+	while (a || b) {
+		a = b;
+		b = 0;
+	}
+}
+
+/*
+
 if1()
 {
 	b = 1;
@@ -72,9 +93,6 @@ if8(a,b)
 	else
 		return 3;
 }
-
-/*
-/*
 
 or1()
 {
