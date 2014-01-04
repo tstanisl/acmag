@@ -1,0 +1,46 @@
+
+// first function
+
+var()
+{
+	return a;
+	return b;
+	return c;
+}
+
+*
+
+return1()
+{
+	return;
+}
+return2()
+{
+	return a;
+}
+return3(a)
+{
+	return a;
+}
+return4(a, b)
+{
+	return b;
+}
+
+*
+
+fun1() { }
+fun2(a) { }
+fun3(a, b) { }
+fun4(a, b, c) { }
+
+/*
+fun1()
+{
+	if (a && b)
+		return c;
+	a = b;
+	return a;
+}
+*/
+
