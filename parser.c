@@ -1,5 +1,7 @@
 #include <ctype.h>
 #include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -321,7 +323,7 @@ static inline void list_del(struct list *n)
 }
 
 #define list_for(l, h) \
-	for (struct list l = (h)->next; l != (h); l = l->next)
+	for (struct list *l = (h)->next; l != (h); l = l->next)
 
 #define list_empty(h) ((h)->next == (h))
 
@@ -344,6 +346,18 @@ struct variable {
 	struct list list;
 	char name[];
 };
+
+struct variable *variable_create(char *name)
+{
+	int length = strlen(name);
+	struct variable *v = calloc(1, sizeof(*v) + length + 1);
+
+	if (!v)
+		return NULL;
+	strcpy(v->name, name);
+
+	return v;
+}
 
 static struct list function_head;
 
@@ -398,7 +412,6 @@ void parse_consume(struct parser *p)
 int parse_top_expr(struct parser *p)
 {
 	if (p->next == TOK_ID) {
-		struct list *l;
 		struct variable *v;
 		list_for(l, &p->vars) {
 			v = list_entry(l, struct variable, list);
@@ -406,12 +419,13 @@ int parse_top_expr(struct parser *p)
 				return v->reg;
 		}
 		int reg = p->n_regs++;
-		v = variable_create(p->buffer, reg);
+		v = variable_create(p->buffer);
 		if (!v) {
 			printf("error(%d): failed to create %s\n",
-				p->line, p->buffer);
+				p->lxr.line, p->buffer);
 			return -1;
 		}
+		v->reg = reg;
 		list_add(&v->list, &p->vars);
 		return reg;
 	}
@@ -445,7 +459,7 @@ int parse_orr_expr(struct parser *p)
 	if (p->next != TOK_OR)
 		return reg;
 	int label = p->n_labels++;
-	while (p->next == TOK_ORR) {
+	while (p->next == TOK_OR) {
 		parse_consume(p);
 		printf("if $%d goto L%d\n", reg, label);
 		reg = parse_and_expr(p);
@@ -493,7 +507,7 @@ int parse_inst(struct parser *p)
 	if (p->next == TOK_WHILE) {
 		parse_consume(p);
 		if (p->next != TOK_LPAR) {
-			printf("error(%d): expected '(' after while\n", line);
+			printf("error(%d): expected '(' after while\n", p->lxr.line);
 			return -1;
 		}
 		parse_consume(p);
@@ -504,7 +518,7 @@ int parse_inst(struct parser *p)
 		if (ret < 0)
 			return -1;
 		if (p->next != TOK_RPAR) {
-			printf("error(%d): expected ')' after expression\n", line);
+			printf("error(%d): expected ')' after expression\n", p->lxr.line);
 			return -1;
 		}
 		parse_consume(p);
@@ -519,7 +533,7 @@ int parse_inst(struct parser *p)
 	if (p->next == TOK_IF) {
 		parse_consume(p);
 		if (p->next != TOK_LPAR) {
-			printf("error(%d): expected '(' after while\n", line);
+			printf("error(%d): expected '(' after while\n", p->lxr.line);
 			return -1;
 		}
 		parse_consume(p);
@@ -530,7 +544,7 @@ int parse_inst(struct parser *p)
 			return -1;
 
 		if (p->next != TOK_RPAR) {
-			printf("error(%d): expected ')' after expression\n", line);
+			printf("error(%d): expected ')' after expression\n", p->lxr.line);
 			return -1;
 		}
 		parse_consume(p);
@@ -560,7 +574,7 @@ int parse_inst(struct parser *p)
 int parse_block(struct parser *p)
 {
 	if (p->next != TOK_LBRA) {
-		printf("error(%d): expected '{'\n", line);
+		printf("error(%d): expected '{'\n", p->lxr.line);
 		return -1;
 	}
 
@@ -614,13 +628,11 @@ struct function *parse_function(struct parser *p)
 			printf("error(%d): expected identifier\n", line);
 			goto fail_args;
 		}
-		int length = strlen(p->buffer);
-		struct variable *v = calloc(1, sizeof(*v) + length + 1);
+		struct variable *v = variable_create(p->buffer);
 		if (!v) {
 			printf("error(%d): expected identifier\n", line);
 			goto fail_args;
 		}
-		strcpy(v->name, p->buffer);
 		v->reg = p->n_regs++;
 		list_add(&v->list, &p->vars);
 	}
@@ -629,7 +641,7 @@ struct function *parse_function(struct parser *p)
 	if (ret)
 		goto fail_args;
 
-	f->n_regs = v->n_regs;
+	f->n_regs = p->n_regs;
 
 	while (!list_empty(&p->vars)) {
 		struct variable *v = list_entry(p->vars.next, struct variable, list);
