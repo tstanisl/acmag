@@ -164,7 +164,7 @@ enum token lxr_get_token(struct lxr *lxr, char *buffer, int size)
 				return action;
 			st = action & ~__LST;
 		} else if (st == LST_ID) {
-			if (!isalpha(c) && c != '_') {
+			if (!isalnum(c) && c != '_') {
 				lxr_unget(lxr, c);
 				buffer[pos] = 0;
 				return TOK_ID;
@@ -238,7 +238,7 @@ enum token lxr_get_token(struct lxr *lxr, char *buffer, int size)
 			return TOK_GREAT;
 		} else { /* keyword */
 			char *word = lxr_keywords[st - LST_KEYWORD];
-			if (!isalpha(c) && c != '_') {
+			if (!isalnum(c) && c != '_') {
 				buffer[pos] = 0;
 				lxr_unget(lxr, c);
 				if (word[pos])
@@ -407,6 +407,12 @@ struct parser {
 void parse_consume(struct parser *p)
 {
 	p->next = lxr_get_token(&p->lxr, p->buffer, SIZE);
+	if (p->next == TOK_STR || p->next == TOK_INT ||
+		p->next == TOK_ID || p->next == TOK_ERR)
+		printf(" got %s: %s\n", token_descr[p->next],
+			p->buffer);
+	else
+		printf(" got %s\n", token_descr[p->next]);
 }
 
 int parse_top_expr(struct parser *p)
@@ -415,8 +421,10 @@ int parse_top_expr(struct parser *p)
 		struct variable *v;
 		list_for(l, &p->vars) {
 			v = list_entry(l, struct variable, list);
-			if (strcmp(v->name, p->buffer) == 0)
+			if (strcmp(v->name, p->buffer) == 0) {
+				parse_consume(p);
 				return v->reg;
+			}
 		}
 		int reg = p->n_regs++;
 		v = variable_create(p->buffer);
@@ -427,6 +435,7 @@ int parse_top_expr(struct parser *p)
 		}
 		v->reg = reg;
 		list_add(&v->list, &p->vars);
+		parse_consume(p);
 		return reg;
 	}
 	return -1;
@@ -443,7 +452,7 @@ int parse_and_expr(struct parser *p)
 	while (p->next == TOK_AND) {
 		parse_consume(p);
 		printf("ifz $%d goto L%d\n", reg, label);
-		reg = parse_and_expr(p);
+		reg = parse_top_expr(p);
 		if (reg < 0)
 			return -1;
 	}
@@ -513,7 +522,7 @@ int parse_inst(struct parser *p)
 		parse_consume(p);
 		int label0 = p->n_labels++;
 		int label1 = p->n_labels++;
-		printf("label%d:\n", label0);
+		printf("L%d:\n", label0);
 		int ret = parse_expr(p);
 		if (ret < 0)
 			return -1;
@@ -522,12 +531,12 @@ int parse_inst(struct parser *p)
 			return -1;
 		}
 		parse_consume(p);
-		printf("ifz $%d goto label%d\n", ret, label1);
+		printf("ifz $%d goto L%d\n", ret, label1);
 		ret = parse_inst(p);
 		if (ret < 0)
 			return -1;
-		printf("goto label%d\n", label0);
-		printf("label%d:\n", label1);
+		printf("goto L%d\n", label0);
+		printf("L%d:\n", label1);
 		return 0;
 	}
 	if (p->next == TOK_IF) {
@@ -549,21 +558,21 @@ int parse_inst(struct parser *p)
 		}
 		parse_consume(p);
 
-		printf("ifz $%d goto label%d\n", ret, label0);
+		printf("ifz $%d goto L%d\n", ret, label0);
 		ret = parse_inst(p);
 		if (ret < 0)
 			return -1;
 		if (p->next == TOK_ELSE) {
 			parse_consume(p);
 			int label1 = p->n_labels++;
-			printf("goto label%d\n", label1);
-			printf("label%d:\n", label0);
+			printf("goto L%d\n", label1);
+			printf("L%d:\n", label0);
 			ret = parse_inst(p);
 			if (ret < 0)
 				return -1;
-			printf("label%d:\n", label1);
+			printf("L%d:\n", label1);
 		} else {
-			printf("label%d:\n", label0);
+			printf("L%d:\n", label0);
 		}
 		return 0;
 	}
@@ -594,6 +603,7 @@ struct function *parse_function(struct parser *p)
 {
 	char *str = p->buffer;
 	int line = p->lxr.line;
+	p->n_labels = 0;
 
 	/* check if function is already defined */
 	if (function_find(str)) {
@@ -622,8 +632,13 @@ struct function *parse_function(struct parser *p)
 			parse_consume(p);
 			break;
 		}
-		if (p->next == TOK_SEP && f->n_args > 0)
+		if (f->n_args > 0) {
+			if (p->next != TOK_SEP) {
+				printf("error(%d): expected ,\n", line);
+				goto fail_args;
+			}
 			parse_consume(p);
+		}
 		if (p->next != TOK_ID) {
 			printf("error(%d): expected identifier\n", line);
 			goto fail_args;
@@ -635,6 +650,8 @@ struct function *parse_function(struct parser *p)
 		}
 		v->reg = p->n_regs++;
 		list_add(&v->list, &p->vars);
+		parse_consume(p);
+		f->n_args++;
 	}
 
 	int ret = parse_block(p);
@@ -642,6 +659,7 @@ struct function *parse_function(struct parser *p)
 		goto fail_args;
 
 	f->n_regs = p->n_regs;
+	printf("ret\n");
 
 	while (!list_empty(&p->vars)) {
 		struct variable *v = list_entry(p->vars.next, struct variable, list);
@@ -671,7 +689,7 @@ int parse_file(struct parser *p, FILE *file)
 	parse_consume(p);
 
 	while (p->next == TOK_ID)
-		if (parse_function(p) != 0)
+		if (parse_function(p) == NULL)
 			return -1;
 	if (p->next == TOK_ERR) {
 		printf("error(%d):%s\n\n", p->lxr.line, p->buffer);
@@ -688,6 +706,7 @@ int parse_file(struct parser *p, FILE *file)
 int main()
 {
 	lxr_init();
+	list_init(&function_head);
 	struct parser p;
 	parse_file(&p, stdin);
         return 0;
