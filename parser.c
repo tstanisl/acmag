@@ -509,8 +509,10 @@ int parse_block(struct parser *p);
 
 int parse_inst(struct parser *p)
 {
-	if (p->next == TOK_SCOLON)
+	if (p->next == TOK_SCOLON) {
+		parse_consume(p);
 		return 0;
+	}
 	if (p->next == TOK_RETURN) {
 		parse_consume(p);
 		if (p->next != TOK_SCOLON) {
@@ -519,6 +521,7 @@ int parse_inst(struct parser *p)
 				return -1;
 			printf("$0 := $%d\n", ret);
 		}
+		parse_consume(p);
 		printf("ret\n");
 		return 0;
 	}
@@ -542,12 +545,17 @@ int parse_inst(struct parser *p)
 			return -1;
 		}
 		parse_consume(p);
-		printf("ifz $%d goto L%d\n", ret, label1);
-		ret = parse_inst(p);
-		if (ret < 0)
-			return -1;
-		printf("goto L%d\n", label0);
-		printf("L%d:\n", label1);
+		if (p->next == TOK_SCOLON) {
+			parse_consume(p);
+			printf("if $%d goto L%d\n", ret, label0);
+		} else {
+			printf("ifz $%d goto L%d\n", ret, label1);
+			ret = parse_inst(p);
+			if (ret < 0)
+				return -1;
+			printf("goto L%d\n", label0);
+			printf("L%d:\n", label1);
+		}
 		return 0;
 	}
 	if (p->next == TOK_IF) {
@@ -588,7 +596,15 @@ int parse_inst(struct parser *p)
 		return 0;
 	}
 	/* trying to parse expression */
-	return parse_expr(p);
+	int ret = parse_expr(p);
+	if (ret < 0)
+		return -1;
+	if (p->next != TOK_SCOLON) {
+		printf("error(%d): expected ';' after expression\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+	return 0;
 }
 
 int parse_block(struct parser *p)
@@ -615,6 +631,9 @@ struct function *parse_function(struct parser *p)
 	char *str = p->buffer;
 	int line = p->lxr.line;
 	p->n_labels = 0;
+	p->n_regs = 1; /* reg 0 is return value */
+
+	printf("---- starting function %s ----\n", str);
 
 	/* check if function is already defined */
 	if (function_find(str)) {
