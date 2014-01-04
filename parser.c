@@ -451,6 +451,8 @@ int parse_top_expr(struct parser *p)
 		parse_consume(p);
 		return reg;
 	}
+	printf("error(%d): unexpected token '%s'\n",
+		p->lxr.line, token_descr[p->next]);
 	return -1;
 }
 
@@ -569,7 +571,7 @@ int parse_inst(struct parser *p)
 	if (p->next == TOK_IF) {
 		parse_consume(p);
 		if (p->next != TOK_LPAR) {
-			printf("error(%d): expected '(' after while\n", p->lxr.line);
+			printf("error(%d): expected '(' after if\n", p->lxr.line);
 			return -1;
 		}
 		parse_consume(p);
