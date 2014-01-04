@@ -3,7 +3,8 @@
 
 function0()
 {
-	return &function0;
+	a = &function0;
+	return a();
 }
 /*
 

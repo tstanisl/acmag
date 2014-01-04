@@ -408,15 +408,25 @@ void function_destroy(struct function *f)
 	free(f);
 }
 
-#define SIZE 64
+#define SIZE 256
+#define CONSTS 1024
+
+struct constant {
+	struct list list;
+	int offset;
+	int size;
+};
 
 struct parser {
 	struct lxr lxr;
 	char buffer[SIZE];
 	enum token next;
 	struct list vars;
+	struct list consts;
 	int n_regs;
 	int n_labels;
+	int data_size;
+	char data[CONSTS];
 };
 
 static int token_buffered(enum token t)
@@ -433,6 +443,28 @@ void parse_consume(struct parser *p)
 			p->buffer);
 	else
 		printf(" got %s\n", token_descr[p->next]);*/
+}
+
+int parse_constant_find(struct parser *p, char *data, int size)
+{
+	list_for(l, &p->consts) {
+		struct constant *c = list_entry(l, struct constant, list);
+		if (size != c->size) 
+			continue;
+		char *pdata = p->data + 4 * c->offset;
+		if (strncmp(data, pdata, size) == 0)
+			return c->offset;
+	}
+	struct constant *c = malloc(sizeof *c);
+	if (!c)
+		return -1;
+	c->offset = p->data_size / 4;
+	c->size = size;
+	memcpy(p->data + p->data_size, data, size);
+	size = (size + 3) & ~3; /* align to 4 bytes */
+	p->data_size += size;
+	list_add(&c->list, &p->consts);
+	return c->offset;
 }
 
 int parse_top_expr(struct parser *p)
