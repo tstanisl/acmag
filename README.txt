@@ -6,7 +6,6 @@ FUNC_ARGS -> ID {',' ID}
 
 INST -> ';'
 INST -> EXPR ';'
-INST -> REF_EXPR '=' EXPR ';'
 INST -> 'return' [ EXPR ] ';'
 INST -> 'if' '(' EXPR ')' INST ['else' INST]
 INST -> 'for' '(' ID ',' EXPR ')' INST
@@ -15,21 +14,21 @@ INST -> '{' { INST } '}'
 INST -> 'break'
 INST -> 'continue'
 
-EXPR -> ORR_EXPR
-ORR_EXPR -> AND_EXPR {'||' AND_EXPR}
-AND_EXPR -> CMP_EXPR {'&&' CMP_EXPR}
-CMP_EXPR -> SUM_EXPR
-CMP_EXPR -> SUM_EXPR '<' SUM_EXPR
-CMP_EXPR -> SUM_EXPR '<=' SUM_EXPR
-CMP_EXPR -> SUM_EXPR '>' SUM_EXPR
-CMP_EXPR -> SUM_EXPR '>=' SUM_EXPR
-CMP_EXPR -> SUM_EXPR '==' SUM_EXPR
-CMP_EXPR -> SUM_EXPR '!=' SUM_EXPR
-SUM_EXPR -> MUL_EXPR { '+' MUL_EXPR }
-SUM_EXPR -> MUL_EXPR { '-' MUL_EXPR }
-MUL_EXPR -> SNG_EXPR { '*' SNG_EXPR }
-MUL_EXPR -> SNG_EXPR { '/' SNG_EXPR }
-MUL_EXPR -> SNG_EXPR { '%' SNG_EXPR }
+EXPR -> ORR_EXPR [ '='  EXPR ]
+
+ORR_EXPR -> AND_EXPR { '||' AND_EXPR }
+AND_EXPR -> CMP_EXPR { '&&' CMP_EXPR }
+CMP_EXPR -> SUM_EXPR { '<'  SUM_EXPR }
+CMP_EXPR -> SUM_EXPR { '<=' SUM_EXPR }
+CMP_EXPR -> SUM_EXPR { '>'  SUM_EXPR }
+CMP_EXPR -> SUM_EXPR { '>=' SUM_EXPR }
+CMP_EXPR -> SUM_EXPR { '==' SUM_EXPR }
+CMP_EXPR -> SUM_EXPR { '!=' SUM_EXPR }
+SUM_EXPR -> MUL_EXPR { '+'  MUL_EXPR }
+SUM_EXPR -> MUL_EXPR { '-'  MUL_EXPR }
+MUL_EXPR -> SNG_EXPR { '*'  SNG_EXPR }
+MUL_EXPR -> SNG_EXPR { '/'  SNG_EXPR }
+MUL_EXPR -> SNG_EXPR { '%'  SNG_EXPR }
 SNG_EXPR -> '+' SNG_EXPR
 SNG_EXPR -> '-' SNG_EXPR
 SNG_EXPR -> '!' SNG_EXPR
@@ -42,6 +41,7 @@ TOP_EXPR -> ID
 TOP_EXPR -> NUM
 TOP_EXPR -> STR
 TOP_EXPR -> '(' EXPR ')'
+
 
 Example:
 

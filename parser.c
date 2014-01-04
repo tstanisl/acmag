@@ -333,6 +333,12 @@ struct function {
 	char name[];
 };
 
+enum reg_type {
+	REG_STK = 0 << 16,
+	REG_INT = 1 << 16,
+	REG_STR = 2 << 16,
+};
+
 struct variable {
 	int reg;
 	struct list list;
@@ -389,7 +395,81 @@ void parse_consume(struct parser *p)
 	p->next = lxr_get_token(&p->lxr, p->buffer, SIZE);
 }
 
-int parse_expr(struct parser *p);
+int parse_top_expr(struct parser *p)
+{
+	if (p->next == TOK_ID) {
+		struct list *l;
+		struct variable *v;
+		list_for(l, &p->vars) {
+			v = list_entry(l, struct variable, list);
+			if (strcmp(v->name, p->buffer) == 0)
+				return v->reg;
+		}
+		int reg = p->n_regs++;
+		v = variable_create(p->buffer, reg);
+		if (!v) {
+			printf("error(%d): failed to create %s\n",
+				p->line, p->buffer);
+			return -1;
+		}
+		list_add(&v->list, &p->vars);
+		return reg;
+	}
+	return -1;
+}
+
+int parse_and_expr(struct parser *p)
+{
+	int reg = parse_top_expr(p);
+	if (reg < 0)
+		return -1;
+	if (p->next != TOK_AND)
+		return reg;
+	int label = p->n_labels++;
+	while (p->next == TOK_AND) {
+		parse_consume(p);
+		printf("ifz $%d goto L%d\n", reg, label);
+		reg = parse_and_expr(p);
+		if (reg < 0)
+			return -1;
+	}
+	printf("L%d:\n", label);
+	return reg;
+}
+
+int parse_orr_expr(struct parser *p)
+{
+	int reg = parse_and_expr(p);
+	if (reg < 0)
+		return -1;
+	if (p->next != TOK_OR)
+		return reg;
+	int label = p->n_labels++;
+	while (p->next == TOK_ORR) {
+		parse_consume(p);
+		printf("if $%d goto L%d\n", reg, label);
+		reg = parse_and_expr(p);
+		if (reg < 0)
+			return -1;
+	}
+	printf("L%d:\n", label);
+	return reg;
+}
+
+int parse_expr(struct parser *p)
+{
+	int dst = parse_orr_expr(p);
+	if (dst < 0)
+		return -1;
+	if (p->next != TOK_ASSIGN)
+		return dst;
+	parse_consume(p);
+	int src = parse_expr(p);
+	if (src < 0)
+		return -1;
+	printf("$%d = $%d\n", dst, src);
+	return dst;
+}
 
 int parse_block(struct parser *p);
 
