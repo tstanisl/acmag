@@ -12,6 +12,7 @@ enum token {
         TOK_INT,
         TOK_STR,
         TOK_ID,
+        TOK_FUN,
 
         TOK_LPAR, /* ( */
         TOK_RPAR, /* ) */
@@ -28,7 +29,6 @@ enum token {
 
         TOK_LESS, /* < */
         TOK_GREAT, /* > */
-        TOK_AMP, /* & */
         TOK_NOT, /* ! */
         TOK_ASSIGN, /* = */
 
@@ -62,7 +62,7 @@ enum lxr_state {
 	LST_ML_STAR,
 	LST_SL_COMM,
 	LST_OR,
-	LST_AND,
+	LST_FUNB,
 	LST_EQ,
 	LST_NEQ,
 	LST_LEQ,
@@ -70,6 +70,7 @@ enum lxr_state {
 	__LST_ECHO,
 	LST_INT = __LST_ECHO,
 	LST_STR,
+	LST_FUN,
 	LST_ID,
 	LST_KEYWORD,
 	__LST = 1 << 8,
@@ -130,7 +131,7 @@ static void lxr_init(void)
 	lxr_action['"'] = LST_STRB  | __LST;
 	lxr_action['<'] = LST_LEQ   | __LST;
 	lxr_action['>'] = LST_GREQ  | __LST;
-	lxr_action['&'] = LST_AND   | __LST;
+	lxr_action['&'] = LST_FUNB  | __LST;
 	lxr_action['|'] = LST_OR    | __LST;
 	lxr_action['!'] = LST_NEQ   | __LST;
 	lxr_action['='] = LST_EQ    | __LST;
@@ -168,6 +169,19 @@ enum token lxr_get_token(struct lxr *lxr, char *buffer, int size)
 				lxr_unget(lxr, c);
 				buffer[pos] = 0;
 				return TOK_ID;
+			}
+		} else if (st == LST_FUNB) {
+			if (c == '&')
+				return TOK_AND;
+			if (!isalpha(c) && c != '_')
+				return lxr_error(buffer, size,
+					"missing function name after '&'");
+			st = LST_FUN;
+		} else if (st == LST_FUN) {
+			if (!isalnum(c) && c != '_') {
+				lxr_unget(lxr, c);
+				buffer[pos] = 0;
+				return TOK_FUN;
 			}
 		} else if (st == LST_STR || st == LST_STRB) {
 			if (c == '"') {
@@ -213,11 +227,6 @@ enum token lxr_get_token(struct lxr *lxr, char *buffer, int size)
 			if (c == '|')
 				return TOK_OR;
 			return lxr_error(buffer, size, "invalid operator '|'");
-		} else if (st == LST_AND) {
-			if (c == '&')
-				return TOK_AND;
-			lxr_unget(lxr, c);
-			return TOK_AMP;
 		} else if (st == LST_EQ) {
 			if (c == '=')
 				return TOK_EQ;
@@ -265,6 +274,7 @@ char *token_descr[] = {
 	[TOK_INT] = "#integer",
 	[TOK_STR] = "#string",
 	[TOK_ID] = "#identifier",
+	[TOK_FUN] = "#function",
 	[TOK_LPAR] = "(",
 	[TOK_RPAR] = ")",
 	[TOK_LBRA] = "{",
@@ -286,7 +296,6 @@ char *token_descr[] = {
 	[TOK_GREAT] = ">",
 	[TOK_NOT] = "!",
 	[TOK_DOT] = ".",
-	[TOK_AMP] = "&",
 	[TOK_SCOLON] = ";",
 	[TOK_RETURN] = "return",
 	[TOK_IF] = "if",
@@ -337,11 +346,15 @@ struct function {
 	char name[];
 };
 
+#define REG_SHIFT 14
 enum reg_type {
-	REG_STK = 0 << 16,
-	REG_INT = 1 << 16,
-	REG_STR = 2 << 16,
+	REG_STK = 0 << REG_SHIFT,
+	REG_INT = 1 << REG_SHIFT,
+	REG_STR = 2 << REG_SHIFT,
+	REG_FUN = 3 << REG_SHIFT,
 };
+
+#define REG_TYPE(r) ((r) & (3 << REG_SHIFT))
 
 struct variable {
 	int reg;

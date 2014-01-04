@@ -1,6 +1,12 @@
 
 // first function
 
+function0()
+{
+	return &function0;
+}
+/*
+
 while0()
 {
 	while (a);
@@ -19,8 +25,6 @@ while2(a,b)
 		b = 0;
 	}
 }
-
-/*
 
 if1()
 {
