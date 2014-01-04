@@ -1,14 +1,29 @@
 
 // first function
 
+or1()
+{
+	a = b || c || d || f;
+	a = 1 || 2;
+}
+and1()
+{
+	a = b && c && d && f;
+	a = 1 && 2;
+}
+andor(a,b,c)
+{
+	return a || b && c;
+}
+
+/*
+
 var()
 {
 	a = 1;
 	b = "hello";
 	return b;
 }
-
-/*
 
 return1()
 {

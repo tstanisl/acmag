@@ -462,15 +462,18 @@ int parse_and_expr(struct parser *p)
 	if (p->next != TOK_AND)
 		return reg;
 	int label = p->n_labels++;
+	int regf = p->n_regs++;
+	printf("$%d = $%d\n", regf, reg);
 	while (p->next == TOK_AND) {
 		parse_consume(p);
-		printf("ifz $%d goto L%d\n", reg, label);
+		printf("ifz $%d goto L%d\n", regf, label);
 		reg = parse_top_expr(p);
 		if (reg < 0)
 			return -1;
+		printf("$%d = $%d\n", regf, reg);
 	}
 	printf("L%d:\n", label);
-	return reg;
+	return regf;
 }
 
 int parse_orr_expr(struct parser *p)
@@ -481,15 +484,18 @@ int parse_orr_expr(struct parser *p)
 	if (p->next != TOK_OR)
 		return reg;
 	int label = p->n_labels++;
+	int regf = p->n_regs++;
+	printf("$%d = $%d\n", regf, reg);
 	while (p->next == TOK_OR) {
 		parse_consume(p);
-		printf("if $%d goto L%d\n", reg, label);
+		printf("if $%d goto L%d\n", regf, label);
 		reg = parse_and_expr(p);
 		if (reg < 0)
 			return -1;
+		printf("$%d = $%d\n", regf, reg);
 	}
 	printf("L%d:\n", label);
-	return reg;
+	return regf;
 }
 
 int parse_expr(struct parser *p)
