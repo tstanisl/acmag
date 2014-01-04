@@ -517,14 +517,14 @@ int parse_inst(struct parser *p)
 	}
 	if (p->next == TOK_RETURN) {
 		parse_consume(p);
+		int reg = 0;
 		if (p->next != TOK_SCOLON) {
-			int ret = parse_expr(p);
-			if (ret < 0)
+			reg = parse_expr(p);
+			if (reg < 0)
 				return -1;
-			printf("$0 := $%d\n", ret);
 		}
 		parse_consume(p);
-		printf("ret\n");
+		printf("ret $%d\n", reg);
 		return 0;
 	}
 	if (p->next == TOK_LBRA)
@@ -633,7 +633,7 @@ struct function *parse_function(struct parser *p)
 	char *str = p->buffer;
 	int line = p->lxr.line;
 	p->n_labels = 0;
-	p->n_regs = 1; /* reg 0 is return value */
+	p->n_regs = 0;
 
 	printf("---- starting function %s ----\n", str);
 
@@ -691,7 +691,7 @@ struct function *parse_function(struct parser *p)
 		goto fail_args;
 
 	f->n_regs = p->n_regs;
-	printf("ret\n");
+	printf("ret 0\n");
 
 	while (!list_empty(&p->vars)) {
 		struct variable *v = list_entry(p->vars.next, struct variable, list);

@@ -4,10 +4,11 @@
 var()
 {
 	a = 1;
-	return a;
+	b = "hello";
+	return b;
 }
 
-*
+/*
 
 return1()
 {
