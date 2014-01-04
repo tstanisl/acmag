@@ -1,0 +1,155 @@
+
+
+//------------------------------------------------------------
+
+
+/* use weapon.acs */
+
+item()
+{
+	i = object();
+	i.name = "nazwa";
+	i.value = 123 + !57 % 3;
+}
+
+onHit(item, target)
+{
+        item.__onHit(item, target);
+	// 1d10 hp/round for 10 rounds
+	poison = damage_create("1d10", "poison", 5);
+        add_effect(target, poison);
+}
+/*
+function onHit($1, $2)
+	$3 := $1.__onHit
+	$4 := call $3 ($1, $2)
+	$5 := call damage("1d10", "poison", 5)
+	call add_effect($2, $5)
+*/
+
+fib(n)
+{
+	if (n == 0 || n == 1)
+		return 1;
+	else
+		return fib(n - 1) + fin(n - 2);
+}
+/*
+	$2 = $1 == 0
+	$3 = $1 == 1
+	$2 = $2 || $3
+	ifz $2 goto L0
+	$0 = 1
+	return
+L0:     $4 = $1 - 1
+	$5 = call fib ($4)
+	$6 = $1 - 2
+	$7 = call fib ($6)
+	$0 = $5 + $7	
+	ret
+*/
+
+fib2(n)
+{
+	a = 1;
+	b = 1;
+	while (n > 0) {
+		tmp = a;
+		a = a + b;
+		b = tmp;
+		n = n - 1;	
+	}
+	return a;
+}
+/*
+function fib2(n)
+{
+	$a = 1;
+	$b = 1;
+L0:	$cmp = $n > 0;
+	ifz $cmp L1;
+	$tmp = $a;
+	$a = $a + $b;
+	$b = $tmp;
+	$n = $n - 1;
+	goto L0;
+L1:	return $a;
+	
+}
+*/
+
+sword() {
+	s = weapon();
+	s.name = "sword";
+	s.damage = "1d10";
+	return s;
+}
+/*
+function sword() {
+	$s = call weapon();
+	$s.name = "sword";
+	$s.damage = "1d10";
+	return $s;
+}
+*/
+
+granade_boom(g)
+{
+	a = explosion_area(g.position, 5);
+	// TODO: add owner here
+	d = damage_effect("3d6", "fire");
+	add_area_effect(d, a);
+	delete(g);
+}
+/*
+function granade_boom($g)
+{
+	$gpos = $g.position;
+	$a = call explosion_area($gpos, 5);
+	$d = call damage_effect("3d6", "fire");
+	call add_area_effect($d, $a);
+	call delete($g);
+}
+*/
+
+granade_start(g)
+{
+	if (g.activated) {
+		info("Granade is already activated.");
+		return;
+	}
+	g.activated  = 1;
+	// schedule boom in 10 seconds
+	add_event(g, granade_boom, 10);
+}
+/*
+function granade_start($g)
+{
+	$activated = $g.activated;
+	ifz $activated goto L0;
+	call info("Granade is already activated.");
+	return;
+L0:	$g.activated = 1;
+	call add_event($g, $granade_boom, 10);
+}
+*/
+
+granade()
+{
+	g = item();
+	g.name = "granade";
+	g.activated = 0;
+	g.on_use = granade_start;
+	return g;
+}
+
+/*
+function granade()
+{
+	$g = call item ();
+	$g.name = "granade";
+	$g.activated = 0;
+	$g.onUse = $granade_start;
+	return $g;
+}
+*/

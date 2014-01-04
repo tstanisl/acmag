@@ -1,20 +1,19 @@
 Syntax:
 
 SCRIPT -> {FUNC}
-FUNC -> ID '(' [FUNC_ARGS] ')' INST
+FUNC -> ID '(' [FUNC_ARGS] ')' '{' INST '}'
 FUNC_ARGS -> ID {',' ID}
 
 INST -> ';'
 INST -> EXPR ';'
 INST -> REF_EXPR '=' EXPR ';'
-INST -> REF_EXPR '=' '&' EXPR ';'
 INST -> 'return' [ EXPR ] ';'
 INST -> 'if' '(' EXPR ')' INST ['else' INST]
 INST -> 'for' '(' ID ',' EXPR ')' INST
 INST -> 'while' '(' EXPR ')' INST
 INST -> '{' { INST } '}'
-INST -> 'break' ';'
-INST -> 'continue' ';'
+INST -> 'break'
+INST -> 'continue'
 
 EXPR -> ORR_EXPR
 ORR_EXPR -> AND_EXPR {'||' AND_EXPR}
