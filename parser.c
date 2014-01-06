@@ -562,94 +562,111 @@ int parse_expr(struct parser *p)
 
 int parse_block(struct parser *p);
 
+int parse_return(struct parse *p)
+{
+	parse_consume(p);
+	int reg = 0;
+	if (p->next != TOK_SCOLON) {
+		reg = parse_expr(p);
+		if (reg < 0)
+			return -1;
+	}
+	parse_consume(p);
+	printf("ret $%d\n", reg);
+	return 0;
+}
+
+int parse_while(struct parser *p)
+{
+	parse_consume(p);
+	if (p->next != TOK_LPAR) {
+		printf("error(%d): expected '(' after while\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+	int label0 = p->n_labels++;
+	int label1 = p->n_labels++;
+	printf("L%d:\n", label0);
+	int ret = parse_expr(p);
+	if (ret < 0)
+		return -1;
+	if (p->next != TOK_RPAR) {
+		printf("error(%d): expected ')' after expression\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+	if (p->next == TOK_SCOLON) {
+		parse_consume(p);
+		printf("if $%d goto L%d\n", ret, label0);
+	} else {
+		printf("ifz $%d goto L%d\n", ret, label1);
+		ret = parse_inst(p);
+		if (ret < 0)
+			return -1;
+		printf("goto L%d\n", label0);
+		printf("L%d:\n", label1);
+	}
+	return 0;
+}
+
+int parse_if(struct parse *p)
+{
+	/* consume IF token */
+	parse_consume(p);
+	if (p->next != TOK_LPAR) {
+		printf("error(%d): expected '(' after if\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+	int label0 = p->n_labels++;
+
+	int ret = parse_expr(p);
+	if (ret < 0)
+		return -1;
+
+	if (p->next != TOK_RPAR) {
+		printf("error(%d): expected ')' after expression\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+
+	printf("ifz $%d goto L%d\n", ret, label0);
+	ret = parse_inst(p);
+	if (ret < 0)
+		return -1;
+	if (p->next != TOK_ELSE) {
+		printf("L%d:\n", label0);
+		return 0;
+	}
+	parse_consume(p);
+	if (p->next == TOK_SCOLON) {
+		printf("L%d:\n", label0);
+		return 0;
+	}
+	int label1 = p->n_labels++;
+	printf("goto L%d\n", label1);
+	printf("L%d:\n", label0);
+	ret = parse_inst(p);
+	if (ret < 0)
+		return -1;
+	printf("L%d:\n", label1);
+	return 0;
+}
+
 int parse_inst(struct parser *p)
 {
 	if (p->next == TOK_SCOLON) {
 		parse_consume(p);
 		return 0;
 	}
-	if (p->next == TOK_RETURN) {
-		parse_consume(p);
-		int reg = 0;
-		if (p->next != TOK_SCOLON) {
-			reg = parse_expr(p);
-			if (reg < 0)
-				return -1;
-		}
-		parse_consume(p);
-		printf("ret $%d\n", reg);
-		return 0;
-	}
+	if (p->next == TOK_RETURN)
+		return parse_return(p);
 	if (p->next == TOK_LBRA)
 		return parse_block(p);
-	if (p->next == TOK_WHILE) {
-		parse_consume(p);
-		if (p->next != TOK_LPAR) {
-			printf("error(%d): expected '(' after while\n", p->lxr.line);
-			return -1;
-		}
-		parse_consume(p);
-		int label0 = p->n_labels++;
-		int label1 = p->n_labels++;
-		printf("L%d:\n", label0);
-		int ret = parse_expr(p);
-		if (ret < 0)
-			return -1;
-		if (p->next != TOK_RPAR) {
-			printf("error(%d): expected ')' after expression\n", p->lxr.line);
-			return -1;
-		}
-		parse_consume(p);
-		if (p->next == TOK_SCOLON) {
-			parse_consume(p);
-			printf("if $%d goto L%d\n", ret, label0);
-		} else {
-			printf("ifz $%d goto L%d\n", ret, label1);
-			ret = parse_inst(p);
-			if (ret < 0)
-				return -1;
-			printf("goto L%d\n", label0);
-			printf("L%d:\n", label1);
-		}
-		return 0;
-	}
-	if (p->next == TOK_IF) {
-		parse_consume(p);
-		if (p->next != TOK_LPAR) {
-			printf("error(%d): expected '(' after if\n", p->lxr.line);
-			return -1;
-		}
-		parse_consume(p);
-		int label0 = p->n_labels++;
-
-		int ret = parse_expr(p);
-		if (ret < 0)
-			return -1;
-
-		if (p->next != TOK_RPAR) {
-			printf("error(%d): expected ')' after expression\n", p->lxr.line);
-			return -1;
-		}
-		parse_consume(p);
-
-		printf("ifz $%d goto L%d\n", ret, label0);
-		ret = parse_inst(p);
-		if (ret < 0)
-			return -1;
-		if (p->next == TOK_ELSE) {
-			parse_consume(p);
-			int label1 = p->n_labels++;
-			printf("goto L%d\n", label1);
-			printf("L%d:\n", label0);
-			ret = parse_inst(p);
-			if (ret < 0)
-				return -1;
-			printf("L%d:\n", label1);
-		} else {
-			printf("L%d:\n", label0);
-		}
-		return 0;
-	}
+	if (p->next == TOK_WHILE)
+		return parse_while(p);
+	if (p->next == TOK_IF)
+		return parse_if(p);
 	/* trying to parse expression */
 	int ret = parse_expr(p);
 	if (ret < 0)
