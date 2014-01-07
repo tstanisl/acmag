@@ -2,10 +2,12 @@
 // first function
 
 /*
+*/
 assign()
 {
 	a =b || c= 1;
 }
+/*
 
 while0()
 {
@@ -120,8 +122,6 @@ var()
 	return b;
 }
 
-*/
-
 return1()
 {
 	return;
@@ -151,7 +151,6 @@ return7(a)
 	return return7;
 }
 
-/*
 fun1() { }
 fun2(a) { }
 fun3(a, b) { }

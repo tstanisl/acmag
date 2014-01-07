@@ -542,65 +542,71 @@ int parse_top_expr(struct parser *p, struct result *r)
 	return -1;
 }
 
-#if 0
-int parse_ref_expr(struct parser *p)
-{
-}
-
-int parse_and_expr(struct parser *p)
-{
-	int reg = parse_ref_expr(p);
-	if (reg < 0)
-		return -1;
-	if (p->next != TOK_AND)
-		return reg;
-	int label = p->n_labels++;
-	int regf = p->n_regs++;
-	printf("$%d = $%d\n", regf, reg);
-	while (p->next == TOK_AND) {
-		parse_consume(p);
-		printf("ifz $%d goto L%d\n", regf, label);
-		reg = parse_ref_expr(p);
-		if (reg < 0)
-			return -1;
-		printf("$%d = $%d\n", regf, reg);
-	}
-	printf("L%d:\n", label);
-	return regf;
-}
-
-int parse_orr_expr(struct parser *p)
-{
-	int reg = parse_and_expr(p);
-	if (reg < 0)
-		return -1;
-	if (p->next != TOK_OR)
-		return reg;
-	int label = p->n_labels++;
-	int regf = p->n_regs++;
-	printf("$%d = $%d\n", regf, reg);
-	while (p->next == TOK_OR) {
-		parse_consume(p);
-		printf("if $%d goto L%d\n", regf, label);
-		reg = parse_and_expr(p);
-		if (reg < 0)
-			return -1;
-		printf("$%d = $%d\n", regf, reg);
-	}
-	printf("L%d:\n", label);
-	return regf;
-}
-#endif
-
-/* TODO: conside adding IGNORE_RESULT flag */
-int parse_expr(struct parser *p, struct result *r)
+int parse_and_expr(struct parser *p, struct result *r)
 {
 	int ret = parse_top_expr(p, r);
 	if (ret < 0)
 		return -1;
+	if (p->next != TOK_AND)
+		return 0;
+	int label = p->n_labels++;
+	int reg = p->n_regs++;
+	printf("$%d = ", reg);
+	parse_emit(p, r);
+	printf("\n");
+	while (p->next == TOK_AND) {
+		parse_consume(p);
+		printf("ifz $%d goto L%d\n", reg, label);
+		ret = parse_top_expr(p, r);
+		if (ret < 0)
+			return -1;
+		printf("$%d = ", reg);
+		parse_emit(p, r);
+		printf("\n");
+	}
+	printf("L%d:\n", label);
+	r->id = RSLT_REG;
+	r->value = reg;
+	return 0;
+}
+
+int parse_orr_expr(struct parser *p, struct result *r)
+{
+	int ret = parse_and_expr(p, r);
+	if (ret < 0)
+		return -1;
+	if (p->next != TOK_OR)
+		return 0;
+	int label = p->n_labels++;
+	int reg = p->n_regs++;
+	printf("$%d = ", reg);
+	parse_emit(p, r);
+	printf("\n");
+	while (p->next == TOK_OR) {
+		parse_consume(p);
+		printf("if $%d goto L%d\n", reg, label);
+		ret = parse_and_expr(p, r);
+		if (ret < 0)
+			return -1;
+		printf("$%d = ", reg);
+		parse_emit(p, r);
+		printf("\n");
+	}
+	printf("L%d:\n", label);
+	r->id = RSLT_REG;
+	r->value = reg;
+	return 0;
+}
+
+/* TODO: conside adding IGNORE_RESULT flag */
+int parse_expr(struct parser *p, struct result *r)
+{
+	int ret = parse_orr_expr(p, r);
+	if (ret < 0)
+		return -1;
 	if (p->next != TOK_ASSIGN)
 		return 0;
-	if (r->id != RSLT_REG || r->id != RSLT_REF) {
+	if (r->id != RSLT_REG && r->id != RSLT_REF) {
 		printf("error(%d): assigning to non-ref\n",
 			p->lxr.line);
 		return -1;
