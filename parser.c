@@ -542,6 +542,18 @@ int parse_top_expr(struct parser *p, struct result *r)
 	return -1;
 }
 
+int parse_ref_expr(struct parser *p, struct result *r)
+{
+	int ret = parse_top_expr(p, r);
+	if (ret < 0)
+		return -1;
+	if (p->next != TOK_DOT)
+		return 0;
+	parse_consume(p);
+	if (p->next != TOK_ID) {
+	}
+}
+
 int parse_and_expr(struct parser *p, struct result *r)
 {
 	int ret = parse_top_expr(p, r);
