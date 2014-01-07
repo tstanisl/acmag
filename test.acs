@@ -1,11 +1,11 @@
 
 // first function
 
+/*
 assign()
 {
 	a =b || c= 1;
 }
-/*
 
 while0()
 {
@@ -113,14 +113,14 @@ andor(a,b,c)
 	return a || b && c;
 }
 
-/*
-
 var()
 {
 	a = 1;
 	b = "hello";
 	return b;
 }
+
+*/
 
 return1()
 {
@@ -138,13 +138,25 @@ return4(a, b)
 {
 	return b;
 }
+return5(a)
+{
+	return 123;
+}
+return6(a)
+{
+	return "string";
+}
+return7(a)
+{
+	return return7;
+}
 
-*
-
+/*
 fun1() { }
 fun2(a) { }
 fun3(a, b) { }
 fun4(a, b, c) { }
+*/
 
 /*
 fun1()

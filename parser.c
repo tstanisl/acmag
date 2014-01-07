@@ -443,25 +443,27 @@ static int token_buffered(enum token t)
 void parse_consume(struct parser *p)
 {
 	p->next = lxr_get_token(&p->lxr, p->buffer, SIZE);
-	/*if (token_buffered(p->next))
+#if 0
+	if (token_buffered(p->next))
 		printf(" got %s: %s\n", token_descr[p->next],
 			p->buffer);
 	else
-		printf(" got %s\n", token_descr[p->next]);*/
+		printf(" got %s\n", token_descr[p->next]);
+#endif
 }
 
 void parse_emit(struct parser *p, struct result *r)
 {
 	if (r->id == RSLT_REF)
-		printf("$%d.%s\n", r->value, r->name);
+		printf("$%d.%s", r->value, r->name);
 	else if (r->id == RSLT_STR)
-		printf("\"%s\"\n", r->name);
+		printf("\"%s\"", r->name);
 	else if (r->id == RSLT_INT)
-		printf("%d\n", r->value);
+		printf("%d", r->value);
 	else if (r->id == RSLT_REG)
-		printf("$%d\n", r->value);
+		printf("$%d", r->value);
 	else if (r->id == RSLT_FUN)
-		printf("%s\n", r->name);
+		printf("%s", r->name);
 }
 
 int parse_constant_find(struct parser *p, char *data, int size)
@@ -530,6 +532,7 @@ int parse_top_expr(struct parser *p, struct result *r)
 		return 0;
 	}
 	if (p->next == TOK_STR) {
+		r->id = RSLT_STR;
 		strcpy(r->name, p->buffer);
 		parse_consume(p);
 		return 0;
