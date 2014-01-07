@@ -549,14 +549,32 @@ int parse_ref_expr(struct parser *p, struct result *r)
 		return -1;
 	if (p->next != TOK_DOT)
 		return 0;
-	parse_consume(p);
-	if (p->next != TOK_ID) {
+	if (r->id != RSLT_REG && r->id != RSLT_REF) {
+		printf("error(%d): dereferencing invalid object\n", p->lxr.line);
+		return -1;
 	}
+	while (p->next == TOK_DOT) {
+		parse_consume(p);
+		if (p->next != TOK_ID) {
+			printf("error(%d): id expected after '.'\n", p->lxr.line);
+			return -1;
+		}
+		if (r->id == RSLT_REG) {
+			r->id = RSLT_REF;
+		} else { // RSLT_REF
+			int reg = p->n_regs++;
+			printf("$%d = $%d.%s\n", reg, r->value, r->name);
+			r->value = reg;
+		}
+		strcpy(r->name, p->buffer);
+		parse_consume(p);
+	}
+	return 0;
 }
 
 int parse_and_expr(struct parser *p, struct result *r)
 {
-	int ret = parse_top_expr(p, r);
+	int ret = parse_ref_expr(p, r);
 	if (ret < 0)
 		return -1;
 	if (p->next != TOK_AND)
@@ -569,7 +587,7 @@ int parse_and_expr(struct parser *p, struct result *r)
 	while (p->next == TOK_AND) {
 		parse_consume(p);
 		printf("ifz $%d goto L%d\n", reg, label);
-		ret = parse_top_expr(p, r);
+		ret = parse_ref_expr(p, r);
 		if (ret < 0)
 			return -1;
 		printf("$%d = ", reg);

@@ -1,13 +1,30 @@
 
 // first function
 
+ref1()
+{
+	return a.c || a.b.c;
+}
+ref2(abc)
+{
+	abc.int = 1;
+	abc.str = "Hello world";
+	abc.helper = ref1;
+	
+}
+ref3()
+{
+	a.b.c = c.hello;
+}
+ref4(a)
+{
+	a.b.c = a && b.c;
+}
 /*
-*/
 assign()
 {
 	a =b || c= 1;
 }
-/*
 
 while0()
 {
