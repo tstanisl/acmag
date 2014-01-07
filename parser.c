@@ -443,7 +443,7 @@ static int token_buffered(enum token t)
 void parse_consume(struct parser *p)
 {
 	p->next = lxr_get_token(&p->lxr, p->buffer, SIZE);
-#if 0
+#if DEBUG_TOKENS
 	if (token_buffered(p->next))
 		printf(" got %s: %s\n", token_descr[p->next],
 			p->buffer);
