@@ -346,16 +346,6 @@ struct function {
 	char name[];
 };
 
-#define REG_SHIFT 14
-enum reg_type {
-	REG_STK = 0 << REG_SHIFT,
-	REG_INT = 1 << REG_SHIFT,
-	REG_STR = 2 << REG_SHIFT,
-	REG_FUN = 3 << REG_SHIFT,
-};
-
-#define REG_TYPE(r) ((r) & (3 << REG_SHIFT))
-
 struct variable {
 	int reg;
 	struct list list;
@@ -429,6 +419,21 @@ struct parser {
 	char data[CONSTS];
 };
 
+enum result {
+	RSLT_NIL,
+	RSLT_REG,
+	RSLT_REF,
+	RSLT_FUN,
+	RSLT_STR,
+	RSLT_INT,
+};
+
+struct result {
+	enum result id;
+	int value;
+	char name[SIZE];
+};
+
 static int token_buffered(enum token t)
 {
 	return t == TOK_STR || t == TOK_INT ||
@@ -467,43 +472,67 @@ int parse_constant_find(struct parser *p, char *data, int size)
 	return c->offset;
 }
 
-int parse_top_expr(struct parser *p)
+int parse_id_expr(struct parser *p, struct result *r)
 {
-	if (p->next == TOK_ID) {
-		struct variable *v;
-		list_for(l, &p->vars) {
-			v = list_entry(l, struct variable, list);
-			if (strcmp(v->name, p->buffer) == 0) {
-				parse_consume(p);
-				return v->reg;
-			}
-		}
-		int reg = p->n_regs++;
-		v = variable_create(p->buffer);
-		if (!v) {
-			printf("error(%d): failed to create %s\n",
-				p->lxr.line, p->buffer);
+	struct function *f = function_find(p->buffer);
+	if (f) {
+		r->id = RSLT_FUN;
+		strcpy(r->name, p->buffer);
+		parse_consume(p);
+		return 0;
+	}
+	struct variable *v;
+	list_for(l, &p->vars) {
+		v = list_entry(l, struct variable, list);
+		if (strcmp(v->name, p->buffer) == 0)
+			goto done;
+	}
+	v = variable_create(p->buffer);
+	if (!v) {
+		printf("error(%d): failed to create %s\n",
+			p->lxr.line, p->buffer);
+		return -1;
+	}
+	v->reg = p->n_regs++;
+	list_add(&v->list, &p->vars);
+done:
+	r->id = RSLT_REG;
+	r->value = v->reg;
+	parse_consume(p);
+	return 0;
+}
+
+int parse_top_expr(struct parser *p, struct result *r)
+{
+	if (p->next == TOK_ID)
+		return parse_id_expr(p, r);
+	if (p->next == TOK_INT) {
+		r->id = RSLT_INT;
+		if (sscanf(p->buffer, "%d", &r->value) != 1) {
+			printf("error(%d): invalid integer format\n", p->lxr.line);
 			return -1;
 		}
-		v->reg = reg;
-		list_add(&v->list, &p->vars);
 		parse_consume(p);
-		return reg;
+		return 0;
 	}
-	if (p->next == TOK_INT || p->next == TOK_STR) {
-		int reg = p->n_regs++;
-		printf("$%d = \"%s\"\n", reg, p->buffer);
+	if (p->next == TOK_STR) {
+		memcpy(r->name, p->buffer);
 		parse_consume(p);
-		return reg;
+		return 0;
 	}
 	printf("error(%d): unexpected token '%s'\n",
 		p->lxr.line, token_descr[p->next]);
 	return -1;
 }
 
+#if 0
+int parse_ref_expr(struct parser *p)
+{
+}
+
 int parse_and_expr(struct parser *p)
 {
-	int reg = parse_top_expr(p);
+	int reg = parse_ref_expr(p);
 	if (reg < 0)
 		return -1;
 	if (p->next != TOK_AND)
@@ -514,7 +543,7 @@ int parse_and_expr(struct parser *p)
 	while (p->next == TOK_AND) {
 		parse_consume(p);
 		printf("ifz $%d goto L%d\n", regf, label);
-		reg = parse_top_expr(p);
+		reg = parse_ref_expr(p);
 		if (reg < 0)
 			return -1;
 		printf("$%d = $%d\n", regf, reg);
@@ -544,20 +573,60 @@ int parse_orr_expr(struct parser *p)
 	printf("L%d:\n", label);
 	return regf;
 }
+#endif
 
-int parse_expr(struct parser *p)
+/* TODO: conside adding IGNORE_RESULT flag */
+int parse_expr(struct parser *p, struct result *r)
 {
-	int dst = parse_orr_expr(p);
-	if (dst < 0)
+	int ret = parse_top_expr(p, r);
+	if (ret < 0)
 		return -1;
 	if (p->next != TOK_ASSIGN)
-		return dst;
-	parse_consume(p);
-	int src = parse_expr(p);
-	if (src < 0)
+		return 0;
+	if (r->id != RSLT_REG || r->id != RSLT_REF) {
+		printf("error(%d): assigning to non-ref\n",
+			p->lxr.line);
 		return -1;
-	printf("$%d = $%d\n", dst, src);
-	return dst;
+	}
+	/* TODO: add checking if r is temporary */
+	parse_consume(p);
+	struct result l = {0};
+	ret = parse_expr(p, &l);
+	if (ret < 0)
+		return -1;
+	if (l.id != RSLT_REG && l.id != RSLT_REF &&
+	    l.id != RSLT_INT && l.id != RSLT_FUN &&
+	    l.id != RSLT_STR) {
+		printf("error(%d): invalid LHS", p->lxr.line);
+		return -1;
+	}
+	/* TODO: add support for nil */
+	if (l.id == RSLT_REF) {
+		if (r->id == RSLT_REG) {
+			printf("$%d = $%d.%s\n", r->value,
+				l.value, l.name);
+			return 0;
+		}
+		int reg = p->n_regs++;
+		printf("$%d = $%d.%s\n", reg, l.value, l.name);
+		l.id = RSLT_REG;
+		l.value = reg;
+	}
+	if (r->id == RSLT_REF) {
+		printf("$%d.%s = ", r->value, r->name);
+	} else {
+		printf("$%d = ", r->value);
+	}
+	/* TODO: use helper for convertion */
+	if (l.id == RSLT_STR)
+		printf("\"%s\"\n", l.name);
+	else if (l.id == RSLT_INT)
+		printf("%d\n", l.value);
+	else if (l.id == RSLT_REG)
+		printf("$%d\n", l.name);
+	else // RSLT_FUN
+		printf("&%s\n", l.name);
+	return 0;
 }
 
 int parse_block(struct parser *p);
@@ -668,7 +737,8 @@ int parse_inst(struct parser *p)
 	if (p->next == TOK_IF)
 		return parse_if(p);
 	/* trying to parse expression */
-	int ret = parse_expr(p);
+	struct result r = {0};
+	int ret = parse_expr(p, &r);
 	if (ret < 0)
 		return -1;
 	if (p->next != TOK_SCOLON) {

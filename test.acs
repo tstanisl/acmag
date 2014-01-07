@@ -1,10 +1,9 @@
 
 // first function
 
-function0()
+assign()
 {
-	a = &function0;
-	return a();
+	a =b || c= 1;
 }
 /*
 
