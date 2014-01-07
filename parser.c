@@ -572,9 +572,35 @@ int parse_ref_expr(struct parser *p, struct result *r)
 	return 0;
 }
 
-int parse_and_expr(struct parser *p, struct result *r)
+int parse_sum_expr(struct parser *p, struct result *r)
 {
 	int ret = parse_ref_expr(p, r);
+	if (ret < 0)
+		return -1;
+	if (p->next != TOK_PLUS && p->next != TOK_MINUS)
+		return 0;
+	int reg = p->n_regs++;
+	struct result l = {0};
+	while (p->next == TOK_PLUS || p->next == TOK_MINUS) {
+		int t = p->next;
+		parse_consume(p);
+		ret = parse_ref_expr(p, &l);
+		if (ret < 0)
+			return -1;
+		printf("$%d = ", reg);
+		parse_emit(p, r);
+		printf(t == TOK_PLUS ? " + " : " - ");
+		parse_emit(p, &l);
+		printf("\n");
+		r->id = RSLT_REG;
+		r->value = reg;
+	}
+	return 0;
+}
+
+int parse_and_expr(struct parser *p, struct result *r)
+{
+	int ret = parse_sum_expr(p, r);
 	if (ret < 0)
 		return -1;
 	if (p->next != TOK_AND)
@@ -587,7 +613,7 @@ int parse_and_expr(struct parser *p, struct result *r)
 	while (p->next == TOK_AND) {
 		parse_consume(p);
 		printf("ifz $%d goto L%d\n", reg, label);
-		ret = parse_ref_expr(p, r);
+		ret = parse_sum_expr(p, r);
 		if (ret < 0)
 			return -1;
 		printf("$%d = ", reg);
