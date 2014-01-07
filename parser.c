@@ -419,7 +419,7 @@ struct parser {
 	char data[CONSTS];
 };
 
-enum result {
+enum result_id {
 	RSLT_NIL,
 	RSLT_REG,
 	RSLT_REF,
@@ -429,7 +429,7 @@ enum result {
 };
 
 struct result {
-	enum result id;
+	enum result_id id;
 	int value;
 	char name[SIZE];
 };
@@ -448,6 +448,20 @@ void parse_consume(struct parser *p)
 			p->buffer);
 	else
 		printf(" got %s\n", token_descr[p->next]);*/
+}
+
+void parse_emit(struct parser *p, struct result *r)
+{
+	if (r->id == RSLT_REF)
+		printf("$%d.%s\n", r->value, r->name);
+	else if (r->id == RSLT_STR)
+		printf("\"%s\"\n", r->name);
+	else if (r->id == RSLT_INT)
+		printf("%d\n", r->value);
+	else if (r->id == RSLT_REG)
+		printf("$%d\n", r->value);
+	else if (r->id == RSLT_FUN)
+		printf("%s\n", r->name);
 }
 
 int parse_constant_find(struct parser *p, char *data, int size)
@@ -516,7 +530,7 @@ int parse_top_expr(struct parser *p, struct result *r)
 		return 0;
 	}
 	if (p->next == TOK_STR) {
-		memcpy(r->name, p->buffer);
+		strcpy(r->name, p->buffer);
 		parse_consume(p);
 		return 0;
 	}
@@ -600,48 +614,36 @@ int parse_expr(struct parser *p, struct result *r)
 		printf("error(%d): invalid LHS", p->lxr.line);
 		return -1;
 	}
-	/* TODO: add support for nil */
-	if (l.id == RSLT_REF) {
-		if (r->id == RSLT_REG) {
-			printf("$%d = $%d.%s\n", r->value,
-				l.value, l.name);
-			return 0;
-		}
-		int reg = p->n_regs++;
-		printf("$%d = $%d.%s\n", reg, l.value, l.name);
-		l.id = RSLT_REG;
-		l.value = reg;
-	}
-	if (r->id == RSLT_REF) {
-		printf("$%d.%s = ", r->value, r->name);
-	} else {
-		printf("$%d = ", r->value);
-	}
-	/* TODO: use helper for convertion */
-	if (l.id == RSLT_STR)
-		printf("\"%s\"\n", l.name);
-	else if (l.id == RSLT_INT)
-		printf("%d\n", l.value);
-	else if (l.id == RSLT_REG)
-		printf("$%d\n", l.name);
-	else // RSLT_FUN
-		printf("&%s\n", l.name);
+	parse_emit(p, r);
+	printf(" = ");
+	parse_emit(p, &l);
+	printf("\n");
 	return 0;
 }
 
 int parse_block(struct parser *p);
+int parse_inst(struct parser *p);
 
-int parse_return(struct parse *p)
+int parse_return(struct parser *p)
 {
 	parse_consume(p);
-	int reg = 0;
+	if (p->next == TOK_SCOLON) {
+		parse_consume(p);
+		printf("ret 0\n");
+		return 0;
+	}
+	struct result r = {0};
+	int ret = parse_expr(p, &r);
+	if (ret < 0)
+		return -1;
+	printf("ret ");
+	parse_emit(p, &r);
+	printf("\n");
 	if (p->next != TOK_SCOLON) {
-		reg = parse_expr(p);
-		if (reg < 0)
-			return -1;
+		printf("error(%d): expected ')' after expression\n", p->lxr.line);
+		return -1;
 	}
 	parse_consume(p);
-	printf("ret $%d\n", reg);
 	return 0;
 }
 
@@ -656,7 +658,8 @@ int parse_while(struct parser *p)
 	int label0 = p->n_labels++;
 	int label1 = p->n_labels++;
 	printf("L%d:\n", label0);
-	int ret = parse_expr(p);
+	struct result r = {0};
+	int ret = parse_expr(p, &r);
 	if (ret < 0)
 		return -1;
 	if (p->next != TOK_RPAR) {
@@ -666,9 +669,13 @@ int parse_while(struct parser *p)
 	parse_consume(p);
 	if (p->next == TOK_SCOLON) {
 		parse_consume(p);
-		printf("if $%d goto L%d\n", ret, label0);
+		printf("if ");
+		parse_emit(p, &r);
+		printf(" goto L%d\n", label0);
 	} else {
-		printf("ifz $%d goto L%d\n", ret, label1);
+		printf("ifz ");
+		parse_emit(p, &r);
+		printf(" goto L%d\n", label1);
 		ret = parse_inst(p);
 		if (ret < 0)
 			return -1;
@@ -678,7 +685,7 @@ int parse_while(struct parser *p)
 	return 0;
 }
 
-int parse_if(struct parse *p)
+int parse_if(struct parser *p)
 {
 	/* consume IF token */
 	parse_consume(p);
@@ -689,7 +696,8 @@ int parse_if(struct parse *p)
 	parse_consume(p);
 	int label0 = p->n_labels++;
 
-	int ret = parse_expr(p);
+	struct result r = {0};
+	int ret = parse_expr(p, &r);
 	if (ret < 0)
 		return -1;
 
@@ -699,7 +707,9 @@ int parse_if(struct parse *p)
 	}
 	parse_consume(p);
 
-	printf("ifz $%d goto L%d\n", ret, label0);
+	printf("ifz ");
+	parse_emit(p, &r);
+	printf(" goto L%d\n", label0);
 	ret = parse_inst(p);
 	if (ret < 0)
 		return -1;
