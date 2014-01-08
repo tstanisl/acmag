@@ -519,6 +519,8 @@ done:
 	return 0;
 }
 
+int parse_expr(struct parser *p, struct result *r);
+
 int parse_top_expr(struct parser *p, struct result *r)
 {
 	if (p->next == TOK_ID)
@@ -535,6 +537,18 @@ int parse_top_expr(struct parser *p, struct result *r)
 	if (p->next == TOK_STR) {
 		r->id = RSLT_STR;
 		strcpy(r->name, p->buffer);
+		parse_consume(p);
+		return 0;
+	}
+	if (p->next == TOK_LPAR) {
+		parse_consume(p);
+		int ret = parse_expr(p, r);
+		if (ret < 0)
+			return -1;
+		if (p->next != TOK_RPAR) {
+			printf("error(%d): unbalanced '('\n", p->lxr.line);
+			return -1;
+		}
 		parse_consume(p);
 		return 0;
 	}
@@ -565,8 +579,6 @@ int parse_dot_expr(struct parser *p, struct result *r)
 	parse_consume(p);
 	return 0;
 }
-
-int parse_expr(struct parser *p, struct result *r);
 
 int parse_fun_expr(struct parser *p, struct result *r)
 {

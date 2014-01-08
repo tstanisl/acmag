@@ -1,6 +1,15 @@
 
 // first function
 
+par1(a,b,c)
+{
+	return a - (b - c);
+}
+par2(a,b,c)
+{
+	return (a - b) - c;
+}
+/*
 fun1(a)
 {
 	return fun(a,1,fun1,"str",a + 1);
@@ -15,7 +24,6 @@ fun3(n)
 		return fun3(n - 1) + fun3(n - 2);
 	return 0;
 }
-/*
 add1(a,b)
 {
 	return a;
