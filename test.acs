@@ -12,7 +12,6 @@ cmp2(a)
 	return cmp2(a - 1) + cmp2(a - 2);
 }
 
-/*
 par1(a,b,c)
 {
 	return a - (b - c);

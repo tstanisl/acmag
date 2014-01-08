@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -431,6 +432,7 @@ enum result_id {
 
 struct result {
 	enum result_id id;
+	bool temp;
 	int value;
 	char name[SIZE];
 };
@@ -523,6 +525,7 @@ int parse_expr(struct parser *p, struct result *r);
 
 int parse_top_expr(struct parser *p, struct result *r)
 {
+	r->temp = false;
 	if (p->next == TOK_ID)
 		return parse_id_expr(p, r);
 	if (p->next == TOK_INT) {
@@ -620,6 +623,7 @@ int parse_fun_expr(struct parser *p, struct result *r)
 	printf(")\n");
 	r->id = RSLT_REG;
 	r->value = reg;
+	r->temp = true;
 	return 0;
 }
 
@@ -660,6 +664,7 @@ int parse_sum_expr(struct parser *p, struct result *r)
 		printf("\n");
 		r->id = RSLT_REG;
 		r->value = reg;
+		r->temp = true;
 	}
 	return 0;
 }
@@ -694,6 +699,7 @@ int parse_cmp_expr(struct parser *p, struct result *r)
 	printf("\n");
 	r->id = RSLT_REG;
 	r->value = reg;
+	r->temp = true;
 	return 0;
 }
 
@@ -705,10 +711,15 @@ int parse_and_expr(struct parser *p, struct result *r)
 	if (p->next != TOK_AND)
 		return 0;
 	int label = p->n_labels++;
-	int reg = p->n_regs++;
-	printf("$%d = ", reg);
-	parse_emit(p, r);
-	printf("\n");
+	int reg;
+	if (r->id == RSLT_REG && r->temp) {
+		reg = r->value;
+	} else {
+		reg = p->n_regs++;
+		printf("$%d = ", reg);
+		parse_emit(p, r);
+		printf("\n");
+	}
 	while (p->next == TOK_AND) {
 		parse_consume(p);
 		printf("ifz $%d goto L%d\n", reg, label);
@@ -722,6 +733,7 @@ int parse_and_expr(struct parser *p, struct result *r)
 	printf("L%d:\n", label);
 	r->id = RSLT_REG;
 	r->value = reg;
+	r->temp = true;
 	return 0;
 }
 
@@ -733,10 +745,15 @@ int parse_orr_expr(struct parser *p, struct result *r)
 	if (p->next != TOK_OR)
 		return 0;
 	int label = p->n_labels++;
-	int reg = p->n_regs++;
-	printf("$%d = ", reg);
-	parse_emit(p, r);
-	printf("\n");
+	int reg;
+	if (r->id == RSLT_REG && r->temp) {
+		reg = r->value;
+	} else {
+		reg = p->n_regs++;
+		printf("$%d = ", reg);
+		parse_emit(p, r);
+		printf("\n");
+	}
 	while (p->next == TOK_OR) {
 		parse_consume(p);
 		printf("if $%d goto L%d\n", reg, label);
@@ -750,6 +767,7 @@ int parse_orr_expr(struct parser *p, struct result *r)
 	printf("L%d:\n", label);
 	r->id = RSLT_REG;
 	r->value = reg;
+	r->temp = true;
 	return 0;
 }
 
