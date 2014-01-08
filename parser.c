@@ -400,6 +400,7 @@ void function_destroy(struct function *f)
 
 #define SIZE 256
 #define CONSTS 1024
+#define ARGS 16
 
 struct constant {
 	struct list list;
@@ -542,34 +543,87 @@ int parse_top_expr(struct parser *p, struct result *r)
 	return -1;
 }
 
+int parse_dot_expr(struct parser *p, struct result *r)
+{
+	if (r->id != RSLT_REG && r->id != RSLT_REF) {
+		printf("error(%d): dereferencing invalid object\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+	if (p->next != TOK_ID) {
+		printf("error(%d): id expected after '.'\n", p->lxr.line);
+		return -1;
+	}
+	if (r->id == RSLT_REG) {
+		r->id = RSLT_REF;
+	} else { // RSLT_REF
+		int reg = p->n_regs++;
+		printf("$%d = $%d.%s\n", reg, r->value, r->name);
+		r->value = reg;
+	}
+	strcpy(r->name, p->buffer);
+	parse_consume(p);
+	return 0;
+}
+
+int parse_expr(struct parser *p, struct result *r);
+
+int parse_fun_expr(struct parser *p, struct result *r)
+{
+	if (r->id != RSLT_REG && r->id != RSLT_REF && r->id != RSLT_FUN) {
+		printf("error(%d): calling invalid object\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+	/* parse argument list */
+	struct result args[ARGS];
+	memset(args, 0, sizeof(args));
+	int n_args = 0;
+	while (p->next != TOK_RPAR) {
+		int ret = parse_expr(p, &args[n_args]);
+		if (ret < 0)
+			return -1;
+		if (++n_args > ARGS) {
+			printf("error(%d): more then %d arguments\n", p->lxr.line, ARGS);
+			return -1;
+		}
+		if (p->next == TOK_SEP) {
+			parse_consume(p);
+		} else if (p->next != TOK_RPAR) {
+			printf("error(%d): missing ','\n", p->lxr.line);
+			return -1;
+		}
+	}
+	parse_consume(p);
+
+	int reg = p->n_regs++;
+	printf("$%d = call ", reg);
+	parse_emit(p, r);
+	printf("(");
+	for (int i = 0; i < n_args; ++i) {
+		if (i > 0)
+			printf(", ");
+		parse_emit(p, &args[i]);
+	}
+	printf(")\n");
+	r->id = RSLT_REG;
+	r->value = reg;
+	return 0;
+}
+
 int parse_ref_expr(struct parser *p, struct result *r)
 {
 	int ret = parse_top_expr(p, r);
 	if (ret < 0)
 		return -1;
-	if (p->next != TOK_DOT)
-		return 0;
-	if (r->id != RSLT_REG && r->id != RSLT_REF) {
-		printf("error(%d): dereferencing invalid object\n", p->lxr.line);
-		return -1;
-	}
-	while (p->next == TOK_DOT) {
-		parse_consume(p);
-		if (p->next != TOK_ID) {
-			printf("error(%d): id expected after '.'\n", p->lxr.line);
-			return -1;
-		}
-		if (r->id == RSLT_REG) {
-			r->id = RSLT_REF;
-		} else { // RSLT_REF
-			int reg = p->n_regs++;
-			printf("$%d = $%d.%s\n", reg, r->value, r->name);
-			r->value = reg;
-		}
-		strcpy(r->name, p->buffer);
-		parse_consume(p);
-	}
-	return 0;
+	while (ret >= 0)
+		if (p->next == TOK_DOT)
+			ret = parse_dot_expr(p, r);
+		else if (p->next == TOK_LPAR)
+			ret = parse_fun_expr(p, r);
+		else
+			return 0;
+	return -1;
 }
 
 int parse_sum_expr(struct parser *p, struct result *r)

@@ -1,6 +1,21 @@
 
 // first function
 
+fun1(a)
+{
+	return fun(a,1,fun1,"str",a + 1);
+}
+fun2(a)
+{
+	return a.b().c;
+}
+fun3(n)
+{
+	if (n)
+		return fun3(n - 1) + fun3(n - 2);
+	return 0;
+}
+/*
 add1(a,b)
 {
 	return a;
@@ -17,7 +32,6 @@ add2()
 		b = tmp;
 	}
 }
-/*
 ref1()
 {
 	return a.c || a.b.c;
