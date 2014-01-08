@@ -664,9 +664,42 @@ int parse_sum_expr(struct parser *p, struct result *r)
 	return 0;
 }
 
-int parse_and_expr(struct parser *p, struct result *r)
+int parse_cmp_expr(struct parser *p, struct result *r)
 {
 	int ret = parse_sum_expr(p, r);
+	if (ret < 0)
+		return -1;
+	static int cmp_tokens[] = {
+		TOK_LESS, TOK_LEQ,
+		TOK_GREAT, TOK_GREQ,
+		TOK_EQ, TOK_NEQ
+	};
+	int t;
+	for (t = 0; t < 6; ++t)
+		if (p->next == cmp_tokens[t])
+			break;
+	if (t == 6)
+		return 0;
+	t = cmp_tokens[t];
+	int reg = p->n_regs++;
+	parse_consume(p);
+	struct result l = {0};
+	ret = parse_sum_expr(p, &l);
+	if (ret < 0)
+		return -1;
+	printf("$%d = ", reg);
+	parse_emit(p, r);
+	printf(" %s ", token_descr[t]);
+	parse_emit(p, &l);
+	printf("\n");
+	r->id = RSLT_REG;
+	r->value = reg;
+	return 0;
+}
+
+int parse_and_expr(struct parser *p, struct result *r)
+{
+	int ret = parse_cmp_expr(p, r);
 	if (ret < 0)
 		return -1;
 	if (p->next != TOK_AND)
@@ -679,7 +712,7 @@ int parse_and_expr(struct parser *p, struct result *r)
 	while (p->next == TOK_AND) {
 		parse_consume(p);
 		printf("ifz $%d goto L%d\n", reg, label);
-		ret = parse_sum_expr(p, r);
+		ret = parse_cmp_expr(p, r);
 		if (ret < 0)
 			return -1;
 		printf("$%d = ", reg);
