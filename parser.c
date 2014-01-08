@@ -759,7 +759,7 @@ int parse_return(struct parser *p)
 	parse_emit(p, &r);
 	printf("\n");
 	if (p->next != TOK_SCOLON) {
-		printf("error(%d): expected ')' after expression\n", p->lxr.line);
+		printf("error(%d): expected ';' after expression\n", p->lxr.line);
 		return -1;
 	}
 	parse_consume(p);
