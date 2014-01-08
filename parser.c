@@ -503,10 +503,21 @@ int parse_id_expr(struct parser *p, struct result *r)
 	struct variable *v;
 	list_for(l, &p->vars) {
 		v = list_entry(l, struct variable, list);
-		if (strcmp(v->name, p->buffer) == 0)
-			goto done;
+		if (strcmp(v->name, p->buffer) == 0) {
+			r->id = RSLT_REG;
+			r->value = v->reg;
+			parse_consume(p);
+			return 0;
+		}
 	}
-	v = variable_create(p->buffer);
+	strcpy(r->name, p->buffer);
+	parse_consume(p);
+	/* function call, not defined yet */
+	if (p->next == TOK_LPAR) {
+		r->id = RSLT_FUN;
+		return 0;
+	}
+	v = variable_create(r->name);
 	if (!v) {
 		printf("error(%d): failed to create %s\n",
 			p->lxr.line, p->buffer);
@@ -514,10 +525,8 @@ int parse_id_expr(struct parser *p, struct result *r)
 	}
 	v->reg = p->n_regs++;
 	list_add(&v->list, &p->vars);
-done:
 	r->id = RSLT_REG;
 	r->value = v->reg;
-	parse_consume(p);
 	return 0;
 }
 
