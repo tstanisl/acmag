@@ -651,9 +651,36 @@ int parse_ref_expr(struct parser *p, struct result *r)
 	return -1;
 }
 
-int parse_sum_expr(struct parser *p, struct result *r)
+int parse_mul_expr(struct parser *p, struct result *r)
 {
 	int ret = parse_ref_expr(p, r);
+	if (ret < 0)
+		return -1;
+	if (p->next != TOK_MUL && p->next != TOK_DIV && p->next != TOK_MOD)
+		return 0;
+	int reg = p->n_regs++;
+	struct result l = {0};
+	while (p->next == TOK_MUL || p->next == TOK_DIV || p->next == TOK_MOD) {
+		int t = p->next;
+		parse_consume(p);
+		ret = parse_ref_expr(p, &l);
+		if (ret < 0)
+			return -1;
+		printf("$%d = ", reg);
+		parse_emit(p, r);
+		printf(" %s ", token_descr[t]);
+		parse_emit(p, &l);
+		printf("\n");
+		r->id = RSLT_REG;
+		r->value = reg;
+		r->temp = true;
+	}
+	return 0;
+}
+
+int parse_sum_expr(struct parser *p, struct result *r)
+{
+	int ret = parse_mul_expr(p, r);
 	if (ret < 0)
 		return -1;
 	if (p->next != TOK_PLUS && p->next != TOK_MINUS)
@@ -663,7 +690,7 @@ int parse_sum_expr(struct parser *p, struct result *r)
 	while (p->next == TOK_PLUS || p->next == TOK_MINUS) {
 		int t = p->next;
 		parse_consume(p);
-		ret = parse_ref_expr(p, &l);
+		ret = parse_mul_expr(p, &l);
 		if (ret < 0)
 			return -1;
 		printf("$%d = ", reg);
