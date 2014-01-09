@@ -1,6 +1,16 @@
 
 // first function
 
+una1(a)
+{
+	return +-!a;
+}
+una2(a)
+{
+	return -a+(-1*!4);
+}
+
+/*
 mul2(a,b,c,d)
 {
 	return a * b / c % d;
@@ -12,7 +22,6 @@ mul3(n)
 	return n * mul3(n - 1);
 }
 
-/*
 cmp1(a,b)
 {
 	return  a < b && a < 1;

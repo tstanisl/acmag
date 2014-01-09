@@ -49,6 +49,16 @@ L0:     $4 = $1 - 1
 	ret
 */
 
+una1(a)
+{
+	return +-!a;
+}
+una2(a)
+{
+	return -a+(-1*!4);
+}
+
+/*
 fib2(n)
 {
 	a = 1;
@@ -61,7 +71,6 @@ fib2(n)
 	}
 	return a;
 }
-/*
 function fib2(n)
 {
 	$a = 1;
