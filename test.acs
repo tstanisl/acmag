@@ -1,6 +1,12 @@
 
 // first function
+optim_ref1()
+{
+	(a + b).b.c = 1;
+	a.b.c = 1;
+}
 
+/*
 noreturn0()
 {
 	return a;

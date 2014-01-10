@@ -590,9 +590,12 @@ int parse_dot_expr(struct parser *p, struct result *r)
 	if (r->id == RSLT_REG) {
 		r->id = RSLT_REF;
 	} else { // RSLT_REF
-		int reg = p->n_regs++;
+		int reg = r->value;
+		if (!r->temp)
+			reg = p->n_regs++;
 		printf("$%d = $%d.%s\n", reg, r->value, r->name);
 		r->value = reg;
+		r->temp = true;
 	}
 	strcpy(r->name, p->buffer);
 	parse_consume(p);
