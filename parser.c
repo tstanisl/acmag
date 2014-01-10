@@ -849,8 +849,8 @@ int parse_expr(struct parser *p, struct result *r)
 		return -1;
 	if (p->next != TOK_ASSIGN)
 		return 0;
-	if (r->id != RSLT_REG && r->id != RSLT_REF) {
-		printf("error(%d): assigning to non-ref\n",
+	if (r->id != RSLT_REF && !(r->id == RSLT_REG && !r->temp)) {
+		printf("error(%d): invalid LHS\n",
 			p->lxr.line);
 		return -1;
 	}
@@ -860,12 +860,6 @@ int parse_expr(struct parser *p, struct result *r)
 	ret = parse_expr(p, &l);
 	if (ret < 0)
 		return -1;
-	if (l.id != RSLT_REG && l.id != RSLT_REF &&
-	    l.id != RSLT_INT && l.id != RSLT_FUN &&
-	    l.id != RSLT_STR) {
-		printf("error(%d): invalid LHS", p->lxr.line);
-		return -1;
-	}
 	parse_emit(p, r);
 	printf(" = ");
 	parse_emit(p, &l);

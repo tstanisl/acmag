@@ -50,7 +50,6 @@ noreturn5()
 	}
 	a = 8;
 }
-/*
 break1()
 {
 	//break;
@@ -188,7 +187,7 @@ ref4(a)
 }
 assign()
 {
-	a =b || c= 1;
+	a =b = 1;
 }
 
 while0()
