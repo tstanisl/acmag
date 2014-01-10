@@ -437,9 +437,15 @@ enum {
 	PRS_NORETURN = 1,
 };
 
+enum {
+	USG_NORMAL = 0,
+	USG_FRESH = 1,
+	USG_TEMP = 2,
+};
+
 struct result {
 	enum result_id id;
-	bool temp;
+	int usage;
 	int value;
 	char name[SIZE];
 };
@@ -512,6 +518,7 @@ int parse_id_expr(struct parser *p, struct result *r)
 		v = list_entry(l, struct variable, list);
 		if (strcmp(v->name, p->buffer) == 0) {
 			r->id = RSLT_REG;
+			r->usage = USG_NORMAL;
 			r->value = v->reg;
 			parse_consume(p);
 			return 0;
@@ -533,6 +540,7 @@ int parse_id_expr(struct parser *p, struct result *r)
 	v->reg = p->n_regs++;
 	list_add(&v->list, &p->vars);
 	r->id = RSLT_REG;
+	r->usage = USG_FRESH;
 	r->value = v->reg;
 	return 0;
 }
@@ -541,7 +549,6 @@ int parse_expr(struct parser *p, struct result *r);
 
 int parse_top_expr(struct parser *p, struct result *r)
 {
-	r->temp = false;
 	if (p->next == TOK_ID)
 		return parse_id_expr(p, r);
 	if (p->next == TOK_INT) {
@@ -639,7 +646,7 @@ int parse_fun_expr(struct parser *p, struct result *r)
 	printf(")\n");
 	r->id = RSLT_REG;
 	r->value = reg;
-	r->temp = true;
+	r->usage = USG_TEMP;
 	return 0;
 }
 
@@ -672,7 +679,7 @@ int parse_una_expr(struct parser *p, struct result *r)
 	if (ret < 0)
 		return -1;
 	int reg;
-	if (r->id == RSLT_REG && r->temp)
+	if (r->id == RSLT_REG && r->usage == USG_TEMP)
 		reg = r->value;
 	else
 		reg = p->n_regs++;
@@ -681,7 +688,7 @@ int parse_una_expr(struct parser *p, struct result *r)
 	printf("\n");
 	r->id = RSLT_REG;
 	r->value = reg;
-	r->temp = true;
+	r->usage = USG_TEMP;
 	return 0;
 }
 
@@ -707,7 +714,7 @@ int parse_mul_expr(struct parser *p, struct result *r)
 		printf("\n");
 		r->id = RSLT_REG;
 		r->value = reg;
-		r->temp = true;
+		r->usage = USG_TEMP;
 	}
 	return 0;
 }
@@ -734,7 +741,7 @@ int parse_sum_expr(struct parser *p, struct result *r)
 		printf("\n");
 		r->id = RSLT_REG;
 		r->value = reg;
-		r->temp = true;
+		r->usage = USG_TEMP;
 	}
 	return 0;
 }
@@ -769,7 +776,7 @@ int parse_cmp_expr(struct parser *p, struct result *r)
 	printf("\n");
 	r->id = RSLT_REG;
 	r->value = reg;
-	r->temp = true;
+	r->usage = USG_TEMP;
 	return 0;
 }
 
@@ -782,7 +789,7 @@ int parse_and_expr(struct parser *p, struct result *r)
 		return 0;
 	int label = p->n_labels++;
 	int reg;
-	if (r->id == RSLT_REG && r->temp) {
+	if (r->id == RSLT_REG && r->usage == USG_TEMP) {
 		reg = r->value;
 	} else {
 		reg = p->n_regs++;
@@ -803,7 +810,7 @@ int parse_and_expr(struct parser *p, struct result *r)
 	printf("L%d:\n", label);
 	r->id = RSLT_REG;
 	r->value = reg;
-	r->temp = true;
+	r->usage = USG_TEMP;
 	return 0;
 }
 
@@ -816,7 +823,7 @@ int parse_orr_expr(struct parser *p, struct result *r)
 		return 0;
 	int label = p->n_labels++;
 	int reg;
-	if (r->id == RSLT_REG && r->temp) {
+	if (r->id == RSLT_REG && r->usage == USG_TEMP) {
 		reg = r->value;
 	} else {
 		reg = p->n_regs++;
@@ -837,7 +844,7 @@ int parse_orr_expr(struct parser *p, struct result *r)
 	printf("L%d:\n", label);
 	r->id = RSLT_REG;
 	r->value = reg;
-	r->temp = true;
+	r->usage = USG_TEMP;
 	return 0;
 }
 
