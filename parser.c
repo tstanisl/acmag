@@ -419,6 +419,8 @@ struct parser {
 	int n_labels;
 	int data_size;
 	char data[CONSTS];
+	int loop_break;
+	int loop_continue;
 };
 
 enum result_id {
@@ -900,9 +902,11 @@ int parse_while(struct parser *p)
 		return -1;
 	}
 	parse_consume(p);
-	int label0 = p->n_labels++;
-	int label1 = p->n_labels++;
-	printf("L%d:\n", label0);
+	int old_break = p->loop_break;
+	int old_continue = p->loop_continue;
+	p->loop_continue = p->n_labels++;
+	p->loop_break = p->n_labels++;
+	printf("L%d:\n", p->loop_continue);
 	struct result r = {0};
 	int ret = parse_expr(p, &r);
 	if (ret < 0)
@@ -916,17 +920,19 @@ int parse_while(struct parser *p)
 		parse_consume(p);
 		printf("if ");
 		parse_emit(p, &r);
-		printf(" goto L%d\n", label0);
+		printf(" goto L%d\n", p->loop_continue);
 	} else {
 		printf("ifz ");
 		parse_emit(p, &r);
-		printf(" goto L%d\n", label1);
+		printf(" goto L%d\n", p->loop_break);
 		ret = parse_inst(p);
 		if (ret < 0)
 			return -1;
-		printf("goto L%d\n", label0);
-		printf("L%d:\n", label1);
+		printf("goto L%d\n", p->loop_continue);
+		printf("L%d:\n", p->loop_break);
 	}
+	p->loop_break = old_break;
+	p->loop_continue = old_continue;
 	return 0;
 }
 
@@ -977,6 +983,38 @@ int parse_if(struct parser *p)
 	return 0;
 }
 
+int parse_break(struct parser *p)
+{
+	if (p->loop_break < 0) {
+		printf("error(%d): 'break' outside loop\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+	if (p->next != TOK_SCOLON) {
+		printf("error(%d): missing ';' after 'break'\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+	printf("goto L%d\n", p->loop_break);
+	return 0;
+}
+
+int parse_continue(struct parser *p)
+{
+	if (p->loop_continue < 0) {
+		printf("error(%d): 'continue' outside loop\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+	if (p->next != TOK_SCOLON) {
+		printf("error(%d): missing ';' after 'continue'\n", p->lxr.line);
+		return -1;
+	}
+	parse_consume(p);
+	printf("goto L%d\n", p->loop_continue);
+	return 0;
+}
+
 int parse_inst(struct parser *p)
 {
 	if (p->next == TOK_SCOLON) {
@@ -991,6 +1029,10 @@ int parse_inst(struct parser *p)
 		return parse_while(p);
 	if (p->next == TOK_IF)
 		return parse_if(p);
+	if (p->next == TOK_CONTINUE)
+		return parse_continue(p);
+	if (p->next == TOK_BREAK)
+		return parse_break(p);
 	/* trying to parse expression */
 	struct result r = {0};
 	int ret = parse_expr(p, &r);
@@ -1029,6 +1071,8 @@ struct function *parse_function(struct parser *p)
 	int line = p->lxr.line;
 	p->n_labels = 0;
 	p->n_regs = 0;
+	p->loop_break = -1;
+	p->loop_continue = -1;
 
 	printf("---- starting function %s ----\n", str);
 

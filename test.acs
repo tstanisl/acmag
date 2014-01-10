@@ -1,6 +1,53 @@
 
 // first function
 
+break1()
+{
+	//break;
+	while (1)
+		break;
+}
+break2()
+{
+	while (1) {
+		a = 1;
+		if (b)
+			continue;
+		else
+			break;
+		while (b)
+			if (a > 0)
+				break;
+			else
+				continue;
+		if (b)
+			continue;
+		else
+			break;
+	}
+}
+
+break3()
+{
+	i = 0;
+	while (i < 20) {
+		if (i % 3 == 2) {
+			print("Hello");
+			break;
+		}
+		if (i > 8) {
+			print("9 or more");
+			continue;
+		}
+		if (i == 18)
+			return;
+		print("Rest of loop");
+		i = i + 1;
+	}
+	return i;
+}
+
+/*
 una1(a)
 {
 	return +-!a;
@@ -10,7 +57,6 @@ una2(a)
 	return -a+(-1*!4);
 }
 
-/*
 mul2(a,b,c,d)
 {
 	return a * b / c % d;
