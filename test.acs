@@ -1,6 +1,56 @@
 
 // first function
 
+noreturn0()
+{
+	return a;
+}
+noreturn1()
+{
+	if (1)
+		return a;
+}
+noreturn2()
+{
+	if (1)
+		return a;
+	else
+		return b;
+}
+
+noreturn3()
+{
+	return a;
+	a = 5;
+	b = 2;
+}
+noreturn4()
+{
+	while (1) {
+		a = 1;
+		continue;
+		a = 2;
+	}
+}
+noreturn5()
+{
+	a = 1;
+	{
+		a = 2;
+		if (a) {
+			a = 3;
+			return a;
+			a = 4;
+		} else {
+			a = 5;
+			return a;
+			a = 6;
+		}
+		a = 7;
+	}
+	a = 8;
+}
+/*
 break1()
 {
 	//break;
@@ -47,7 +97,6 @@ break3()
 	return i;
 }
 
-/*
 una1(a)
 {
 	return +-!a;

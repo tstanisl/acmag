@@ -432,6 +432,11 @@ enum result_id {
 	RSLT_INT,
 };
 
+enum {
+	PRS_OK = 0,
+	PRS_NORETURN = 1,
+};
+
 struct result {
 	enum result_id id;
 	bool temp;
@@ -877,7 +882,7 @@ int parse_return(struct parser *p)
 	if (p->next == TOK_SCOLON) {
 		parse_consume(p);
 		printf("ret 0\n");
-		return 0;
+		return PRS_NORETURN;
 	}
 	struct result r = {0};
 	int ret = parse_expr(p, &r);
@@ -891,7 +896,7 @@ int parse_return(struct parser *p)
 		return -1;
 	}
 	parse_consume(p);
-	return 0;
+	return PRS_NORETURN;
 }
 
 int parse_while(struct parser *p)
@@ -928,7 +933,8 @@ int parse_while(struct parser *p)
 		ret = parse_inst(p);
 		if (ret < 0)
 			return -1;
-		printf("goto L%d\n", p->loop_continue);
+		if (ret != PRS_NORETURN)
+			printf("goto L%d\n", p->loop_continue);
 		printf("L%d:\n", p->loop_break);
 	}
 	p->loop_break = old_break;
@@ -973,14 +979,22 @@ int parse_if(struct parser *p)
 		printf("L%d:\n", label0);
 		return 0;
 	}
-	int label1 = p->n_labels++;
-	printf("goto L%d\n", label1);
-	printf("L%d:\n", label0);
-	ret = parse_inst(p);
-	if (ret < 0)
-		return -1;
-	printf("L%d:\n", label1);
-	return 0;
+	if (ret == PRS_NORETURN) {
+		printf("L%d:\n", label0);
+		ret = parse_inst(p);
+		if (ret < 0)
+			return -1;
+		return ret;
+	} else {
+		int label1 = p->n_labels++;
+		printf("goto L%d\n", label1);
+		printf("L%d:\n", label0);
+		ret = parse_inst(p);
+		if (ret < 0)
+			return -1;
+		printf("L%d:\n", label1);
+		return 0;
+	}
 }
 
 int parse_break(struct parser *p)
@@ -996,7 +1010,7 @@ int parse_break(struct parser *p)
 	}
 	parse_consume(p);
 	printf("goto L%d\n", p->loop_break);
-	return 0;
+	return PRS_NORETURN;
 }
 
 int parse_continue(struct parser *p)
@@ -1012,7 +1026,7 @@ int parse_continue(struct parser *p)
 	}
 	parse_consume(p);
 	printf("goto L%d\n", p->loop_continue);
-	return 0;
+	return PRS_NORETURN;
 }
 
 int parse_inst(struct parser *p)
@@ -1055,13 +1069,23 @@ int parse_block(struct parser *p)
 
 	parse_consume(p);
 
+	int noret = 0;
+	int warned = 0;
 	for (;;) {
 		if (p->next == TOK_RBRA) {
 			parse_consume(p);
-			return 0;
+			return noret ? PRS_NORETURN : 0;
 		}
-		if (parse_inst(p))
+		int line = p->lxr.line;
+		int ret = parse_inst(p);
+		if (ret < 0)
 			return -1;
+		if (noret && !warned) {
+			printf("warn(%d): unreachable code\n", line);
+			warned = 1;
+		}
+		if (ret == PRS_NORETURN)
+			noret = 1;
 	}
 }
 
@@ -1126,11 +1150,12 @@ struct function *parse_function(struct parser *p)
 	}
 
 	int ret = parse_block(p);
-	if (ret)
+	if (ret < 0)
 		goto fail_args;
 
 	f->n_regs = p->n_regs;
-	printf("ret 0\n");
+	if (ret != PRS_NORETURN)
+		printf("ret 0\n");
 
 	while (!list_empty(&p->vars)) {
 		struct variable *v = list_entry(p->vars.next, struct variable, list);
@@ -1179,6 +1204,7 @@ int main()
 	lxr_init();
 	list_init(&function_head);
 	struct parser p;
-	parse_file(&p, stdin);
+	if (parse_file(&p, stdin) < 0)
+		printf("error: parsing failed\n");
         return 0;
 }
