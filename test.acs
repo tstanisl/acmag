@@ -284,14 +284,12 @@ return7(a)
 	return return7;
 }
 
-fun1() { }
-fun2(a) { }
-fun3(a, b) { }
-fun4(a, b, c) { }
-*/
+function1() { }
+function2(a) { }
+function3(a, b) { }
+function(a, b, c) { }
 
-/*
-fun1()
+basic()
 {
 	if (a && b)
 		return c;
@@ -299,4 +297,3 @@ fun1()
 	return a;
 }
 */
-
