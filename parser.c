@@ -402,6 +402,7 @@ void function_destroy(struct function *f)
 #define SIZE 256
 #define CONSTS 1024
 #define ARGS 16
+#define REGS 256
 
 struct constant {
 	struct list list;
@@ -415,7 +416,9 @@ struct parser {
 	enum token next;
 	struct list vars;
 	struct list consts;
+	int regs[REGS];
 	int n_regs;
+	int next_reg;
 	int n_labels;
 	int data_size;
 	char data[CONSTS];
@@ -448,6 +451,28 @@ static int token_buffered(enum token t)
 {
 	return t == TOK_STR || t == TOK_INT ||
 		t == TOK_ID || t == TOK_ERR;
+}
+
+int parse_get_reg(struct parser *p)
+{
+	if (p->next_reg == -1)
+		return p->n_regs++;
+	int reg = p->next_reg;
+	p->next_reg = p->regs[reg];
+	return reg;
+}
+
+void parse_put_reg(struct parser *p, int reg)
+{
+	p->regs[reg] = p->next_reg;
+	p->next_reg = reg;
+}
+
+void parse_result_put(struct parser *p, struct result *r)
+{
+	if ((r->id != RSLT_REG && r->id != RSLT_REF) || !r->temp)
+		return;
+	parse_put_reg(p, r->value);
 }
 
 void parse_consume(struct parser *p)
@@ -530,7 +555,7 @@ int parse_id_expr(struct parser *p, struct result *r)
 			p->lxr.line, p->buffer);
 		return -1;
 	}
-	v->reg = p->n_regs++;
+	v->reg = parse_get_reg(p);
 	list_add(&v->list, &p->vars);
 	r->id = RSLT_REG;
 	r->value = v->reg;
@@ -591,10 +616,10 @@ int parse_dot_expr(struct parser *p, struct result *r)
 		r->id = RSLT_REF;
 	} else { // RSLT_REF
 		int reg = r->value;
-		if (!r->temp)
-			reg = p->n_regs++;
-		printf("$%d = $%d.%s\n", reg, r->value, r->name);
-		r->value = reg;
+		if (r->temp)
+			parse_put_reg(p, r->value);
+		r->value = parse_get_reg(p);
+		printf("$%d = $%d.%s\n", r->value, reg, r->name);
 		r->temp = true;
 	}
 	strcpy(r->name, p->buffer);
@@ -630,7 +655,7 @@ int parse_fun_expr(struct parser *p, struct result *r)
 	}
 	parse_consume(p);
 
-	int reg = p->n_regs++;
+	int reg = parse_get_reg(p);
 	printf("$%d = call ", reg);
 	parse_emit(p, r);
 	printf("(");
@@ -638,6 +663,7 @@ int parse_fun_expr(struct parser *p, struct result *r)
 		if (i > 0)
 			printf(", ");
 		parse_emit(p, &args[i]);
+		parse_result_put(p, &args[i]);
 	}
 	printf(")\n");
 	r->id = RSLT_REG;
@@ -674,11 +700,8 @@ int parse_una_expr(struct parser *p, struct result *r)
 	int ret = parse_una_expr(p, r);
 	if (ret < 0)
 		return -1;
-	int reg;
-	if (r->id == RSLT_REG && r->temp)
-		reg = r->value;
-	else
-		reg = p->n_regs++;
+	parse_result_put(p, r);
+	int reg = parse_get_reg(p);
 	printf("$%d = %s", reg, token_descr[t]);
 	parse_emit(p, r);
 	printf("\n");
@@ -695,7 +718,7 @@ int parse_mul_expr(struct parser *p, struct result *r)
 		return -1;
 	if (p->next != TOK_MUL && p->next != TOK_DIV && p->next != TOK_MOD)
 		return 0;
-	int reg = p->n_regs++;
+	int reg = parse_get_reg(p);
 	struct result l = {0};
 	while (p->next == TOK_MUL || p->next == TOK_DIV || p->next == TOK_MOD) {
 		int t = p->next;
@@ -708,6 +731,7 @@ int parse_mul_expr(struct parser *p, struct result *r)
 		printf(" %s ", token_descr[t]);
 		parse_emit(p, &l);
 		printf("\n");
+		parse_result_put(p, &l);
 		r->id = RSLT_REG;
 		r->value = reg;
 		r->temp = true;
@@ -722,7 +746,7 @@ int parse_sum_expr(struct parser *p, struct result *r)
 		return -1;
 	if (p->next != TOK_PLUS && p->next != TOK_MINUS)
 		return 0;
-	int reg = p->n_regs++;
+	int reg = parse_get_reg(p);
 	struct result l = {0};
 	while (p->next == TOK_PLUS || p->next == TOK_MINUS) {
 		int t = p->next;
@@ -735,6 +759,7 @@ int parse_sum_expr(struct parser *p, struct result *r)
 		printf(t == TOK_PLUS ? " + " : " - ");
 		parse_emit(p, &l);
 		printf("\n");
+		parse_result_put(p, &l);
 		r->id = RSLT_REG;
 		r->value = reg;
 		r->temp = true;
@@ -759,7 +784,7 @@ int parse_cmp_expr(struct parser *p, struct result *r)
 	if (t == 6)
 		return 0;
 	t = cmp_tokens[t];
-	int reg = p->n_regs++;
+	int reg = parse_get_reg(p);
 	parse_consume(p);
 	struct result l = {0};
 	ret = parse_sum_expr(p, &l);
@@ -770,6 +795,7 @@ int parse_cmp_expr(struct parser *p, struct result *r)
 	printf(" %s ", token_descr[t]);
 	parse_emit(p, &l);
 	printf("\n");
+	parse_result_put(p, &l);
 	r->id = RSLT_REG;
 	r->value = reg;
 	r->temp = true;
@@ -788,10 +814,11 @@ int parse_and_expr(struct parser *p, struct result *r)
 	if (r->id == RSLT_REG && r->temp) {
 		reg = r->value;
 	} else {
-		reg = p->n_regs++;
+		reg = parse_get_reg(p);
 		printf("$%d = ", reg);
 		parse_emit(p, r);
 		printf("\n");
+		parse_result_put(p, r);
 	}
 	while (p->next == TOK_AND) {
 		parse_consume(p);
@@ -802,6 +829,7 @@ int parse_and_expr(struct parser *p, struct result *r)
 		printf("$%d = ", reg);
 		parse_emit(p, r);
 		printf("\n");
+		parse_result_put(p, r);
 	}
 	printf("L%d:\n", label);
 	r->id = RSLT_REG;
@@ -822,10 +850,11 @@ int parse_orr_expr(struct parser *p, struct result *r)
 	if (r->id == RSLT_REG && r->temp) {
 		reg = r->value;
 	} else {
-		reg = p->n_regs++;
+		reg = parse_get_reg(p);
 		printf("$%d = ", reg);
 		parse_emit(p, r);
 		printf("\n");
+		parse_result_put(p, r);
 	}
 	while (p->next == TOK_OR) {
 		parse_consume(p);
@@ -836,6 +865,7 @@ int parse_orr_expr(struct parser *p, struct result *r)
 		printf("$%d = ", reg);
 		parse_emit(p, r);
 		printf("\n");
+		parse_result_put(p, r);
 	}
 	printf("L%d:\n", label);
 	r->id = RSLT_REG;
@@ -867,6 +897,7 @@ int parse_expr(struct parser *p, struct result *r)
 	printf(" = ");
 	parse_emit(p, &l);
 	printf("\n");
+	parse_result_put(p, &l);
 	return 0;
 }
 
@@ -888,6 +919,7 @@ int parse_return(struct parser *p)
 	printf("ret ");
 	parse_emit(p, &r);
 	printf("\n");
+	parse_result_put(p, &r);
 	if (p->next != TOK_SCOLON) {
 		printf("error(%d): expected ';' after expression\n", p->lxr.line);
 		return -1;
@@ -923,10 +955,12 @@ int parse_while(struct parser *p)
 		printf("if ");
 		parse_emit(p, &r);
 		printf(" goto L%d\n", p->loop_continue);
+		parse_result_put(p, &r);
 	} else {
 		printf("ifz ");
 		parse_emit(p, &r);
 		printf(" goto L%d\n", p->loop_break);
+		parse_result_put(p, &r);
 		ret = parse_inst(p);
 		if (ret < 0)
 			return -1;
@@ -964,6 +998,7 @@ int parse_if(struct parser *p)
 	printf("ifz ");
 	parse_emit(p, &r);
 	printf(" goto L%d\n", label0);
+	parse_result_put(p, &r);
 	ret = parse_inst(p);
 	if (ret < 0)
 		return -1;
@@ -1049,6 +1084,7 @@ int parse_inst(struct parser *p)
 	int ret = parse_expr(p, &r);
 	if (ret < 0)
 		return -1;
+	parse_result_put(p, &r);
 	if (p->next != TOK_SCOLON) {
 		printf("error(%d): expected ';' after expression\n", p->lxr.line);
 		return -1;
@@ -1092,6 +1128,7 @@ struct function *parse_function(struct parser *p)
 	int line = p->lxr.line;
 	p->n_labels = 0;
 	p->n_regs = 0;
+	p->next_reg = -1;
 	p->loop_break = -1;
 	p->loop_continue = -1;
 
@@ -1140,7 +1177,7 @@ struct function *parse_function(struct parser *p)
 			printf("error(%d): expected identifier\n", line);
 			goto fail_args;
 		}
-		v->reg = p->n_regs++;
+		v->reg = parse_get_reg(p);
 		list_add(&v->list, &p->vars);
 		parse_consume(p);
 		f->n_args++;
