@@ -1,13 +1,6 @@
 
 // first function
 
-fresh1()
-{
-	a = 1;
-	a = b + c;
-}
-
-/*
 noreturn0()
 {
 	return a;
