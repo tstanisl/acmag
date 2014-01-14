@@ -655,17 +655,16 @@ int parse_fun_expr(struct parser *p, struct result *r)
 	}
 	parse_consume(p);
 
+	for (int i = 0; i < n_args; ++i) {
+		printf("push ");
+		parse_emit(p, &args[i]);
+		parse_result_put(p, &args[i]);
+		printf("\n");
+	}
 	int reg = parse_get_reg(p);
 	printf("$%d = call ", reg);
 	parse_emit(p, r);
-	printf("(");
-	for (int i = 0; i < n_args; ++i) {
-		if (i > 0)
-			printf(", ");
-		parse_emit(p, &args[i]);
-		parse_result_put(p, &args[i]);
-	}
-	printf(")\n");
+	printf("\n");
 	r->id = RSLT_REG;
 	r->value = reg;
 	r->temp = true;
