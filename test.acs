@@ -10,7 +10,6 @@ ident()
 	ident = ident();
 }
 
-/*
 // first function
 funfun(a)
 {
@@ -23,16 +22,16 @@ optim_ref1(a,b)
 	a.b.c = 1;
 }
 
-noreturn0()
+noreturn0(a)
 {
 	return a;
 }
-noreturn1()
+noreturn1(a)
 {
 	if (1)
 		return a;
 }
-noreturn2()
+noreturn2(a,b)
 {
 	if (1)
 		return a;
@@ -40,7 +39,7 @@ noreturn2()
 		return b;
 }
 
-noreturn3()
+noreturn3(a)
 {
 	return a;
 	a = 5;
@@ -80,6 +79,7 @@ break1()
 }
 break2()
 {
+	b = 0;
 	while (1) {
 		a = 1;
 		if (b)
@@ -188,7 +188,7 @@ add2()
 		b = tmp;
 	}
 }
-ref1()
+ref1(a)
 {
 	return a.c || a.b.c;
 }
@@ -199,11 +199,11 @@ ref2(abc)
 	abc.helper = ref1;
 	
 }
-ref3()
+ref3(a,c)
 {
 	a.b.c = c.hello;
 }
-ref4(a)
+ref4(a,b)
 {
 	a.b.c = a && b.c;
 }
@@ -212,7 +212,7 @@ assign()
 	a =b = 1;
 }
 
-while0()
+while0(a)
 {
 	while (a);
 }
@@ -231,14 +231,14 @@ while2(a,b)
 	}
 }
 
-if1()
+if1(a)
 {
 	b = 1;
 	if (a)
 		b = 2;
 }
 
-if2()
+if2(a)
 {
 	if (a)
 		b = 1;
@@ -303,12 +303,12 @@ if8(a,b)
 		return 3;
 }
 
-or1()
+or1(b,c,d,f)
 {
 	a = b || c || d || f;
 	a = 1 || 2;
 }
-and1()
+and1(b,c,d,f)
 {
 	a = b && c && d && f;
 	a = 1 && 2;
@@ -329,7 +329,7 @@ return1()
 {
 	return;
 }
-return2()
+return2(a)
 {
 	return a;
 }
@@ -359,7 +359,7 @@ function2(a) { }
 function3(a, b) { }
 function(a, b, c) { }
 
-basic()
+basic(a,b,c)
 {
 	if (a && b)
 		return c;

@@ -424,6 +424,7 @@ struct parser {
 	char data[CONSTS];
 	int loop_break;
 	int loop_continue;
+	bool first_in_expr;
 };
 
 enum result_id {
@@ -478,6 +479,7 @@ void parse_result_put(struct parser *p, struct result *r)
 void parse_consume(struct parser *p)
 {
 	p->next = lxr_get_token(&p->lxr, p->buffer, SIZE);
+	p->first_in_expr = false;
 #if DEBUG_TOKENS
 	if (token_buffered(p->next))
 		printf(" got %s: %s\n", token_descr[p->next],
@@ -536,24 +538,31 @@ int parse_id_expr(struct parser *p, struct result *r)
 		}
 	}
 	strcpy(r->name, p->buffer);
+	bool first_in_expr = p->first_in_expr;
+	int line = p->lxr.line;
 	parse_consume(p);
-	/* function if ( is after id or non LHS id is a function */
-	if (p->next == TOK_LPAR || (p->next != TOK_ASSIGN &&
-	    function_find(r->name))) {
-		r->id = RSLT_FUN;
+	/* '^x = ...' is declaration */
+	if (p->next == TOK_ASSIGN && first_in_expr) {
+		v = variable_create(r->name);
+		if (!v) {
+			printf("error(%d): failed to create %s\n", line, r->name);
+			return -1;
+		}
+		v->reg = parse_get_reg(p);
+		list_add(&v->list, &p->vars);
+		r->id = RSLT_REG;
+		r->value = v->reg;
 		return 0;
 	}
-	v = variable_create(r->name);
-	if (!v) {
-		printf("error(%d): failed to create %s\n",
-			p->lxr.line, p->buffer);
-		return -1;
-	}
-	v->reg = parse_get_reg(p);
-	list_add(&v->list, &p->vars);
-	r->id = RSLT_REG;
-	r->value = v->reg;
-	return 0;
+	r->id = RSLT_FUN;
+	/* x(...) is function */
+	if (p->next == TOK_LPAR)
+		return 0;
+	/* check is symbol is defined as function */
+	if (function_find(r->name))
+		return 0;
+	printf("error(%d): undefined id '%s'\n", line, r->name);
+	return -1;
 }
 
 int parse_expr(struct parser *p, struct result *r);
@@ -867,6 +876,7 @@ int parse_orr_expr(struct parser *p, struct result *r)
 /* TODO: conside adding IGNORE_RESULT flag */
 int parse_expr(struct parser *p, struct result *r)
 {
+	p->first_in_expr = true;
 	int ret = parse_orr_expr(p, r);
 	if (ret < 0)
 		return -1;
