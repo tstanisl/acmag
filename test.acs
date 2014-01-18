@@ -1,11 +1,22 @@
 
+ident()
+{
+	ident2 = ident();
+	i = ident;
+	ident = ident();
+	i = ident;
+	ident = i;
+	ident = ident;
+	ident = ident();
+}
+
+/*
 // first function
 funfun(a)
 {
 	return fun(a + 1, fun(a), a);
 }
 
-/*
 optim_ref1(a,b)
 {
 	(a + b).b.c = 1;

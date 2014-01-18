@@ -535,17 +535,11 @@ int parse_id_expr(struct parser *p, struct result *r)
 			return 0;
 		}
 	}
-	struct function *f = function_find(p->buffer);
-	if (f) {
-		r->id = RSLT_FUN;
-		strcpy(r->name, p->buffer);
-		parse_consume(p);
-		return 0;
-	}
 	strcpy(r->name, p->buffer);
 	parse_consume(p);
-	/* function call, not defined yet */
-	if (p->next == TOK_LPAR) {
+	/* function if ( is after id or non LHS id is a function */
+	if (p->next == TOK_LPAR || (p->next != TOK_ASSIGN &&
+	    function_find(r->name))) {
 		r->id = RSLT_FUN;
 		return 0;
 	}
