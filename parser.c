@@ -635,17 +635,20 @@ int parse_fun_expr(struct parser *p, struct result *r)
 	}
 	parse_consume(p);
 	/* parse argument list */
-	struct result args[ARGS];
-	memset(args, 0, sizeof(args));
+	struct result arg;
 	int n_args = 0;
 	while (p->next != TOK_RPAR) {
-		int ret = parse_expr(p, &args[n_args]);
+		int ret = parse_expr(p, &arg);
 		if (ret < 0)
 			return -1;
 		if (++n_args > ARGS) {
 			printf("error(%d): more then %d arguments\n", p->lxr.line, ARGS);
 			return -1;
 		}
+		printf("push ");
+		parse_emit(p, &arg);
+		parse_result_put(p, &arg);
+		printf("\n");
 		if (p->next == TOK_SEP) {
 			parse_consume(p);
 		} else if (p->next != TOK_RPAR) {
@@ -655,16 +658,10 @@ int parse_fun_expr(struct parser *p, struct result *r)
 	}
 	parse_consume(p);
 
-	for (int i = 0; i < n_args; ++i) {
-		printf("push ");
-		parse_emit(p, &args[i]);
-		parse_result_put(p, &args[i]);
-		printf("\n");
-	}
 	int reg = parse_get_reg(p);
 	printf("$%d = call ", reg);
 	parse_emit(p, r);
-	printf("\n");
+	printf("(#%d)\n", n_args);
 	r->id = RSLT_REG;
 	r->value = reg;
 	r->temp = true;
