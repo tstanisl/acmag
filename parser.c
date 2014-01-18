@@ -525,13 +525,6 @@ int parse_constant_find(struct parser *p, char *data, int size)
 
 int parse_id_expr(struct parser *p, struct result *r)
 {
-	struct function *f = function_find(p->buffer);
-	if (f) {
-		r->id = RSLT_FUN;
-		strcpy(r->name, p->buffer);
-		parse_consume(p);
-		return 0;
-	}
 	struct variable *v;
 	list_for(l, &p->vars) {
 		v = list_entry(l, struct variable, list);
@@ -541,6 +534,13 @@ int parse_id_expr(struct parser *p, struct result *r)
 			parse_consume(p);
 			return 0;
 		}
+	}
+	struct function *f = function_find(p->buffer);
+	if (f) {
+		r->id = RSLT_FUN;
+		strcpy(r->name, p->buffer);
+		parse_consume(p);
+		return 0;
 	}
 	strcpy(r->name, p->buffer);
 	parse_consume(p);

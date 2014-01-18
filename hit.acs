@@ -129,7 +129,7 @@ granade_start(g)
 	}
 	g.activated  = 1;
 	// schedule boom in 10 seconds
-	add_event(g, &granade_boom, 10);
+	add_event(g, granade_boom, 10);
 }
 /*
 function granade_start($g)
@@ -148,7 +148,7 @@ granade()
 	g = item();
 	g.name = "granade";
 	g.activated = 0;
-	g.on_use = &granade_start;
+	g.on_use = granade_start;
 	return g;
 }
 
@@ -158,7 +158,7 @@ function granade()
 	$g = call item ();
 	$g.name = "granade";
 	$g.activated = 0;
-	$g.onUse = &granade_start;
+	$g.onUse = granade_start;
 	return $g;
 }
 */
