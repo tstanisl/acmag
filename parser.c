@@ -503,6 +503,22 @@ void parse_emit(struct parser *p, struct result *r)
 		printf("%s", r->name);
 }
 
+void parse_deref(struct parser *p, struct result *r)
+{
+	if (r->id != RSLT_REF)
+		return;
+	r->id = RSLT_REG;
+	if (r->temp) {
+		printf("$%d = $%d.%s\n", r->value, r->value, r->name);
+		return;
+	}
+	int reg = parse_get_reg(p);
+	printf("$%d = $%d.%s\n", reg, r->value, r->name);
+	parse_put_reg(p, r->value);
+	r->value = reg;
+	r->temp = true;
+}
+
 int parse_constant_find(struct parser *p, char *data, int size)
 {
 	list_for(l, &p->consts) {
@@ -995,6 +1011,7 @@ int parse_if(struct parser *p)
 	}
 	parse_consume(p);
 
+	parse_deref(p, &r);
 	printf("ifz ");
 	parse_emit(p, &r);
 	printf(" goto L%d\n", label0);
