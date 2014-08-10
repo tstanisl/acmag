@@ -46,23 +46,31 @@ static uint32_t get_uint(FILE *f)
 	return le32toh(value);
 }
 
+static int file_bad(FILE *f)
+{
+	return ERR_ON(feof(f) || ferror(f),
+		"unexpected end of input at offset %ld", ftell(f));
+}
+
 static int load(FILE *f)
 {
 	int ret;
 	char buf[MAGIC_LEN];
 
 	ret = fread(buf, MAGIC_LEN, 1, f);
-	if (ERR_ON(ret != MAGIC_LEN, "failed to load magic"))
+	if (ERR_ON(ret != 1, "failed to load magic id"))
 		return -EINVAL;
 
 	ret = strncmp(buf, MAGIC, MAGIC_LEN);
-	if (ERR_ON(ret, "not a compiled Acmag Script"))
-		return -EINVAL;
+	if (ERR_ON(ret, "not a compiled Acmag script"))
+		return -EBADF;
 
-	long pos = ftell(f);
+	if (file_bad(f))
+		return -EIO;
+
 	uint32_t header_size = get_uint(f);
-	if (ERR_ON(ferror(f), "no header size at %ld", pos))
-		return -EINVAL;
+	if (file_bad(f))
+		return -EIO;
 
 	WARN_ON(header_size < 4 || header_size > 1024,
 		"a strange header size (%u)", (unsigned)header_size);
