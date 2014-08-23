@@ -1,0 +1,78 @@
+;item()
+;{
+;	i = object();
+;	i.name = "nazwa";
+;	i.value = 123 + !57 % 3;
+;}
+
+item:	movsp #1
+	call object
+	pop $1
+	push "nazwa"
+	push "name"
+	push $1
+	callb []
+	callb =
+	popn #1
+	push #123
+	push #3
+	push #57
+	callb !
+	callb %
+	callb +
+	push "value"
+	push $1
+	callb []
+	callb =
+	popn #1
+	ret #1, #0
+
+export item
+
+
+;onHit(item, target)
+;{
+;        item.__onHit(item, target);
+;	// 1d10 hp/round for 10 rounds
+;	poison = damage_create("1d10", "poison", 5);
+;        add_effect(target, poison);
+;}
+
+onHit:	movsp #1
+	push $-2 ;target
+	push $-1 ;item
+	push "__onHit"
+	push $-1
+	call []
+	call () ; how should I move SP?
+	push #5
+	push "poison"
+	push "1d10"
+	call damage_create
+	push $1 ; poison
+	callb =
+	popn #1
+	push $1
+	push $-2
+	call add_effect
+	ret #1, #0
+
+;fib(n)
+;{
+;	if (n == 0 || n == 1)
+;		return 1;
+;	else
+;		return fib(n - 1) + fin(n - 2);
+;}
+;fib2(n)
+;{
+;	a = 1;
+;	b = 1;
+;	while (n > 0) {
+;		tmp = a;
+;		a = a + b;
+;		b = tmp;
+;		n = n - 1;	
+;	}
+;	return a;
+;}
