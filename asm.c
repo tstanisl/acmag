@@ -54,29 +54,56 @@ static char *skipws(char *s)
 
 static int acsa_export(char *str)
 {
-	struct function *f = function_create(str, true);
+	char name[64];
+	int ret = sscanf(str, "%63[a-zA-Z0-9_]", name);
+	if (ERR_ON(ret != 1, "export: invalid function name"))
+		return -1;
+	
+	struct function *f = function_create(name, true);
 
 	if (ERR_ON(!f, "function_create(\"%s\") failed", str))
 		return -1;
 
 	list_add(&function_head, &f->node);
 
+	INFO("add %sfunction \"%s\"", f->exported ? "exported " : "", name);
+
+	return 0;
+}
+
+static int acsa_label(char *str)
+{
+	char name[64];
+	int ret = sscanf(str, "%63[a-zA-Z0-9_]", name);
+	if (ERR_ON(ret != 1, "export: invalid label name at (%s)", str))
+		return -1;
+
+	INFO("add label \"%s\"", name);
+
 	return 0;
 }
 
 static int acsa_line(char *str)
 {
+	INFO("line %3d: %s", cur_line, str);
 	str = skipws(str);
 	if (*str == ';') // skip comment line
 		return 0;
 	char cmd[16];
 	int ret, shift = 0;
-	ret = sscanf(str, "%15s%n", cmd, &shift);
-	if (ret == 0) // no command
+	ret = sscanf(str, "%15[a-zA-Z_0-9]%n", cmd, &shift);
+	if (ret == 0 || cmd[0] == 0) // no command
 		return 0;
-	str += shift;
+	//INFO("cmd='%s'", cmd);
+	str = skipws(str + shift);
 	if (strcmp(cmd, "export") == 0)
 		return acsa_export(str);
+	if (str[0] == ':') {
+		ret = acsa_label(cmd);
+		if (ERR_ON(ret, "failed to add label \"%s\"", cmd))
+			return ret;
+		return acsa_line(str + 1);
+	}
 	ERR("unknown keyword '%s'", cmd);
 	return -1;
 	/*if (strcmp(cmd, "push")

@@ -28,6 +28,10 @@ static inline int __info(int cond, const char *prefix, char *f_name, int line,
 #define WARN_ON(cond, ...) \
 	__info((cond), "Warning", __FILE__, __LINE__, __VA_ARGS__)
 #define WARN(...) WARN_ON(1, __VA_ARGS__)
+#define INFO_ON(cond, ...) \
+	__info((cond), "Info", __FILE__, __LINE__, __VA_ARGS__)
+#define INFO(...) INFO_ON(1, __VA_ARGS__)
+
 #define ERRSTR strerror(errno)
 
 #endif /* DEBUG_H */
