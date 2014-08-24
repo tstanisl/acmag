@@ -1,3 +1,11 @@
+;assign() { a = 1; }
+assing: pushn #1
+	push #1
+	push #1
+	callb @=
+	ret #0
+
+
 ;item()
 ;{
 ;	i = object();
@@ -5,8 +13,8 @@
 ;	i.value = 123 + !57 % 3;
 ;}
 
-item:	movsp #1
-	call object
+item:	pushn #1
+	callb object
 	pop $1
 	push "nazwa"
 	push "name"
@@ -25,7 +33,7 @@ item:	movsp #1
 	callb []
 	callb =
 	popn #1
-	ret #1, #0
+	ret #0
 
 export item
 
@@ -38,24 +46,27 @@ export item
 ;        add_effect(target, poison);
 ;}
 
-onHit:	movsp #1
+onHit:	pushn #1
 	push $-2 ;target
 	push $-1 ;item
 	push "__onHit"
 	push $-1
-	call []
-	call () ; how should I move SP?
+	callb []
+	pusha #2,#0
+	callb () ; how should I move SP?
 	push #5
 	push "poison"
 	push "1d10"
-	call damage_create
+	pusha #3, #1
+	callg damage_create
 	push $1 ; poison
 	callb =
-	popn #1
+	pushn #-1
 	push $1
 	push $-2
-	call add_effect
-	ret #1, #0
+	pusha #2,#0
+	callg add_effect
+	ret #0
 
 ;fib(n)
 ;{
@@ -64,15 +75,60 @@ onHit:	movsp #1
 ;	else
 ;		return fib(n - 1) + fin(n - 2);
 ;}
+
+fib:	push $-1
+	push #0
+	callb ==
+	jnz L1
+	push $-1
+	push #1
+	callb ==
+	jnz L1
+	push #1
+	push $-1
+	callb -
+	pusha #1, #1
+	call fib
+	push #2
+	push $-1
+	callb -
+	pusha #1, #1
+	call fib
+	call +
+	ret #1
+L1:	push #1
+	ret #1
+
 ;fib2(n)
 ;{
 ;	a = 1;
 ;	b = 1;
 ;	while (n > 0) {
-;		tmp = a;
-;		a = a + b;
-;		b = tmp;
+		a, b = a + b, a;
 ;		n = n - 1;	
 ;	}
 ;	return a;
 ;}
+
+fib2:	pushn #2
+	push #1
+	pop $1
+	push #1
+	pop $2
+	push $-1
+L1:	push #0
+	callb >
+	jz L2
+	push $1
+	push $1
+	push $2
+	callb +
+	pop $1
+	pop $2
+	push $-1
+	push #1
+	callb +
+	pop $-1
+	jmp L1
+L2:	push $1
+	ret #1

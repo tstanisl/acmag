@@ -99,7 +99,7 @@ push $r
 	push content of register $r on stack
 push #n
 	push integer (12bit) on stack
-push ##n
+push *n
 	push large integer (indexed by 12bit) on stack
 push "str"
 	push string (indexed by 12bit) on stack
@@ -123,19 +123,16 @@ jmp #n
 	pc = pc + #n
 
 
-movsp #n
-ret #n, #n
-retv #n
 push $r
 push #n
-push ##n
+push *n
 push "str"
 pushn #n
 pop $r
-popn #n
+callg #func
 call #func
-calli #func
 callb #func
+ret #n
 jz label
 jnz label
 jmp label
