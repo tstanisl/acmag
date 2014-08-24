@@ -1,5 +1,5 @@
 ;assign() { a = 1; }
-assing: pushn #1
+assign: pushn #1
 	push #1
 	push #1
 	callb @=

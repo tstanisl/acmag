@@ -19,7 +19,6 @@
 
 struct function {
 	bool exported;
-	
 };
 
 static int cur_line = 0;
@@ -31,7 +30,12 @@ static char *skipws(char *s)
 	return s;
 }
 
-static int asm_line(char *str)
+static int acsa_export(char *str)
+{
+	return 0;
+}
+
+static int acsa_line(char *str)
 {
 	str = skipws(str);
 	if (*str == ';') // skip comment line
@@ -43,24 +47,25 @@ static int asm_line(char *str)
 		return 0;
 	str += shift;
 	if (strcmp(cmd, "export") == 0)
-		return asm_export(str);
-	if (strcmp(cmd, "push")
+		return acsa_export(str);
+	ERR("unknown keyword '%s'", cmd);
+	return -1;
+	/*if (strcmp(cmd, "push")
 		return asm_push(str);
 	if (strcmp(cmd, "pushn")
 		return asm_push(str);
 	if (strcmp(cmd, "callb")
 		return asm_callb(str);
 	if (strcmp(cmd, "call")
-		return asm_call(str);
-	
+		return asm_call(str);*/
 }
 
-static int acs_asm_load(FILE *f)
+static int acsa_load(FILE *f)
 {
 	char buf[1024];
 	int ret = 0;
 	for (cur_line = 1; !ret && fgets(buf, 1024, f); ++cur_line)
-		ret = asm_line(buf);
+		ret = acsa_line(buf);
 	return ret;
 }
 
@@ -70,7 +75,7 @@ int main(int argc, char *argv[])
 		FILE *f = fopen(argv[i], "r");
 		if (ERR_ON(!f, "fopen(\"%s\") failed: %s", argv[i], ERRSTR))
 			return -1;
-		int ret = load(f);
+		int ret = acsa_load(f);
 		if (ERR_ON(ret, "while processing \"%s\"", argv[i]))
 			return -1;
 		fclose(f);
