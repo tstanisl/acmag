@@ -1,6 +1,7 @@
-#include "debug.h"
-
 #define _BSD_SOURCE
+
+#include "debug.h"
+#include "list.h"
 
 #include <ctype.h>
 #include <endian.h>
@@ -19,9 +20,30 @@
 
 struct function {
 	bool exported;
+	char *name;
+	struct list node;
 };
 
 static int cur_line = 0;
+static DEFINE_LIST(function_head);
+
+static struct function *function_create(char *name, bool exported)
+{
+	struct function *f = malloc(sizeof *f);
+
+	if (ERR_ON(!f, "malloc() failed"))
+		return NULL;
+
+	f->name = strdup(name);
+	if (ERR_ON(!f->name, "strdup() failed")) {
+		free(f);
+		return NULL;
+	}
+
+	f->exported = exported;
+
+	return f;
+}
 
 static char *skipws(char *s)
 {
@@ -32,6 +54,13 @@ static char *skipws(char *s)
 
 static int acsa_export(char *str)
 {
+	struct function *f = function_create(str, true);
+
+	if (ERR_ON(!f, "function_create(\"%s\") failed", str))
+		return -1;
+
+	list_add(&function_head, &f->node);
+
 	return 0;
 }
 

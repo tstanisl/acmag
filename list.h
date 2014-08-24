@@ -7,7 +7,7 @@ struct list {
 	struct list *next, *prev;
 };
 
-inline void list_add(struct list *head, struct list *node)
+static inline void list_add(struct list *head, struct list *node)
 {
 	node->next = head->next;
 	node->prev = head;
@@ -15,10 +15,21 @@ inline void list_add(struct list *head, struct list *node)
 	head->next = node;
 }
 
-inline void list_del(struct list *node)
+static inline void list_del(struct list *node)
 {
 	node->next->prev = node->prev;
 	node->prev->next = node->next;
 }
+
+#define list_entry(ptr,type,member) \
+	container_of(ptr,type,member)
+
+static inline void list_init(struct list *node)
+{
+	node->next = node;
+	node->prev = node;
+}
+
+#define DEFINE_LIST(name) struct list name = { .next = &name, .prev = &name }
 
 #endif /* LIST_H */

@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static int __info(int cond, const char *prefix, char *f_name, int line,
+static inline int __info(int cond, const char *prefix, char *f_name, int line,
 	const char *fmt, ...)
 {
 	int errsv = errno;
