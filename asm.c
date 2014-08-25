@@ -26,18 +26,6 @@ enum token {
         TOK_SEP,
         TOK_HASH,
         TOK_DOLAR,
-	/*__TOK_KEYWORD,
-	TOK_EXPORT = __TOK_KEYWORD,
-	TOK_PUSH,
-	TOK_PUSHN,
-	TOK_POP,
-	TOK_CALL,
-	TOK_CALLG,
-	TOK_CALLB,
-	TOK_RET,
-	TOK_JZ,
-	TOK_JNZ,
-	TOK_JMP,*/
 };
 
 enum lxr_state {
@@ -51,12 +39,11 @@ enum lxr_state {
 	__LST = 1 << 8,
 };
 
-#define LXR_PAYLOAD_SIZE 256
-
 struct lxr {
 	int line;
         FILE *file;
-	char payload[LXR_PAYLOAD_SIZE];
+	char *payload;
+	int payload_size;
 };
 
 int lxr_get(struct lxr *lxr)
@@ -81,7 +68,7 @@ static enum token lxr_error(struct lxr *lxr, char *fmt, ...)
 	va_list va;
 
 	va_start(va, fmt);
-	vsnprintf(lxr->payload, LXR_PAYLOAD_SIZE, fmt, va);
+	vsnprintf(lxr->payload, lxr->payload_size, fmt, va);
 	va_end(va);
 	return TOK_ERR;
 }
@@ -147,7 +134,7 @@ enum token lxr_get_token(struct lxr *lxr)
 
 		// store character to token payload
 		if (st >= __LST_ECHO) {
-			if (pos >= LXR_PAYLOAD_SIZE)
+			if (pos >= lxr->payload_size)
 				return lxr_error(lxr, "too long sequence");
 			lxr->payload[pos++] = c;
 			lxr->payload[pos] = 0;
@@ -307,27 +294,84 @@ static int acsa_line(char *str)
 		return asm_call(str);*/
 }
 
+struct parser {
+	struct lxr lxr;
+	enum token next;
+	char payload[256];
+};
+
+static int asca_cmd(struct parser *p)
+{
+	char *str = p->payload;
+
+	if (strcmp(str, "export") == 0)
+		return asca_export(p);
+	if (strcmp(str, "push") == 0)
+		return asca_push(p);
+	if (strcmp(str, "call") == 0)
+		return asca_call(p);
+	if (strcmp(str, "callb") == 0)
+		return asca_callb(p);
+	if (strcmp(str, "callg") == 0)
+		return asca_callg(p);
+	if (strcmp(str, "ret") == 0)
+		return asca_arg1i(p, ASCA_RET);
+	if (strcmp(str, "pushn") == 0)
+		return asca_arg1i(p, ASCA_PUSHN);
+	if (strcmp(str, "pop") == 0)
+		return asca_pop(p);
+	if (strcmp(str, "jz") == 0)
+		return asca_jump(p, ASCA_JZ);
+	if (strcmp(str, "jnz") == 0)
+		return asca_jump(p, ASCA_JNZ);
+	if (strcmp(str, "jmp") == 0)
+		return asca_jump(p, ASCA_JMP);
+
+	char *label = strdup(p->payload);
+
+	parse_consume(p);
+
+	if (p->next != TOK_COLON) {
+		asca_err(p, "expected ':' after label '%s'",
+			label);
+		free(label);
+		return -1;	
+	}
+
+	// add label
+	return 0;
+}
+
 static int acsa_load(FILE *f)
 {
-	struct lxr lxr = { .file = f, .line = 1 };
+	struct parser p;
 
-	enum token tok;
-	do {
-		tok = lxr_get_token(&lxr);
-		printf("line(%d): token (%s): %s\n", lxr.line,
-			token_descr[tok], lxr.payload);
-		if (ERR_ON(tok == TOK_ERR, "lexer error"))
+	p.lxr.file = f;
+	p.lxr.line = 1;
+	p.lxr.payload = p.payload;
+	p.lxr.payload_size = ARRAY_SIZE(p.payload);
+
+	parse_consume(&p);
+
+	for (;;) {
+		if (p.next == TOK_EOF)
+			break;
+		if (p.next == TOK_ERR) {
+			asca_err(&p, "%s", p.payload)
 			return -1;
-	} while (tok != TOK_EOF);
+		}
+		if (p.next != TOK_ID) {
+			asca_err(&p, "unexpected token (%s)",
+				token_descr[p.next]);
+			return -1;
+		}
+		if (asca_cmd(&p) != 0)
+			return -1;
+	}
+
+	/* do final label resolving */
 
 	return 0;
-#if 0
-	char buf[1024];
-	int ret = 0;
-	for (cur_line = 1; !ret && fgets(buf, 1024, f); ++cur_line)
-		ret = acsa_line(buf);
-	return ret;
-#endif
 }
 
 int main(int argc, char *argv[])
