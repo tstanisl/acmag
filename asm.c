@@ -14,9 +14,194 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* lexer part */
+
+enum token {
+        TOK_ERR,
+        TOK_EOF,
+        TOK_INT,
+        TOK_STR,
+        TOK_ID,
+        TOK_COLON,
+        TOK_SEP,
+        TOK_HASH,
+        TOK_DOLAR,
+	/*__TOK_KEYWORD,
+	TOK_EXPORT = __TOK_KEYWORD,
+	TOK_PUSH,
+	TOK_PUSHN,
+	TOK_POP,
+	TOK_CALL,
+	TOK_CALLG,
+	TOK_CALLB,
+	TOK_RET,
+	TOK_JZ,
+	TOK_JNZ,
+	TOK_JMP,*/
+};
+
+enum lxr_state {
+	LST_NONE,
+	LST_COMM,
+	LST_STRB,
+	__LST_ECHO,
+	LST_ID = __LST_ECHO,
+	LST_INT,
+	LST_STR,
+	__LST = 1 << 8,
+};
+
+#define LXR_PAYLOAD_SIZE 256
+
+struct lxr {
+	int line;
+        FILE *file;
+	char payload[LXR_PAYLOAD_SIZE];
+};
+
+int lxr_get(struct lxr *lxr)
+{
+	int c = fgetc(lxr->file);
+	if (c == '\n')
+		++lxr->line;
+	return c;
+}
+
+void lxr_unget(struct lxr *lxr, int c)
+{
+	if (c == EOF)
+		return;
+	if (c == '\n')
+		--lxr->line;
+	ungetc(c, lxr->file);
+}
+
+static enum token lxr_error(struct lxr *lxr, char *fmt, ...)
+{
+	va_list va;
+
+	va_start(va, fmt);
+	vsnprintf(lxr->payload, LXR_PAYLOAD_SIZE, fmt, va);
+	va_end(va);
+	return TOK_ERR;
+}
+
+int lxr_action[128];
+
+static void lxr_init(void)
+{
+	for (int i = 0; i < 128; ++i)
+		if (isgraph(i))
+			lxr_action[i] = LST_ID | __LST;
+	for (int i = '0'; i <= '9'; ++i)
+		lxr_action[i] = LST_INT | __LST;
+	lxr_action[':'] = TOK_COLON;
+	lxr_action[','] = TOK_SEP;
+	lxr_action['#'] = TOK_HASH;
+	lxr_action['$'] = TOK_DOLAR;
+	lxr_action[';'] = LST_COMM | __LST;
+	lxr_action['"'] = LST_STRB | __LST;
+	char wspc[] = " \r\n\t";
+	for (int i = 0; wspc[i]; ++i)
+		lxr_action[(int)wspc[i]] = LST_NONE | __LST;
+}
+
+enum token lxr_get_token(struct lxr *lxr)
+{
+	enum lxr_state st = LST_NONE;
+	int pos = 0;
+	lxr->payload[pos] = 0;
+
+	for (;;) {
+		int c = lxr_get(lxr);
+		if (st == LST_NONE) {
+			if (c == EOF)
+				return TOK_EOF;
+			if (c < 0 || c >= 128 || !lxr_action[c])
+				return lxr_error(lxr, "not ASCII character (%d)", c);
+			if (~lxr_action[c] & __LST) // return 1-character token
+				return lxr_action[c];
+			st = lxr_action[c] & ~__LST;
+		} else if (st == LST_COMM) {
+			if (c == '\n')
+				st = LST_NONE;
+			else if (c == EOF)
+				return TOK_EOF;
+		} else if (st == LST_STR || st == LST_STRB) {
+			if (c == '"')
+				return TOK_STR;
+			if (c == '\n' || c == EOF)
+				return lxr_error(lxr, "unfinished string");
+			st = LST_STR;
+		} else if (st == LST_INT) {
+			if (!isdigit(c)) {
+				lxr_unget(lxr, c);
+				return TOK_INT;
+			}
+		} else if (st == LST_ID) {
+			if (!isgraph(c) || c == ':') { // ignore lable
+				lxr_unget(lxr, c);
+				return TOK_ID;
+			}
+		}
+
+		// store character to token payload
+		if (st >= __LST_ECHO) {
+			if (pos >= LXR_PAYLOAD_SIZE)
+				return lxr_error(lxr, "too long sequence");
+			lxr->payload[pos++] = c;
+			lxr->payload[pos] = 0;
+		}
+	}
+}
+
+char *token_descr[] = {
+        [TOK_ERR] = "#error",
+        [TOK_EOF] = "#eof",
+        [TOK_INT] = "#integer",
+        [TOK_STR] = "#string",
+        [TOK_ID] = "#identifier",
+        [TOK_COLON] = ":",
+        [TOK_SEP] = ",",
+        [TOK_HASH] = "#",
+        [TOK_DOLAR] = "$",
+};
+
+#if 0
+static char *lxr_keywords[] = {
+	[TOK_EXPORT - __TOK_KEYWORD] = "export",
+	[TOK_PUSH - __TOK_KEYWORD] = "push",
+	[TOK_PUSHN - __TOK_KEYWORD] = "pushn",
+	[TOK_POP - __TOK_KEYWORD] = "pop",
+	[TOK_CALL - __TOK_KEYWORD] = "call",
+	[TOK_CALLB - __TOK_KEYWORD] = "callb",
+	[TOK_CALLG - __TOK_KEYWORD] = "callg",
+	[TOK_RET - __TOK_KEYWORD] = "ret",
+	[TOK_JZ - __TOK_KEYWORD] = "jz",
+	[TOK_JNZ - __TOK_KEYWORD] = "jnz",
+	[TOK_JMP - __TOK_KEYWORD] = "jmp",
+};
+#endif
+
 #define MAGIC "ACSC"
 #define MAGIC_LEN 4
 #define MAX_OFFSETS (1 << 12)
+
+enum acsa_cmd {
+	ACSA_PUSHR,
+	ACSA_PUSHI,
+	ACSA_PUSHL,
+	ACSA_PUSHS,
+	ACSA_PUSHN,
+	ACSA_POP,
+	ACSA_CALL,
+	ACSA_CALLB,
+	ACSA_CALLG,
+	ACSA_RET,
+	ACSA_JZ,
+	ACSA_JNZ,
+	ACSA_JMP,
+};
 
 struct function {
 	bool exported;
@@ -83,6 +268,11 @@ static int acsa_label(char *str)
 	return 0;
 }
 
+static int asm_push(char *str)
+{
+	return 0;
+}
+
 static int acsa_line(char *str)
 {
 	INFO("line %3d: %s", cur_line, str);
@@ -104,11 +294,12 @@ static int acsa_line(char *str)
 			return ret;
 		return acsa_line(str + 1);
 	}
+	if (strcmp(cmd, "push") == 0)
+		return asm_push(str);
+
 	ERR("unknown keyword '%s'", cmd);
 	return -1;
-	/*if (strcmp(cmd, "push")
-		return asm_push(str);
-	if (strcmp(cmd, "pushn")
+	/*	if (strcmp(cmd, "pushn")
 		return asm_push(str);
 	if (strcmp(cmd, "callb")
 		return asm_callb(str);
@@ -118,15 +309,30 @@ static int acsa_line(char *str)
 
 static int acsa_load(FILE *f)
 {
+	struct lxr lxr = { .file = f, .line = 1 };
+
+	enum token tok;
+	do {
+		tok = lxr_get_token(&lxr);
+		printf("line(%d): token (%s): %s\n", lxr.line,
+			token_descr[tok], lxr.payload);
+		if (ERR_ON(tok == TOK_ERR, "lexer error"))
+			return -1;
+	} while (tok != TOK_EOF);
+
+	return 0;
+#if 0
 	char buf[1024];
 	int ret = 0;
 	for (cur_line = 1; !ret && fgets(buf, 1024, f); ++cur_line)
 		ret = acsa_line(buf);
 	return ret;
+#endif
 }
 
 int main(int argc, char *argv[])
 {
+	lxr_init();
 	for (int i = 1; i < argc; ++i) {
 		FILE *f = fopen(argv[i], "r");
 		if (ERR_ON(!f, "fopen(\"%s\") failed: %s", argv[i], ERRSTR))
