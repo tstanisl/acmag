@@ -5,7 +5,9 @@ export a, b
 push #1
 push $2
 push "string"
-push $1 $2
+push $1
+
+export assign
 ;assign() { a = 1; }
 assign: pushn #1
 	push #1

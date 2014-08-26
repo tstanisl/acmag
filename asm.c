@@ -190,6 +190,22 @@ enum acsa_cmd {
 	ACSA_JMP,
 };
 
+char *acsa_cmd_str[] = {
+	[ACSA_PUSHR] = "pushr",
+	[ACSA_PUSHI] = "pushi",
+	[ACSA_PUSHL] = "pushl",
+	[ACSA_PUSHS] = "pushs",
+	[ACSA_PUSHN] = "pushn",
+	[ACSA_POP] = "pop",
+	[ACSA_CALL] = "call",
+	[ACSA_CALLB] = "callb",
+	[ACSA_CALLG] = "callg",
+	[ACSA_RET] = "ret",
+	[ACSA_JZ] = "jz",
+	[ACSA_JNZ] = "jnz",
+	[ACSA_JMP] = "jmp",
+};
+
 #if 0
 struct function {
 	bool exported;
@@ -296,19 +312,19 @@ static int acsa_line(char *str)
 }
 #endif
 
-struct asca {
+struct acsa {
 	char *path;
 	struct lxr lxr;
 	enum token next;
 	char payload[256];
 };
 
-static void asca_consume(struct asca *a)
+static void acsa_consume(struct acsa *a)
 {
 	a->next = lxr_get_token(&a->lxr);
 }
 
-static int asca_err(struct asca *a, char *fmt, ...)
+static int acsa_err(struct acsa *a, char *fmt, ...)
 {
 	va_list va;
 
@@ -320,96 +336,113 @@ static int asca_err(struct asca *a, char *fmt, ...)
 	return -1;
 }
 
-static int asca_export(struct asca *a)
+static int acsa_export(struct acsa *a)
 {
-	asca_consume(a);
+	acsa_consume(a);
 
 	for (;;) {
 		if (a->next != TOK_ID) {
-			asca_err(a, "identifier expected after export");
+			acsa_err(a, "identifier expected after export");
 			return -1;
 		}
 
 		printf("add export %s\n", a->payload);
 
-		asca_consume(a);
+		acsa_consume(a);
 		if (a->next != TOK_SEP)
 			break;
 
-		asca_consume(a);
+		acsa_consume(a);
 	}
 	return 0;
 }
 
-static int asca_push(struct asca *a)
+static int acsa_push(struct acsa *a)
 {
-	asca_consume(a);
+	acsa_consume(a);
 	if (a->next == TOK_HASH) {
-		asca_consume(a);
+		acsa_consume(a);
 		if (a->next != TOK_INT)
-			return asca_err(a, "expected integer after #");
+			return acsa_err(a, "expected integer after #");
 		printf("emit push #%d\n", atoi(a->payload));
-		asca_consume(a);
+		acsa_consume(a);
 		return 0;
 	}
 	if (a->next == TOK_STR) {
 		printf("emit push \"%s\"\n", a->payload);
-		asca_consume(a);
+		acsa_consume(a);
 		return 0;
 	}
 	if (a->next == TOK_DOLAR) {
-		asca_consume(a);
+		acsa_consume(a);
 		if (a->next != TOK_INT)
-			return asca_err(a, "expected integer after $");
+			return acsa_err(a, "expected integer after $");
 		printf("emit push $%d\n", atoi(a->payload));
-		asca_consume(a);
+		acsa_consume(a);
 		return 0;
 	}
-	asca_err(a, "# or $ of string expected after push");
+	acsa_err(a, "# or $ of string expected after push");
 	return -1;
 }
 
-static int asca_cmd(struct asca *a)
+static int acsa_arg1i(struct acsa *a, enum acsa_cmd cmd)
+{
+	acsa_consume(a);
+	if (a->next != TOK_HASH)
+		return acsa_err(a, "# expected after %s", acsa_cmd_str[cmd]);
+
+	acsa_consume(a);
+	if (a->next != TOK_INT)
+		return acsa_err(a, "expected integer after #");
+
+	printf("emit %s #%d\n", acsa_cmd_str[cmd], atoi(a->payload));
+	acsa_consume(a);
+
+	return 0;
+	
+}
+
+static int acsa_cmd(struct acsa *a)
 {
 	char *str = a->payload;
 
 	if (strcmp(str, "export") == 0)
-		return asca_export(a);
+		return acsa_export(a);
 	if (strcmp(str, "push") == 0)
-		return asca_push(a);
+		return acsa_push(a);
+	if (strcmp(str, "ret") == 0)
+		return acsa_arg1i(a, ACSA_RET);
+	if (strcmp(str, "pushn") == 0)
+		return acsa_arg1i(a, ACSA_PUSHN);
 #if 0
 	if (strcmp(str, "call") == 0)
-		return asca_call(a);
+		return acsa_call(a);
 	if (strcmp(str, "callb") == 0)
-		return asca_callb(a);
+		return acsa_callb(a);
 	if (strcmp(str, "callg") == 0)
-		return asca_callg(a);
-	if (strcmp(str, "ret") == 0)
-		return asca_arg1i(a, ASCA_RET);
-	if (strcmp(str, "pushn") == 0)
-		return asca_arg1i(a, ASCA_PUSHN);
+		return acsa_callg(a);
 	if (strcmp(str, "pop") == 0)
-		return asca_pop(a);
+		return acsa_pop(a);
 	if (strcmp(str, "jz") == 0)
-		return asca_jump(a, ASCA_JZ);
+		return acsa_jump(a, ASCA_JZ);
 	if (strcmp(str, "jnz") == 0)
-		return asca_jump(a, ASCA_JNZ);
+		return acsa_jump(a, ASCA_JNZ);
 	if (strcmp(str, "jmp") == 0)
-		return asca_jump(a, ASCA_JMP);
+		return acsa_jump(a, ASCA_JMP);
 #endif
 
 	char *label = strdup(a->payload);
 
-	asca_consume(a);
+	acsa_consume(a);
 
 	if (a->next != TOK_COLON) {
-		asca_err(a, "expected ':' after label '%s'",
+		acsa_err(a, "expected ':' after label '%s'",
 			label);
 		free(label);
 		return -1;	
 	}
 
-	asca_consume(a);
+	acsa_consume(a);
 
 	printf("got label %s\n", label);
 	// add label
@@ -422,7 +455,7 @@ static int acsa_load(char *path)
 	if (ERR_ON(!f, "fopen(\"%s\") failed: %s", path, ERRSTR))
 		return -1;
 
-	struct asca a;
+	struct acsa a;
 
 	a.path = path;
 	a.lxr.file = f;
@@ -430,7 +463,7 @@ static int acsa_load(char *path)
 	a.lxr.payload = a.payload;
 	a.lxr.payload_size = ARRAY_SIZE(a.payload);
 
-	asca_consume(&a);
+	acsa_consume(&a);
 
 	int ret = -1;
 	for (;;) {
@@ -439,15 +472,15 @@ static int acsa_load(char *path)
 			break;
 		}
 		if (a.next == TOK_ERR) {
-			asca_err(&a, "%s", a.payload);
+			acsa_err(&a, "%s", a.payload);
 			break;
 		}
 		if (a.next != TOK_ID) {
-			asca_err(&a, "unexpected token (%s)",
+			acsa_err(&a, "unexpected token (%s)",
 				token_descr[a.next]);
 			break;
 		}
-		if (asca_cmd(&a) != 0)
+		if (acsa_cmd(&a) != 0)
 			break;
 	}
 
