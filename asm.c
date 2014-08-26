@@ -126,7 +126,7 @@ enum token lxr_get_token(struct lxr *lxr)
 				return TOK_INT;
 			}
 		} else if (st == LST_ID) {
-			if (!isgraph(c) || c == ':') { // ignore lable
+			if (!isgraph(c) || c == ':' || c == ',') { // ignore lable
 				lxr_unget(lxr, c);
 				return TOK_ID;
 			}

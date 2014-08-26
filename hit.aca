@@ -1,3 +1,8 @@
+;lame
+a: b: 
+export a
+export a, b
+export
 ;assign() { a = 1; }
 assign: pushn #1
 	push #1
