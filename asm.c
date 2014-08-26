@@ -413,6 +413,24 @@ static int acsa_jump(struct acsa *a, enum acsa_cmd cmd)
 	printf("emit %s %s\n", acsa_cmd_str[cmd], a->payload);
 
 	acsa_consume(a);
+
+	return 0;
+}
+
+static int acsa_call(struct acsa *a)
+{
+	acsa_consume(a);
+	if (a->next == TOK_STR) {
+		printf("emit callg \"%s\"", a->payload);
+		acsa_consume(a);
+		return 0;
+	}
+	if (a->next != TOK_ID)
+		return acsa_err(a, "id or string expected after call");
+
+	printf("emit call %s", a->payload);
+	acsa_consume(a);
+
 	return 0;
 }
 
@@ -434,13 +452,11 @@ static int acsa_cmd(struct acsa *a)
 		return acsa_jump(a, ACSA_JNZ);
 	if (strcmp(str, "jmp") == 0)
 		return acsa_jump(a, ACSA_JMP);
-#if 0
 	if (strcmp(str, "call") == 0)
 		return acsa_call(a);
+#if 0
 	if (strcmp(str, "callb") == 0)
 		return acsa_callb(a);
-	if (strcmp(str, "callg") == 0)
-		return acsa_callg(a);
 	if (strcmp(str, "pop") == 0)
 		return acsa_pop(a);
 #endif
