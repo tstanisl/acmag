@@ -381,6 +381,8 @@ static int asca_cmd(struct asca *a)
 		return -1;	
 	}
 
+	asca_consume(a);
+
 	printf("got label %s\n", label);
 	// add label
 	return 0;
