@@ -423,7 +423,20 @@ static int acsa_callg(struct acsa *a)
 	if (a->next != TOK_ID)
 		return acsa_err(a, "id or string expected after callg");
 
-	printf("emit callg %s", a->payload);
+	printf("emit callg %s\n", a->payload);
+	acsa_consume(a);
+
+	return 0;
+}
+
+static int acsa_callb(struct acsa *a)
+{
+	acsa_consume(a);
+	if (a->next != TOK_ID)
+		return acsa_err(a, "id or string expected after callb");
+
+	// check if id is valid buildin
+	printf("emit callb %s\n", a->payload);
 	acsa_consume(a);
 
 	return 0;
@@ -468,10 +481,8 @@ static int acsa_cmd(struct acsa *a)
 		return acsa_callg(a);
 	if (strcmp(str, "pop") == 0)
 		return acsa_pop(a);
-#if 0
 	if (strcmp(str, "callb") == 0)
 		return acsa_callb(a);
-#endif
 
 	char *label = strdup(a->payload);
 
