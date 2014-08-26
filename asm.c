@@ -325,7 +325,7 @@ struct acsa {
 static void acsa_consume(struct acsa *a)
 {
 	a->next = lxr_get_token(&a->lxr);
-	printf("* %s:%s\n", token_descr[a->next], a->payload);
+	//printf("* %s:%s\n", token_descr[a->next], a->payload);
 }
 
 static int acsa_err(struct acsa *a, char *fmt, ...)
@@ -361,17 +361,37 @@ static int acsa_export(struct acsa *a)
 	return 0;
 }
 
+static int acsa_push_int(struct acsa *a)
+{
+	acsa_consume(a);
+	if (a->next != TOK_INT)
+		return acsa_err(a, "expected integer after #");
+	int i0 = atoi(a->payload);
+	acsa_consume(a);
+
+	if (a->next != TOK_SEP) {
+		printf("emit pushi #%d\n", i0);
+		return 0;
+	}
+
+	acsa_consume(a);
+	if (a->next != TOK_INT)
+		return acsa_err(a, "expected integer after ,");
+
+	int i1 = atoi(a->payload);
+
+	printf("emit pushi #%d,%d\n", i0, i1);
+	acsa_consume(a);
+
+	return 0;
+}
+
 static int acsa_push(struct acsa *a)
 {
 	acsa_consume(a);
-	if (a->next == TOK_HASH) {
-		acsa_consume(a);
-		if (a->next != TOK_INT)
-			return acsa_err(a, "expected integer after #");
-		printf("emit push #%d\n", atoi(a->payload));
-		acsa_consume(a);
-		return 0;
-	}
+	if (a->next == TOK_HASH)
+		return acsa_push_int(a);
+
 	if (a->next == TOK_STR) {
 		printf("emit push \"%s\"\n", a->payload);
 		acsa_consume(a);

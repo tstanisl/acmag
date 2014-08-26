@@ -62,19 +62,19 @@ onHit:	pushn #1
 	push "__onHit"
 	push $-1
 	callb []
-	pusha #2,#0
+	push #2,0
 	callb () ; how should I move SP?
 	push #5
 	push "poison"
 	push "1d10"
-	pusha #3, #1
+	push #3, 1
 	callg damage_create
 	push $1 ; poison
 	callb =
 	pushn #-1
 	push $1
 	push $-2
-	pusha #2,#0
+	push #2,0
 	callg add_effect
 	ret #0
 
@@ -96,13 +96,13 @@ fib:	push $-1
 	jnz L1
 	push #1
 	push $-1
-	callb -
-	pusha #1, #1
+	callb minus
+	push #1, 1
 	call fib
 	push #2
 	push $-1
-	callb -
-	pusha #1, #1
+	callb minus
+	push #1,1
 	call fib
 	call +
 	ret #1
@@ -114,7 +114,7 @@ L1:	push #1
 ;	a = 1;
 ;	b = 1;
 ;	while (n > 0) {
-		a, b = a + b, a;
+;		a, b = a + b, a;
 ;		n = n - 1;	
 ;	}
 ;	return a;
