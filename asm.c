@@ -181,6 +181,7 @@ enum acsa_cmd {
 	ACSA_PUSHS,
 	ACSA_PUSHN,
 	ACSA_POP,
+	ACSA_POPN,
 	ACSA_CALL,
 	ACSA_CALLB,
 	ACSA_CALLG,
@@ -197,6 +198,7 @@ char *acsa_cmd_str[] = {
 	[ACSA_PUSHS] = "pushs",
 	[ACSA_PUSHN] = "pushn",
 	[ACSA_POP] = "pop",
+	[ACSA_POPN] = "popn",
 	[ACSA_CALL] = "call",
 	[ACSA_CALLB] = "callb",
 	[ACSA_CALLG] = "callg",
@@ -469,6 +471,8 @@ static int acsa_cmd(struct acsa *a)
 		return acsa_arg1i(a, ACSA_RET);
 	if (strcmp(str, "pushn") == 0)
 		return acsa_arg1i(a, ACSA_PUSHN);
+	if (strcmp(str, "popn") == 0)
+		return acsa_arg1i(a, ACSA_POPN);
 	if (strcmp(str, "jz") == 0)
 		return acsa_jump(a, ACSA_JZ);
 	if (strcmp(str, "jnz") == 0)
