@@ -341,15 +341,43 @@ static int asca_export(struct asca *a)
 	return 0;
 }
 
+static int asca_push(struct asca *a)
+{
+	asca_consume(a);
+	if (a->next == TOK_HASH) {
+		asca_consume(a);
+		if (a->next != TOK_INT)
+			return asca_err(a, "expected integer after #");
+		printf("emit push #%d\n", atoi(a->payload));
+		asca_consume(a);
+		return 0;
+	}
+	if (a->next == TOK_STR) {
+		printf("emit push \"%s\"\n", a->payload);
+		asca_consume(a);
+		return 0;
+	}
+	if (a->next == TOK_DOLAR) {
+		asca_consume(a);
+		if (a->next != TOK_INT)
+			return asca_err(a, "expected integer after $");
+		printf("emit push $%d\n", atoi(a->payload));
+		asca_consume(a);
+		return 0;
+	}
+	asca_err(a, "# or $ of string expected after push");
+	return -1;
+}
+
 static int asca_cmd(struct asca *a)
 {
 	char *str = a->payload;
 
 	if (strcmp(str, "export") == 0)
 		return asca_export(a);
-#if 0
 	if (strcmp(str, "push") == 0)
 		return asca_push(a);
+#if 0
 	if (strcmp(str, "call") == 0)
 		return asca_call(a);
 	if (strcmp(str, "callb") == 0)
