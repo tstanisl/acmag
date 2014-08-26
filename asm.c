@@ -190,6 +190,7 @@ enum acsa_cmd {
 	ACSA_JMP,
 };
 
+#if 0
 struct function {
 	bool exported;
 	char *name;
@@ -293,98 +294,147 @@ static int acsa_line(char *str)
 	if (strcmp(cmd, "call")
 		return asm_call(str);*/
 }
+#endif
 
-struct parser {
+struct asca {
+	char *path;
 	struct lxr lxr;
 	enum token next;
 	char payload[256];
 };
 
-static int asca_cmd(struct parser *p)
+static void asca_consume(struct asca *a)
 {
-	char *str = p->payload;
+	a->next = lxr_get_token(&a->lxr);
+}
+
+static int asca_err(struct asca *a, char *fmt, ...)
+{
+	va_list va;
+
+	va_start(va, fmt);
+	printf("%s:%d: error: ", a->path, a->lxr.line);
+	vprintf(fmt, va);
+	puts("");
+	va_end(va);
+	return -1;
+}
+
+static int asca_export(struct asca *a)
+{
+	asca_consume(a);
+
+	for (;;) {
+		if (a->next != TOK_ID) {
+			asca_err(a, "identifier expected after export");
+			return -1;
+		}
+
+		printf("add export %s\n", a->payload);
+
+		asca_consume(a);
+		if (a->next != TOK_SEP)
+			break;
+
+		asca_consume(a);
+	}
+	return 0;
+}
+
+static int asca_cmd(struct asca *a)
+{
+	char *str = a->payload;
 
 	if (strcmp(str, "export") == 0)
-		return asca_export(p);
+		return asca_export(a);
+#if 0
 	if (strcmp(str, "push") == 0)
-		return asca_push(p);
+		return asca_push(a);
 	if (strcmp(str, "call") == 0)
-		return asca_call(p);
+		return asca_call(a);
 	if (strcmp(str, "callb") == 0)
-		return asca_callb(p);
+		return asca_callb(a);
 	if (strcmp(str, "callg") == 0)
-		return asca_callg(p);
+		return asca_callg(a);
 	if (strcmp(str, "ret") == 0)
-		return asca_arg1i(p, ASCA_RET);
+		return asca_arg1i(a, ASCA_RET);
 	if (strcmp(str, "pushn") == 0)
-		return asca_arg1i(p, ASCA_PUSHN);
+		return asca_arg1i(a, ASCA_PUSHN);
 	if (strcmp(str, "pop") == 0)
-		return asca_pop(p);
+		return asca_pop(a);
 	if (strcmp(str, "jz") == 0)
-		return asca_jump(p, ASCA_JZ);
+		return asca_jump(a, ASCA_JZ);
 	if (strcmp(str, "jnz") == 0)
-		return asca_jump(p, ASCA_JNZ);
+		return asca_jump(a, ASCA_JNZ);
 	if (strcmp(str, "jmp") == 0)
-		return asca_jump(p, ASCA_JMP);
+		return asca_jump(a, ASCA_JMP);
+#endif
 
-	char *label = strdup(p->payload);
+	char *label = strdup(a->payload);
 
-	parse_consume(p);
+	asca_consume(a);
 
-	if (p->next != TOK_COLON) {
-		asca_err(p, "expected ':' after label '%s'",
+	if (a->next != TOK_COLON) {
+		asca_err(a, "expected ':' after label '%s'",
 			label);
 		free(label);
 		return -1;	
 	}
 
+	printf("got label %s\n", label);
 	// add label
 	return 0;
 }
 
-static int acsa_load(FILE *f)
+static int acsa_load(char *path)
 {
-	struct parser p;
+	FILE *f = fopen(path, "r");
+	if (ERR_ON(!f, "fopen(\"%s\") failed: %s", path, ERRSTR))
+		return -1;
 
-	p.lxr.file = f;
-	p.lxr.line = 1;
-	p.lxr.payload = p.payload;
-	p.lxr.payload_size = ARRAY_SIZE(p.payload);
+	struct asca a;
 
-	parse_consume(&p);
+	a.path = path;
+	a.lxr.file = f;
+	a.lxr.line = 1;
+	a.lxr.payload = a.payload;
+	a.lxr.payload_size = ARRAY_SIZE(a.payload);
 
+	asca_consume(&a);
+
+	int ret = -1;
 	for (;;) {
-		if (p.next == TOK_EOF)
+		if (a.next == TOK_EOF) {
+			ret = 0;
 			break;
-		if (p.next == TOK_ERR) {
-			asca_err(&p, "%s", p.payload)
-			return -1;
 		}
-		if (p.next != TOK_ID) {
-			asca_err(&p, "unexpected token (%s)",
-				token_descr[p.next]);
-			return -1;
+		if (a.next == TOK_ERR) {
+			asca_err(&a, "%s", a.payload);
+			break;
 		}
-		if (asca_cmd(&p) != 0)
-			return -1;
+		if (a.next != TOK_ID) {
+			asca_err(&a, "unexpected token (%s)",
+				token_descr[a.next]);
+			break;
+		}
+		if (asca_cmd(&a) != 0)
+			break;
 	}
+
+	fclose(f);
 
 	/* do final label resolving */
 
-	return 0;
+	return ret;
 }
 
 int main(int argc, char *argv[])
 {
 	lxr_init();
 	for (int i = 1; i < argc; ++i) {
-		FILE *f = fopen(argv[i], "r");
-		if (ERR_ON(!f, "fopen(\"%s\") failed: %s", argv[i], ERRSTR))
-			return -1;
-		int ret = acsa_load(f);
+		int ret = acsa_load(argv[i]);
 		if (ERR_ON(ret, "while processing \"%s\"", argv[i]))
 			return -1;
-		fclose(f);
 	}
 	return 0;
 }
