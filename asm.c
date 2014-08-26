@@ -82,6 +82,7 @@ static void lxr_init(void)
 			lxr_action[i] = LST_ID | __LST;
 	for (int i = '0'; i <= '9'; ++i)
 		lxr_action[i] = LST_INT | __LST;
+	lxr_action['-'] = LST_INT | __LST;
 	lxr_action[':'] = TOK_COLON;
 	lxr_action[','] = TOK_SEP;
 	lxr_action['#'] = TOK_HASH;
@@ -121,7 +122,7 @@ enum token lxr_get_token(struct lxr *lxr)
 				return lxr_error(lxr, "unfinished string");
 			st = LST_STR;
 		} else if (st == LST_INT) {
-			if (!isdigit(c)) {
+			if (!isdigit(c) && !(pos == 0 && c == '-')) {
 				lxr_unget(lxr, c);
 				return TOK_INT;
 			}
@@ -324,6 +325,7 @@ struct acsa {
 static void acsa_consume(struct acsa *a)
 {
 	a->next = lxr_get_token(&a->lxr);
+	printf("* %s:%s\n", token_descr[a->next], a->payload);
 }
 
 static int acsa_err(struct acsa *a, char *fmt, ...)
@@ -528,10 +530,6 @@ static int acsa_load(char *path)
 			ret = 0;
 			break;
 		}
-		if (a.next == TOK_ERR) {
-			acsa_err(&a, "%s", a.payload);
-			break;
-		}
 		if (a.next != TOK_ID) {
 			acsa_err(&a, "unexpected token (%s)",
 				token_descr[a.next]);
@@ -540,6 +538,8 @@ static int acsa_load(char *path)
 		if (acsa_cmd(&a) != 0)
 			break;
 	}
+	if (a.next == TOK_ERR)
+		acsa_err(&a, "%s", a.payload);
 
 	fclose(f);
 
