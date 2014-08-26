@@ -402,6 +402,20 @@ static int acsa_arg1i(struct acsa *a, enum acsa_cmd cmd)
 	
 }
 
+static int acsa_jump(struct acsa *a, enum acsa_cmd cmd)
+{
+	acsa_consume(a);
+
+	if (a->next != TOK_ID)
+		return acsa_err(a, "label expected after %s", acsa_cmd_str[cmd]);
+
+	// check if label exists and jump is short enough
+	printf("emit %s %s\n", acsa_cmd_str[cmd], a->payload);
+
+	acsa_consume(a);
+	return 0;
+}
+
 static int acsa_cmd(struct acsa *a)
 {
 	char *str = a->payload;
@@ -414,6 +428,12 @@ static int acsa_cmd(struct acsa *a)
 		return acsa_arg1i(a, ACSA_RET);
 	if (strcmp(str, "pushn") == 0)
 		return acsa_arg1i(a, ACSA_PUSHN);
+	if (strcmp(str, "jz") == 0)
+		return acsa_jump(a, ACSA_JZ);
+	if (strcmp(str, "jnz") == 0)
+		return acsa_jump(a, ACSA_JNZ);
+	if (strcmp(str, "jmp") == 0)
+		return acsa_jump(a, ACSA_JMP);
 #if 0
 	if (strcmp(str, "call") == 0)
 		return acsa_call(a);
@@ -423,12 +443,6 @@ static int acsa_cmd(struct acsa *a)
 		return acsa_callg(a);
 	if (strcmp(str, "pop") == 0)
 		return acsa_pop(a);
-	if (strcmp(str, "jz") == 0)
-		return acsa_jump(a, ASCA_JZ);
-	if (strcmp(str, "jnz") == 0)
-		return acsa_jump(a, ASCA_JNZ);
-	if (strcmp(str, "jmp") == 0)
-		return acsa_jump(a, ASCA_JMP);
 #endif
 
 	char *label = strdup(a->payload);
