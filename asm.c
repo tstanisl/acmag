@@ -265,15 +265,13 @@ static int acsa_err(struct acsa *a, char *fmt, ...)
 struct acsa_ref *acsa_ref_create(char *name, int offset)
 {
 	int length = strlen(name);
-	struct acsa_ref *ref = malloc(sizeof(ref) + length + 1);
+	struct acsa_ref *ref = malloc(sizeof(*ref) + length + 1);
 
 	if (ERR_ON(!ref, "out of memory"))
 		return NULL;
 
 	memcpy(ref->data, name, length + 1);
 	ref->offset = offset;
-
-	printf(" data = %s\n", ref->data);
 
 	return ref;
 }
@@ -282,14 +280,11 @@ struct acsa_ref *acsa_ref_create(char *name, int offset)
 
 struct acsa_ref *acsa_insert_const(struct acsa *a, char *name)
 {
-	printf("  * insert const %s\n", name);
 	list_foreach(i, &a->consts) {
 		struct acsa_ref *ref = list_entry(i, struct acsa_ref, node);
-		printf(" %s", ref->data);
 		if (strcmp(ref->data, name) == 0)
 			return ref;
 	}
-	puts("");
 
 	if (a->n_consts >= ACSA_MAX_CONSTS)
 		return NULL;
@@ -306,27 +301,19 @@ struct acsa_ref *acsa_insert_const(struct acsa *a, char *name)
 
 struct acsa_ref *acsa_insert_label(struct acsa *a, char *name, int offset)
 {
-	printf("  * insert label %s\n", name);
 	list_foreach(i, &a->labels) {
 		struct acsa_ref *ref = list_entry(i, struct acsa_ref, node);
-		printf(" %p(%s)", ref, ref->data);
 		if (strcmp(ref->data, name) == 0) {
 			acsa_err(a, "reused label %s", name);
 			return NULL;
 		}
 	}
-	puts("");
 
 	struct acsa_ref *ref = acsa_ref_create(name, offset);
 	if (ERR_ON(!ref, "acsa_ref_create() failed"))
 		return NULL;
 
 	list_add(&ref->node, &a->labels);
-	printf(" add: %p (%s)\n", ref, ref->data);
-	printf(" 1 data = %s\n", ref->data);
-	struct list *l = &ref->node;
-	struct acsa_ref *r2 = list_entry(l, struct acsa_ref, node);
-	printf(" 2 data = %s\n", r2->data);
 
 	return ref;
 }
