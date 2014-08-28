@@ -234,6 +234,8 @@ struct acsa_ref {
 	char data[];
 };
 
+#define ACSA_MAX_CONSTS (1 << 12)
+
 struct acsa {
 	char *path;
 	struct lxr lxr;
@@ -263,6 +265,27 @@ struct acsa_ref *acsa_ref_create(char *name, int offset)
 }
 
 #define acsa_ref_destroy free
+
+struct acsa_ref *acsa_insert_const(struct acsa *a, char *name)
+{
+	list_foreach(i, &a->consts) {
+		struct acsa_ref *ref = list_entry(i, struct acsa_ref, node);
+		if (strcmp(ref->data, name) == 0)
+			return ref;
+	}
+
+	if (a->n_consts >= ACSA_MAX_CONSTS)
+		return NULL;
+
+	struct acsa_ref *ref = acsa_ref_create(a->payload, a->n_consts);
+	if (ERR_ON(!ref, "acsa_ref_create() failed"))
+		return NULL;
+
+	a->n_consts++;
+	list_add(&ref->node, &a->consts);
+
+	return ref;
+}
 
 static inline uint16_t asca_make_cmd(enum acsa_cmd cmd, int arg)
 {
@@ -356,8 +379,8 @@ static int acsa_push_int(struct acsa *a)
 
 static int acsa_pushs(struct acsa *a)
 {
-	struct acsa_ref *ref = acsa_ref_create(a->payload, a->n_consts);
-	if (ERR_ON(!ref, "acsa_ref_create() failed"))
+	struct acsa_ref *ref = acsa_insert_const(a, a->payload);
+	if (ERR_ON(!ref, "acsa_insert_const() failed"))
 		return -1;
 
 	int ret = acsa_emit(a, ACSA_PUSHS, a->n_consts);
@@ -366,8 +389,6 @@ static int acsa_pushs(struct acsa *a)
 		return -1;
 	}
 
-	a->n_consts++;
-	list_add(&ref->node, &a->consts);
 	acsa_consume(a);
 
 	return 0;
