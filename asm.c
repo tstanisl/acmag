@@ -333,25 +333,23 @@ static int acsa_push_int(struct acsa *a)
 	acsa_consume(a);
 	if (a->next != TOK_INT)
 		return acsa_err(a, "expected integer after #");
-	int i0 = atoi(a->payload);
+	int value = atoi(a->payload);
 	acsa_consume(a);
 
-	if (a->next != TOK_SEP) {
-		printf("emit pushi #%d\n", i0);
-		return 0;
+	if (a->next == TOK_SEP) {
+		acsa_consume(a);
+		if (a->next != TOK_INT)
+			return acsa_err(a, "expected integer after ,");
+
+		int value1 = atoi(a->payload);
+		value = 8 * value + value1;
+		acsa_consume(a);
 	}
 
-	acsa_consume(a);
-	if (a->next != TOK_INT)
-		return acsa_err(a, "expected integer after ,");
-
-	int i1 = atoi(a->payload);
-
-	int ret = acsa_emit(a, ACSA_PUSHI, 8 * i0 + i1);
+	int ret = acsa_emit(a, ACSA_PUSHI, value);
 	if (ERR_ON(ret, "acsa_emit() failed"))
 		return -1;
 
-	acsa_consume(a);
 
 	return 0;
 }
@@ -375,6 +373,29 @@ static int acsa_pushs(struct acsa *a)
 	return 0;
 }
 
+static int acsa_is_small(int v)
+{
+	return v >= -2048 && v < 2048;
+}
+
+static int acsa_pushr(struct acsa *a)
+{
+	acsa_consume(a); // consume $
+	if (a->next != TOK_INT)
+		return acsa_err(a, "expected integer after $");
+
+	int value = atoi(a->payload);
+	if (!acsa_is_small(value))
+		return acsa_err(a, "invalid integer for pushr");
+
+	int ret = acsa_emit(a, ACSA_PUSHR, value);
+	if (ERR_ON(ret, "acsa_emit() failed"))
+		return -1;
+
+	acsa_consume(a);
+	return 0;
+}
+
 static int acsa_push(struct acsa *a)
 {
 	acsa_consume(a);
@@ -384,14 +405,9 @@ static int acsa_push(struct acsa *a)
 	if (a->next == TOK_STR)
 		return acsa_pushs(a);
 
-	if (a->next == TOK_DOLAR) {
-		acsa_consume(a);
-		if (a->next != TOK_INT)
-			return acsa_err(a, "expected integer after $");
-		printf("emit push $%d\n", atoi(a->payload));
-		acsa_consume(a);
-		return 0;
-	}
+	if (a->next == TOK_DOLAR)
+		return acsa_pushr(a);
+
 	acsa_err(a, "# or $ of string expected after push");
 	return -1;
 }
