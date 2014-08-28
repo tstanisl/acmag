@@ -422,8 +422,15 @@ static int acsa_arg1i(struct acsa *a, enum acsa_cmd cmd)
 	if (a->next != TOK_INT)
 		return acsa_err(a, "expected integer after #");
 
-	printf("emit %s #%d\n", acsa_cmd_str[cmd], atoi(a->payload));
+	int value = atoi(a->payload);
 	acsa_consume(a);
+
+	if (!acsa_is_small(value))
+		return acsa_err(a, "invalid integer for %s", acsa_cmd_str[cmd]);
+
+	int ret = acsa_emit(a, cmd, value);
+	if (ERR_ON(ret, "acsa_emit() failed"))
+		return -1;
 
 	return 0;
 	
