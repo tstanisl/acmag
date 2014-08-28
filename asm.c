@@ -234,6 +234,9 @@ struct acsa_ref {
 	char data[];
 };
 
+#define to_ref(ptr) \
+	list_entry(ptr, struct acsa_ref, node)
+
 #define ACSA_MAX_CONSTS (1 << 12)
 
 struct acsa {
@@ -598,6 +601,52 @@ static int acsa_cmd(struct acsa *a)
 	return 0;
 }
 
+static int acsa_resolve_jumps(struct acsa *a)
+{
+	list_foreach(j, &a->jumps) {
+		struct acsa_ref *jump = to_ref(j);
+		struct acsa_ref *label = NULL;
+		list_foreach(l, &a->labels)
+			if (strcmp(jump->data, to_ref(l)->data) == 0) {
+				label = to_ref(l);
+				break;
+			}
+		if (ERR_ON(!label, "undefined label %s", jump->data))
+			return -1;
+
+		int dist = label->offset - jump->offset;
+		if (!acsa_is_small(dist)) {
+			ERR("too long jump to label %s", label->data);
+			return -1;
+		}
+
+		a->program[jump->offset] &= ~4095;
+		a->program[jump->offset] |= (dist & 4095);
+	}
+	return 0;
+}
+
+static void acsa_dump(struct acsa *a)
+{
+	printf(".exports\n");
+	list_foreach(l, &a->exports)
+		printf("  %s: %04d\n", to_ref(l)->data, to_ref(l)->offset);
+
+	printf(".consts\n");
+	list_foreach(l, &a->consts)
+		printf("  %04d: %s\n", to_ref(l)->offset, to_ref(l)->data);
+
+	printf(".code\n");
+	for (int i = 0; i < a->pc; ++i) {
+		int cmd = a->program[i] >> 12;
+		int value = a->program[i] & 4095;
+		if (value & 2048)
+			value |= -1 & ~4095;
+		printf("  %04x: %s %d\n", i, acsa_cmd_str[cmd], value);
+		//printf("%04x: %s(%2d) %d\n", i, acsa_cmd_str[cmd], cmd, value);
+	}
+}
+
 static int acsa_load(char *path)
 {
 	FILE *f = fopen(path, "r");
@@ -633,12 +682,22 @@ static int acsa_load(char *path)
 		if (acsa_cmd(&a) != 0)
 			break;
 	}
-	if (a.next == TOK_ERR)
-		acsa_err(&a, "%s", a.payload);
 
-	fclose(f);
+	if (a.next == TOK_ERR) {
+		acsa_err(&a, "%s", a.payload);
+		goto cleanup;
+	}
 
 	/* do final label resolving */
+	ret = acsa_resolve_jumps(&a);
+	if (ERR_ON(ret, "acsa_resolve_jumps() failed"))
+		goto cleanup;
+
+	acsa_dump(&a);
+
+cleanup:
+	//acsa_destroy(&a);
+	fclose(f);
 
 	return ret;
 }

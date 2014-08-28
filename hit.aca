@@ -104,7 +104,7 @@ fib:	push $-1
 	callb minus
 	push #1,1
 	call fib
-	call +
+	callb +
 	ret #1
 L1:	push #1
 	ret #1
