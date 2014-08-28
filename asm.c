@@ -181,7 +181,7 @@ enum acsa_cmd {
 	ACSA_PUSHL,
 	ACSA_PUSHS,
 	ACSA_PUSHN,
-	ACSA_POP,
+	ACSA_POPR,
 	ACSA_POPN,
 	ACSA_CALL,
 	ACSA_CALLB,
@@ -198,7 +198,7 @@ char *acsa_cmd_str[] = {
 	[ACSA_PUSHL] = "pushl",
 	[ACSA_PUSHS] = "pushs",
 	[ACSA_PUSHN] = "pushn",
-	[ACSA_POP] = "pop",
+	[ACSA_POPR] = "popr",
 	[ACSA_POPN] = "popn",
 	[ACSA_CALL] = "call",
 	[ACSA_CALLB] = "callb",
@@ -210,117 +210,52 @@ char *acsa_cmd_str[] = {
 };
 
 #if 0
-struct function {
-	bool exported;
-	char *name;
-	struct list node;
+struct vector {
+	int capacity;
+	int used;
+	int item_size;
+	char data[];
 };
 
-static int cur_line = 0;
-static DEFINE_LIST(function_head);
-
-static struct function *function_create(char *name, bool exported)
+void *vector_create(int item_size, int capacity)
 {
-	struct function *f = malloc(sizeof *f);
-
-	if (ERR_ON(!f, "malloc() failed"))
+	struct vector *v = calloc(1, sizeof (*v) + item_size * capacity);
+	if (!v)
 		return NULL;
-
-	f->name = strdup(name);
-	if (ERR_ON(!f->name, "strdup() failed")) {
-		free(f);
-		return NULL;
-	}
-
-	f->exported = exported;
-
-	return f;
-}
-
-static char *skipws(char *s)
-{
-	while (isspace(*s))
-		++s;
-	return s;
-}
-
-static int acsa_export(char *str)
-{
-	char name[64];
-	int ret = sscanf(str, "%63[a-zA-Z0-9_]", name);
-	if (ERR_ON(ret != 1, "export: invalid function name"))
-		return -1;
-	
-	struct function *f = function_create(name, true);
-
-	if (ERR_ON(!f, "function_create(\"%s\") failed", str))
-		return -1;
-
-	list_add(&function_head, &f->node);
-
-	INFO("add %sfunction \"%s\"", f->exported ? "exported " : "", name);
-
-	return 0;
-}
-
-static int acsa_label(char *str)
-{
-	char name[64];
-	int ret = sscanf(str, "%63[a-zA-Z0-9_]", name);
-	if (ERR_ON(ret != 1, "export: invalid label name at (%s)", str))
-		return -1;
-
-	INFO("add label \"%s\"", name);
-
-	return 0;
-}
-
-static int asm_push(char *str)
-{
-	return 0;
-}
-
-static int acsa_line(char *str)
-{
-	INFO("line %3d: %s", cur_line, str);
-	str = skipws(str);
-	if (*str == ';') // skip comment line
-		return 0;
-	char cmd[16];
-	int ret, shift = 0;
-	ret = sscanf(str, "%15[a-zA-Z_0-9]%n", cmd, &shift);
-	if (ret == 0 || cmd[0] == 0) // no command
-		return 0;
-	//INFO("cmd='%s'", cmd);
-	str = skipws(str + shift);
-	if (strcmp(cmd, "export") == 0)
-		return acsa_export(str);
-	if (str[0] == ':') {
-		ret = acsa_label(cmd);
-		if (ERR_ON(ret, "failed to add label \"%s\"", cmd))
-			return ret;
-		return acsa_line(str + 1);
-	}
-	if (strcmp(cmd, "push") == 0)
-		return asm_push(str);
-
-	ERR("unknown keyword '%s'", cmd);
-	return -1;
-	/*	if (strcmp(cmd, "pushn")
-		return asm_push(str);
-	if (strcmp(cmd, "callb")
-		return asm_callb(str);
-	if (strcmp(cmd, "call")
-		return asm_call(str);*/
+	v->capacity = capacity;
+	v->item_size = item_size;
+	return v->data;
 }
 #endif
+
+struct acsa_ref {
+	int offset;
+	struct list node;
+	char data[];
+};
 
 struct acsa {
 	char *path;
 	struct lxr lxr;
 	enum token next;
 	char payload[256];
+	int pc;
+	struct list export;
+	struct list consts;
+	struct list labels;
+	int n_const;
+	uint16_t *program;
 };
+
+static inline uint16_t asca_make_cmd(enum acsa_cmd cmd, int arg)
+{
+	return (cmd << 12) | (arg & 4095); 
+}
+
+static int acsa_push_cmd(enum acsa_cmd cmd, int arg)
+{
+	uint16_t code = asca_make_cmd(cmd, arg);
+}
 
 static void acsa_consume(struct acsa *a)
 {
@@ -541,6 +476,7 @@ static int acsa_load(char *path)
 	a.lxr.line = 1;
 	a.lxr.payload = a.payload;
 	a.lxr.payload_size = ARRAY_SIZE(a.payload);
+	a.pc = 0;
 
 	acsa_consume(&a);
 
