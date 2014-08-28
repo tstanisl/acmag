@@ -280,20 +280,26 @@ struct acsa_ref *acsa_ref_create(char *name, int offset)
 	return ref;
 }
 
+struct acsa_ref *acsa_ref_find(struct list *head, char *name)
+{
+	list_foreach(i, head)
+		if (strcmp(to_ref(i)->data, name) == 0)
+			return to_ref(i);
+	return 0;
+}
+
 #define acsa_ref_destroy free
 
 struct acsa_ref *acsa_insert_const(struct acsa *a, char *name)
 {
-	list_foreach(i, &a->consts) {
-		struct acsa_ref *ref = list_entry(i, struct acsa_ref, node);
-		if (strcmp(ref->data, name) == 0)
-			return ref;
-	}
+	struct acsa_ref *ref = acsa_ref_find(&a->consts, name);
+	if (ref)
+		return ref;
 
 	if (a->n_consts >= ACSA_MAX_CONSTS)
 		return NULL;
 
-	struct acsa_ref *ref = acsa_ref_create(name, a->n_consts);
+	ref = acsa_ref_create(name, a->n_consts);
 	if (ERR_ON(!ref, "acsa_ref_create() failed"))
 		return NULL;
 
@@ -305,15 +311,13 @@ struct acsa_ref *acsa_insert_const(struct acsa *a, char *name)
 
 struct acsa_ref *acsa_insert_label(struct acsa *a, char *name, int offset)
 {
-	list_foreach(i, &a->labels) {
-		struct acsa_ref *ref = list_entry(i, struct acsa_ref, node);
-		if (strcmp(ref->data, name) == 0) {
-			acsa_err(a, "reused label %s", name);
-			return NULL;
-		}
+	struct acsa_ref *ref = acsa_ref_find(&a->labels, name);
+	if (ref) {
+		acsa_err(a, "reused label %s", name);
+		return NULL;
 	}
 
-	struct acsa_ref *ref = acsa_ref_create(name, offset);
+	ref = acsa_ref_create(name, offset);
 	if (ERR_ON(!ref, "acsa_ref_create() failed"))
 		return NULL;
 
@@ -605,12 +609,7 @@ static int acsa_resolve_jumps(struct acsa *a)
 {
 	list_foreach(j, &a->jumps) {
 		struct acsa_ref *jump = to_ref(j);
-		struct acsa_ref *label = NULL;
-		list_foreach(l, &a->labels)
-			if (strcmp(jump->data, to_ref(l)->data) == 0) {
-				label = to_ref(l);
-				break;
-			}
+		struct acsa_ref *label = acsa_ref_find(&a->labels, jump->data);
 		if (ERR_ON(!label, "undefined label %s", jump->data))
 			return -1;
 
