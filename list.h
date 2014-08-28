@@ -7,7 +7,7 @@ struct list {
 	struct list *next, *prev;
 };
 
-static inline void list_add(struct list *head, struct list *node)
+static inline void list_add(struct list *node, struct list *head)
 {
 	node->next = head->next;
 	node->prev = head;

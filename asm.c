@@ -239,22 +239,54 @@ struct acsa {
 	struct lxr lxr;
 	enum token next;
 	char payload[256];
-	int pc;
-	struct list export;
+	struct list exports;
 	struct list consts;
 	struct list labels;
 	int n_const;
+	int pc;
+	int capacity;
 	uint16_t *program;
 };
+
+struct acsa_ref *acsa_ref_create(char *name, int offset)
+{
+	int length = strlen(name);
+	struct acsa_ref *ref = malloc(sizeof(ref) + length + 1);
+
+	if (ERR_ON(!ref, "out of memory"))
+		return NULL;
+
+	memcpy(ref->data, name, length + 1);
+	ref->offset = offset;
+
+	return ref;
+}
+
+#define acsa_ref_destroy free
 
 static inline uint16_t asca_make_cmd(enum acsa_cmd cmd, int arg)
 {
 	return (cmd << 12) | (arg & 4095); 
 }
 
-static int acsa_push_cmd(enum acsa_cmd cmd, int arg)
+static int acsa_emit(struct acsa *a, enum acsa_cmd cmd, int arg)
 {
-	uint16_t code = asca_make_cmd(cmd, arg);
+	if (a->pc >= a->capacity) {
+		int new_capacity = a->capacity < 16 ? 16 : 2 * a->capacity;
+		uint16_t *ptr = realloc(a->program,
+			new_capacity * sizeof a->program[0]);
+
+		if (ERR_ON(!ptr, "realloc(cap=%zi) failed", new_capacity))
+			return -1;
+
+		a->program = ptr;
+		a->capacity = new_capacity;
+	}
+
+	printf("%04x: %s %d\n", a->pc, acsa_cmd_str[cmd], arg);
+	a->program[a->pc++] = asca_make_cmd(cmd, arg);
+
+	return 0;
 }
 
 static void acsa_consume(struct acsa *a)
@@ -315,7 +347,7 @@ static int acsa_push_int(struct acsa *a)
 
 	int i1 = atoi(a->payload);
 
-	printf("emit pushi #%d,%d\n", i0, i1);
+	acsa_emit(a, ACSA_PUSHI, 8 * i0 + i1);
 	acsa_consume(a);
 
 	return 0;
@@ -445,20 +477,23 @@ static int acsa_cmd(struct acsa *a)
 	if (strcmp(str, "callb") == 0)
 		return acsa_callb(a);
 
-	char *label = strdup(a->payload);
+	struct acsa_ref *ref = acsa_ref_create(a->payload, a->pc);
+	if (ERR_ON(!ref, "acsa_ref_create() failed"))
+		return -1;
 
 	acsa_consume(a);
 
 	if (a->next != TOK_COLON) {
 		acsa_err(a, "expected ':' after label '%s'",
-			label);
-		free(label);
-		return -1;	
+			ref->data);
+		acsa_ref_destroy(ref);
+		return -1;
 	}
 
 	acsa_consume(a);
 
-	printf("got label %s\n", label);
+	/* FIXME: add detection of duplicates */
+	list_add(&ref->node, &a->labels);
 	// add label
 	return 0;
 }
@@ -471,12 +506,15 @@ static int acsa_load(char *path)
 
 	struct acsa a;
 
+	memset(&a, 0, sizeof a);
 	a.path = path;
 	a.lxr.file = f;
 	a.lxr.line = 1;
 	a.lxr.payload = a.payload;
 	a.lxr.payload_size = ARRAY_SIZE(a.payload);
-	a.pc = 0;
+	list_init(&a.labels);
+	list_init(&a.exports);
+	list_init(&a.consts);
 
 	acsa_consume(&a);
 
