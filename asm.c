@@ -244,6 +244,7 @@ struct acsa {
 	struct list exports;
 	struct list consts;
 	struct list labels;
+	struct list jumps;
 	int n_consts;
 	int pc;
 	int capacity;
@@ -375,6 +376,8 @@ static int acsa_push_int(struct acsa *a)
 	acsa_consume(a);
 	if (a->next != TOK_INT)
 		return acsa_err(a, "expected integer after #");
+
+	/* FIXME: what about large ints */
 	int value = atoi(a->payload);
 	acsa_consume(a);
 
@@ -402,7 +405,7 @@ static int acsa_pushs(struct acsa *a)
 	if (ERR_ON(!ref, "acsa_insert_const() failed"))
 		return -1;
 
-	int ret = acsa_emit(a, ACSA_PUSHS, a->n_consts);
+	int ret = acsa_emit(a, ACSA_PUSHS, ref->offset);
 	if (ERR_ON(ret, "acsa_emit() failed"))
 		return -1;
 
@@ -481,8 +484,15 @@ static int acsa_jump(struct acsa *a, enum acsa_cmd cmd)
 	if (a->next != TOK_ID)
 		return acsa_err(a, "label expected after %s", acsa_cmd_str[cmd]);
 
-	// check if label exists and jump is short enough
-	printf("emit %s %s\n", acsa_cmd_str[cmd], a->payload);
+	struct acsa_ref *ref = acsa_ref_create(a->payload, a->pc);
+	if (ERR_ON(!ref, "acsa_ref_create() failed"))
+		return -1;
+
+	list_add(&ref->node, &a->jumps);
+
+	int ret = acsa_emit(a, cmd, 0);
+	if (ERR_ON(ret, "acsa_emit() failed"))
+		return -1;
 
 	acsa_consume(a);
 
@@ -495,7 +505,14 @@ static int acsa_callg(struct acsa *a)
 	if (a->next != TOK_ID)
 		return acsa_err(a, "id or string expected after callg");
 
-	printf("emit callg %s\n", a->payload);
+	struct acsa_ref *ref = acsa_insert_const(a, a->payload);
+	if (ERR_ON(!ref, "acsa_insert_const() failed"))
+		return -1;
+
+	int ret = acsa_emit(a, ACSA_CALLG, ref->offset);
+	if (ERR_ON(ret, "acsa_emit() failed"))
+		return -1;
+
 	acsa_consume(a);
 
 	return 0;
@@ -507,8 +524,10 @@ static int acsa_callb(struct acsa *a)
 	if (a->next != TOK_ID)
 		return acsa_err(a, "id or string expected after callb");
 
-	// check if id is valid buildin
-	printf("emit callb %s\n", a->payload);
+	int ret = acsa_emit(a, ACSA_CALLB, 0);
+	if (ERR_ON(ret, "acsa_emit() failed"))
+		return -1;
+
 	acsa_consume(a);
 
 	return 0;
@@ -524,7 +543,14 @@ static int acsa_pop(struct acsa *a)
 	if (a->next != TOK_INT)
 		return acsa_err(a, "expected integer after $");
 
-	printf("emit push $%d\n", atoi(a->payload));
+	int value = atoi(a->payload);
+	if (!acsa_is_small(value))
+		return acsa_err(a, "invalid integer for popr");
+
+	int ret = acsa_emit(a, ACSA_POPR, value);
+	if (ERR_ON(ret, "acsa_emit() failed"))
+		return -1;
+
 	acsa_consume(a);
 	return 0;
 }
@@ -589,6 +615,7 @@ static int acsa_load(char *path)
 	list_init(&a.labels);
 	list_init(&a.exports);
 	list_init(&a.consts);
+	list_init(&a.jumps);
 
 	acsa_consume(&a);
 
