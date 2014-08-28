@@ -242,7 +242,7 @@ struct acsa {
 	struct list exports;
 	struct list consts;
 	struct list labels;
-	int n_const;
+	int n_consts;
 	int pc;
 	int capacity;
 	uint16_t *program;
@@ -347,7 +347,29 @@ static int acsa_push_int(struct acsa *a)
 
 	int i1 = atoi(a->payload);
 
-	acsa_emit(a, ACSA_PUSHI, 8 * i0 + i1);
+	int ret = acsa_emit(a, ACSA_PUSHI, 8 * i0 + i1);
+	if (ERR_ON(ret, "acsa_emit() failed"))
+		return -1;
+
+	acsa_consume(a);
+
+	return 0;
+}
+
+static int acsa_pushs(struct acsa *a)
+{
+	struct acsa_ref *ref = acsa_ref_create(a->payload, a->n_consts);
+	if (ERR_ON(!ref, "acsa_ref_create() failed"))
+		return -1;
+
+	int ret = acsa_emit(a, ACSA_PUSHS, a->n_consts);
+	if (ERR_ON(ret, "acsa_emit() failed")) {
+		acsa_ref_destroy(ref);
+		return -1;
+	}
+
+	a->n_consts++;
+	list_add(&ref->node, &a->consts);
 	acsa_consume(a);
 
 	return 0;
@@ -359,11 +381,9 @@ static int acsa_push(struct acsa *a)
 	if (a->next == TOK_HASH)
 		return acsa_push_int(a);
 
-	if (a->next == TOK_STR) {
-		printf("emit push \"%s\"\n", a->payload);
-		acsa_consume(a);
-		return 0;
-	}
+	if (a->next == TOK_STR)
+		return acsa_pushs(a);
+
 	if (a->next == TOK_DOLAR) {
 		acsa_consume(a);
 		if (a->next != TOK_INT)
