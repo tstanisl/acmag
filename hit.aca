@@ -1,5 +1,5 @@
 ;lame
-a: b: 
+a: b: c: d:
 export a
 export a, b
 push #1
