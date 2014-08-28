@@ -326,6 +326,21 @@ struct acsa_ref *acsa_insert_label(struct acsa *a, char *name, int offset)
 	return ref;
 }
 
+struct acsa_ref *acsa_insert_export(struct acsa *a, char *name)
+{
+	struct acsa_ref *ref = acsa_ref_find(&a->exports, name);
+	if (ref)
+		return ref;
+
+	ref = acsa_ref_create(name, 0);
+	if (ERR_ON(!ref, "acsa_ref_create() failed"))
+		return NULL;
+
+	list_add(&ref->node, &a->exports);
+
+	return ref;
+}
+
 static inline uint16_t asca_make_cmd(enum acsa_cmd cmd, int arg)
 {
 	return (cmd << 12) | (arg & 4095); 
@@ -367,7 +382,9 @@ static int acsa_export(struct acsa *a)
 			return -1;
 		}
 
-		printf("add export %s\n", a->payload);
+		struct acsa_ref *ref = acsa_insert_export(a, a->payload);
+		if (ERR_ON(!ref, "acsa_insert_export() failed"))
+			return -1;
 
 		acsa_consume(a);
 		if (a->next != TOK_SEP)
@@ -625,6 +642,20 @@ static int acsa_resolve_jumps(struct acsa *a)
 	return 0;
 }
 
+static int acsa_resolve_exports(struct acsa *a)
+{
+	list_foreach(j, &a->exports) {
+		struct acsa_ref *export = to_ref(j);
+		struct acsa_ref *label = acsa_ref_find(&a->labels, export->data);
+		if (ERR_ON(!label, "undefined export %s", export->data))
+			return -1;
+
+		export->offset = label->offset;
+	}
+
+	return 0;
+}
+
 static void acsa_dump(struct acsa *a)
 {
 	printf(".exports\n");
@@ -641,7 +672,7 @@ static void acsa_dump(struct acsa *a)
 		int value = a->program[i] & 4095;
 		if (value & 2048)
 			value |= -1 & ~4095;
-		printf("  %04x: %s %d\n", i, acsa_cmd_str[cmd], value);
+		printf("  %04u: %s %d\n", i, acsa_cmd_str[cmd], value);
 		//printf("%04x: %s(%2d) %d\n", i, acsa_cmd_str[cmd], cmd, value);
 	}
 }
@@ -690,6 +721,11 @@ static int acsa_load(char *path)
 	/* do final label resolving */
 	ret = acsa_resolve_jumps(&a);
 	if (ERR_ON(ret, "acsa_resolve_jumps() failed"))
+		goto cleanup;
+
+	/* do final label resolving */
+	ret = acsa_resolve_exports(&a);
+	if (ERR_ON(ret, "acsa_resolve_exports() failed"))
 		goto cleanup;
 
 	acsa_dump(&a);

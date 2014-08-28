@@ -4,6 +4,7 @@ export a
 export a, b
 push #1
 push $2
+loop: jmp loop
 push "string"
 push $1
 
