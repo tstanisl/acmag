@@ -8,7 +8,7 @@ INST -> 'import' ID_LIST ';'
 INST -> EXPR ';'
 INST -> 'return' [ EXPR ] ';'
 INST -> 'if' '(' EXPR ')' INST ['else' INST]
-INST -> 'for' '(' ID [ ',' ID] ':' EXPR ')' INST
+INST -> 'for' '(' ID [ ',' ID] ';' EXPR ')' INST
 INST -> 'while' '(' EXPR ')' INST
 INST -> BLOCK
 INST -> 'break'
