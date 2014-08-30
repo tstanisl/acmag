@@ -50,12 +50,56 @@ enum token {
 };
 
 struct lxr;
+/**
+ * token_str - global array with tokens as strings
+ *
+ * Array is indexed by token enum so
+ * token_str[TOK_BREAK] is equal to "break"
+ */
 extern char *token_str[];
 
-struct lxr lxr_create(FILE *f, int bufsize);
+/**
+ * lxr_create() - create lxr object
+ * @file - file stream with source code
+ * @max_token_size - largest possible token size including 0-byte
+ * Return: pointer to lxr object or NULL on failure
+ */
+struct lxr *lxr_create(FILE *file, int max_token_size);
+
+/**
+ * lxr_destroy() - destroy lxr object
+ * @lxr - object to be destroyed
+ */
 void lxr_destroy(struct lxr *lxr);
 
+/**
+ * lxr_buffer() - returns a pointer with token string
+ * @lxr - pointer to LXR object
+ *
+ * The pointer is valid until lxr_destroy() is called.
+ * Content changes after after lxr_get()
+ * Return: pointer to token string
+ */
 char *lxr_buffer(struct lxr *lxr);
+
+/**
+ * lxr_line() - returns a current line in source stream
+ * @lxr - pointer to LXR object
+ *
+ * The pointer is valid until lxr_destroy() is called
+
+ * Return: current line starting from 1
+ */
+int lxr_line(struct lxr *lxr);
+
+/**
+ * lxr_get() - extract new token
+ * @lxr - pointer to LXR object
+ * 
+ * Only token enum is returned, it order to see the
+ * content of the token please use lxr_buffer()
+ * Return: token id, or 0 (aka TOK_ERR) on error
+ */
 enum token lxr_get(struct lxr *lxr);
 
 #endif /* LXR_H */

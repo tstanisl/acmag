@@ -46,10 +46,13 @@ REF_EXPR -> TOP_EXPR { REF_TAIL }
 REF_TAIL -> '(' LIST_EXPR ')'
 REF_TAIL -> '.' ID
 
+TOP_EXPR -> '(' EXPR ')'
 TOP_EXPR -> ID
 TOP_EXPR -> NUM
 TOP_EXPR -> STR
-TOP_EXPR -> '(' EXPR ')'
+TOP_EXPR -> 'true'
+TOP_EXPR -> 'false'
+TOP_EXPR -> 'null'
 
 
 Example:
