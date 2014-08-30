@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 enum token {
-        TOK_ERR,
+        TOK_ERR = 0,
         TOK_EOF,
         TOK_INT,
         TOK_STR,
