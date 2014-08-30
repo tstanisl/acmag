@@ -87,7 +87,6 @@ char *lxr_buffer(struct lxr *lxr);
  * @lxr - pointer to LXR object
  *
  * The pointer is valid until lxr_destroy() is called
-
  * Return: current line starting from 1
  */
 int lxr_line(struct lxr *lxr);
