@@ -35,3 +35,13 @@ void lxr_destory(struct lxr *lxr)
 {
 	free(lxr);
 }
+
+char *lxr_buffer(struct lxr *lxr)
+{
+	return lxr->data;
+}
+
+int lxr_line(struct lxr *lxr)
+{
+	return lxr->line;
+}
