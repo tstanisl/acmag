@@ -5,7 +5,7 @@ SRCS    := \
 	
 
 CC = gcc
-CFLAGS = -std=gnu99 -O0 -Wall -ggdb 
+CFLAGS = -std=gnu99 -O0 -Wall -pedantic -g -ggdb
 LDFLAGS = 
 LIBS    = 
 
@@ -28,7 +28,7 @@ ${OBJS}: %.o: %.c %.dep
 	${CC} ${CFLAGS} -o $@ -c $< 
 
 ${DEPS}: %.dep: %.c Makefile 
-	${CC} ${CCFLAGS} -MM $< > $@ 
+	${CC} ${CFLAGS} -MM $< > $@
 
 clean:
 	rm *.o ${TARGET} *.dep
