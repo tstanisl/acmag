@@ -1,3 +1,4 @@
+#include "lxr.h"
 #include "debug.h"
 #include "list.h"
 #include "common.h"
