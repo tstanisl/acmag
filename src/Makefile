@@ -1,5 +1,6 @@
 TARGET  := ../acmag
 SRCS    := \
+	lxr.c \
 	main.c
 	
 
