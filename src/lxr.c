@@ -106,6 +106,40 @@ static void lxr_action_init(void)
 	lxr_action[';'] = TOK_SCOLON;
 }
 
+#define LXR_HMASK ((1 << 8) - 1)
+static enum token lxr_hash[LXR_HMASK + 1];
+
+static unsigned strhash(char *str)
+{
+	unsigned hash = 9231;
+	for (; *str; ++str)
+		hash = 33 * hash + *str;
+	return hash ^ (hash >> 16);
+}
+
+static void lxr_hash_insert(enum token token)
+{
+	unsigned hash = strhash(token_str[token]);
+
+	for (unsigned step = 0; lxr_hash[hash & LXR_HMASK]; hash += ++step)
+		if (lxr_hash[hash & LXR_HMASK] == token)
+			return;
+
+	lxr_hash[hash & LXR_HMASK] = token;
+}
+
+static enum token lxr_hash_find(char *str)
+{
+	unsigned hash = strhash(str);
+	enum token token;
+
+	for (unsigned step = 0; (token = lxr_hash[hash & LXR_HMASK]); hash += ++step)
+		if (strcmp(str, token_str[token]) == 0)
+			return token;
+
+	return 0;
+}
+
 static void lxr_init(void)
 {
 	static int lxr_initialized = 0;
