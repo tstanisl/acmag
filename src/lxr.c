@@ -59,15 +59,15 @@ enum lxr_state {
 	LST_ML_COMM,
 	LST_ML_STAR,
 	LST_SL_COMM,
-	/* all states below fills token data */
-	__LST_ECHO,
-	LST_OR = __LST_ECHO,
+	LST_OR,
 	LST_EQ,
 	LST_NEQ,
 	LST_LEQ,
 	LST_GREQ,
 	LST_DOT,
-	LST_INT,
+	/* all states below fills token data */
+	__LST_ECHO,
+	LST_INT = __LST_ECHO,
 	LST_STR,
 	LST_ID,
 	/* used to mark that lexer hidden state is used */
