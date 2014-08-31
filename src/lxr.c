@@ -167,6 +167,11 @@ static void lxr_init(void)
 
 /*************** EXTERNALS ***************/
 
+enum token lxr_get(struct lxr *lxr)
+{
+	return TOK_EOF;
+}
+
 struct lxr *lxr_create(FILE *file, int max_token_size)
 {
 	struct lxr *lxr = malloc(sizeof (*lxr) + max_token_size);
