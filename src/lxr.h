@@ -49,6 +49,8 @@ enum token {
 	TOK_FOR, /* for */
 	TOK_BREAK, /* break */
 	TOK_CONTINUE, /* continue */
+	TOK_EXPORT,
+	TOK_IMPORT,
 };
 
 struct lxr;
