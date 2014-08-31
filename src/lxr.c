@@ -76,6 +76,11 @@ int lxr_action[128];
 
 static void lxr_init(void)
 {
+	static int lxr_initialized = 0;
+
+	if (lxr_initialized)
+		return;
+
 	char id[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZadghjklmnopqstuvxyz_";
 	for (int i = 0; id[i]; ++i)
 		lxr_action[(int)id[i]] = LST_ID | __LST;
@@ -112,6 +117,8 @@ struct lxr *lxr_create(FILE *file, int max_token_size)
 
 	if (ERR_ON(!lxr, "malloc() failed"))
 		return NULL;
+
+	lxr_init();
 
 	lxr->line = 1;
 	lxr->size = max_token_size;
