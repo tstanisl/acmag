@@ -9,7 +9,8 @@ enum token {
 	TOK_INT,
 	TOK_STR,
 	TOK_ID,
-	TOK_BOOL,
+	TOK_TRUE,
+	TOK_FALSE,
 	TOK_NULL,
 
 	TOK_LPAR, /* ( */
