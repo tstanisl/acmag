@@ -77,9 +77,9 @@ static int lxr_action[128];
 
 static void lxr_action_init(void)
 {
-	char id[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZadghjklmnopqstuvxyz_";
-	for (int i = 0; id[i]; ++i)
-		lxr_action[(int)id[i]] = LST_ID | __LST;
+	for (int i = 0; i < 128; ++i)
+		if (isalpha(i) || i == '_')
+			lxr_action[i] = LST_ID | __LST;
 	for (int i = '0'; i <= '9'; ++i)
 		lxr_action[i] = LST_INT | __LST;
 	char wspc[] = " \r\n\t";
