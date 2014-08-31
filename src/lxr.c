@@ -188,7 +188,7 @@ struct lxr *lxr_create(FILE *file, int max_token_size)
 	return lxr;
 }
 
-void lxr_destory(struct lxr *lxr)
+void lxr_destroy(struct lxr *lxr)
 {
 	free(lxr);
 }
