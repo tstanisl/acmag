@@ -1,5 +1,6 @@
 #include "lxr.h"
 #include "debug.h"
+#include "common.h"
 
 #include <stdlib.h>
 
@@ -140,6 +141,15 @@ static enum token lxr_hash_find(char *str)
 	return 0;
 }
 
+static void lxr_hash_init(void)
+{
+	enum token tokarr[] = { TOK_TRUE, TOK_FALSE, TOK_NULL, TOK_RETURN,
+		TOK_IF, TOK_ELSE, TOK_WHILE, TOK_FOR, TOK_BREAK, TOK_CONTINUE,
+	};
+	for (int i = 0; i < ARRAY_SIZE(tokarr); ++i)
+		lxr_hash_insert(tokarr[i]);
+}
+
 static void lxr_init(void)
 {
 	static int lxr_initialized = 0;
@@ -148,6 +158,7 @@ static void lxr_init(void)
 		return;
 
 	lxr_action_init();
+	lxr_hash_init();
 	lxr_initialized = 1;
 }
 
