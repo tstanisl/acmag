@@ -72,15 +72,10 @@ enum lxr_state {
 	__LST = 128,
 };
 
-int lxr_action[128];
+static int lxr_action[128];
 
-static void lxr_init(void)
+static void lxr_action_init(void)
 {
-	static int lxr_initialized = 0;
-
-	if (lxr_initialized)
-		return;
-
 	char id[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZadghjklmnopqstuvxyz_";
 	for (int i = 0; id[i]; ++i)
 		lxr_action[(int)id[i]] = LST_ID | __LST;
@@ -109,6 +104,17 @@ static void lxr_init(void)
 	lxr_action['*'] = TOK_MUL;
 	lxr_action['%'] = TOK_MOD;
 	lxr_action[';'] = TOK_SCOLON;
+}
+
+static void lxr_init(void)
+{
+	static int lxr_initialized = 0;
+
+	if (lxr_initialized)
+		return;
+
+	lxr_action_init();
+	lxr_initialized = 1;
 }
 
 /*************** EXTERNALS ***************/
