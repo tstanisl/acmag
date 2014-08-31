@@ -44,6 +44,7 @@ SNG_EXPR -> REF_EXPR
 
 REF_EXPR -> TOP_EXPR { REF_TAIL }
 REF_TAIL -> '(' LIST_EXPR ')'
+REF_TAIL -> '[' ORR_EXPR ']'
 REF_TAIL -> '.' ID
 
 TOP_EXPR -> '(' EXPR ')'

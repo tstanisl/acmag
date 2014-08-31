@@ -101,6 +101,8 @@ static void lxr_init(void)
 	lxr_action[')'] = TOK_RPAR;
 	lxr_action['{'] = TOK_LBRA;
 	lxr_action['}'] = TOK_RBRA;
+	lxr_action['['] = TOK_LSQR;
+	lxr_action[']'] = TOK_RSQR;
 	lxr_action[','] = TOK_SEP;
 	lxr_action['-'] = TOK_MINUS;
 	lxr_action['+'] = TOK_PLUS;
