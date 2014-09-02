@@ -15,6 +15,14 @@ static inline void list_add(struct list *node, struct list *head)
 	head->next = node;
 }
 
+static inline void list_add_tail(struct list *node, struct list *head)
+{
+	node->prev = head->prev;
+	node->next = head;
+	head->prev->next = node;
+	head->prev = node;
+}
+
 static inline void list_del(struct list *node)
 {
 	node->next->prev = node->prev;
