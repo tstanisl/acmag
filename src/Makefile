@@ -1,7 +1,8 @@
 TARGET  := ../acmag
 SRCS    := \
 	lxr.c \
-	main.c
+	main.c \
+	parser.c
 	
 
 CC = gcc
