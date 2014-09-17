@@ -4,10 +4,20 @@
 #include "list.h"
 #include "lxr.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 
 enum acs_id {
 	ACS_NOP = 0,
+	ACS_BLOCK,
+	ACS_EXPR,
+	ACS_IF,
+	ACS_WHILE,
+	ACS_RETURN,
+};
+
+struct acs_script {
+	struct list functions;
 };
 
 struct acs_inst {
@@ -15,9 +25,18 @@ struct acs_inst {
 	struct list node;
 };
 
-
-struct acs_script {
+struct acs_inst_block {
+	struct acs_inst base;
 	struct list inst;
+};
+
+struct acs_function {
+	bool exported;
+	struct list node;
+	struct list vars;
+	int n_args;
+	struct acs_inst_block *block;
+	char name[];
 };
 
 struct acs_script *parse_script(FILE *file, char *path);
