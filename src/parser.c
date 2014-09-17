@@ -177,19 +177,29 @@ fail:
 	return NULL;
 }
 
+void destroy_script(struct acs_script *s)
+{
+	list_foreach(l, &s->functions) {
+		struct acs_function *f = list_entry(l, struct acs_function, node);
+		list_del(&f->node);
+		destroy_function(f);
+	}
+	free(s);
+}
+
 struct acs_script *parse_script(FILE *file, char *path)
 {
 	struct acs_script *script = malloc(sizeof *script);
 	if (ERR_ON(!script, "malloc() failed"))
 		return NULL;
 
+	list_init(&script->functions);
+
 	struct parser parser = { .path = path };
 
 	parser.lxr = lxr_create(file, 256);
 	if (ERR_ON(!parser.lxr, "lxr_create() failed"))
-		goto fail_script;
-
-	list_init(&script->functions);
+		goto fail;
 
 	parse_consume(&parser);
 	while (parser.next != TOK_EOF && parser.next != TOK_ERR) {
@@ -202,18 +212,18 @@ struct acs_script *parse_script(FILE *file, char *path)
 		list_add_tail(&function->node, &script->functions);
 	}
 
+	// failure or not LeXeR is no longer needed
 	lxr_destroy(parser.lxr);
 
 	if (parser.next == TOK_ERR) {
 		parse_err(&parser, "%s", lxr_buffer(parser.lxr));
-		goto fail_script;
+		goto fail;
 	}
 
 	return script;
 
-	// TODO: release functions
-fail_script:
-	free(script);
+fail:
+	destroy_script(script);
 
 	return NULL;
 }

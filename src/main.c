@@ -11,5 +11,7 @@ int main()
 	if (ERR_ON(!s, "parse_script() failed"))
 		return -1;
 
+	destroy_script(s);
+
 	return 0;
 }

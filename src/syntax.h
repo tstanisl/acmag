@@ -34,5 +34,6 @@ struct acs_function {
 };
 
 struct acs_script *parse_script(FILE *file, char *path);
+void destroy_script(struct acs_script *script);
 
 #endif /* SYNTAX_H */
