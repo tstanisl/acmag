@@ -10,4 +10,7 @@ int vec_resize(void **pvec, int new_size);
 	(vec_resize((void**)&vec, vec_size(vec) + 1) ? \
 	vec[vec_size(vec) - 1] = item, 1 : 0)
 
+#define VEC_INIT(vec) \
+	do { vec = vec_create(sizeof (vec)[0], 0); } while (0)
+
 #endif /* VEC_H */
