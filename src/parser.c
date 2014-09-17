@@ -2,6 +2,7 @@
 #include "list.h"
 #include "lxr.h"
 #include "syntax.h"
+#include "vec.h"
 
 #include <stdarg.h>
 #include <stdlib.h>
@@ -9,8 +10,6 @@
 struct parser {
 	char *path;
 	struct lxr *lxr;
-	struct acs_inst *continue_inst;
-	struct acs_inst *break_inst;
 	enum token next;
 };
 
@@ -32,9 +31,11 @@ static void parse_consume(struct parser *p)
 	p->next = lxr_get(p->lxr);
 }
 
-static struct acs_inst *parse_inst(struct parser *p)
+static enum acs_inst acs_nop = ACS_NOP;
+
+static enum acs_inst *parse_inst(struct parser *p)
 {
-	return NULL; // stub
+	return &acs_nop; // stub
 }
 
 void destroy_inst_block(struct acs_inst_block *b)
@@ -53,15 +54,20 @@ static struct acs_inst_block *parse_inst_block(struct parser *p)
 	if (ERR_ON(!block, "malloc() failed"))
 		return NULL;
 
-	block->base.id = ACS_BLOCK;
-	list_init(&block->inst);
+	block->id = ACS_BLOCK;
+	VEC_INIT(block->inst);
+	if (ERR_ON(!block->inst, "VEC_INIT() failed"))
+		goto fail;
 
 	while (p->next != TOK_RBRA) {
-		struct acs_inst *inst = parse_inst(p);
+		enum acs_inst *inst = parse_inst(p);
 		if (!inst)
 			goto fail;
 
-		list_add_tail(&inst->node, &block->inst);
+		if (!VEC_PUSH(block->inst, inst)) {
+			// TODO: release inst
+			goto fail;
+		}
 	}
 
 	parse_consume(p);

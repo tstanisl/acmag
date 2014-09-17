@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-enum acs_id {
+enum acs_inst {
 	ACS_NOP = 0,
 	ACS_BLOCK,
 	ACS_EXPR,
@@ -20,14 +20,9 @@ struct acs_script {
 	struct list functions;
 };
 
-struct acs_inst {
-	enum acs_id id;
-	struct list node;
-};
-
 struct acs_inst_block {
-	struct acs_inst base;
-	struct list inst;
+	enum acs_inst id;
+	enum acs_inst **inst;
 };
 
 struct acs_function {
