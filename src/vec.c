@@ -26,8 +26,6 @@ void *vec_create(int item_size, int min_capacity)
 	v->capacity = capacity;
 	v->item_size = item_size;
 
-	printf("create capacity is %d\n", v->capacity);
-
 	return v->data;
 }
 
@@ -58,8 +56,6 @@ int vec_resize(void **ptr, int new_size)
 		return 0;
 
 	struct vec *new_v = container_of(new_ptr, struct vec, data);
-
-	printf("resize to %d\n", new_v->capacity);
 
 	memcpy(new_v->data, v->data, v->item_size * v->used);
 	free(v);
