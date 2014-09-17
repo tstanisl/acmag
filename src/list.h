@@ -41,6 +41,7 @@ static inline void list_init(struct list *node)
 #define DEFINE_LIST(name) struct list name = { .next = &name, .prev = &name }
 
 #define list_foreach(it,head) \
-	for (struct list *it = (head)->next; it != (head); it = it->next)
+	for (struct list *it = (head)->next, *__next; \
+	     __next = (it)->next, it != (head); it = __next)
 
 #endif /* LIST_H */
