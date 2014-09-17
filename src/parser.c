@@ -29,6 +29,7 @@ static void *parse_err(struct parser *p, char *fmt, ...)
 static void parse_consume(struct parser *p)
 {
 	p->next = lxr_get(p->lxr);
+	printf("next-token = %s\n", token_str[p->next]);
 }
 
 static enum acs_inst acs_nop = ACS_NOP;
@@ -121,7 +122,13 @@ static struct acs_function *parse_function(struct parser *p)
 
 	// extract id list
 	parse_consume(p);
-	while (p->next != TOK_LPAR) {
+	if (p->next != TOK_LPAR) {
+		parse_err(p, "expected ( after function id");
+		goto fail;
+	}
+	parse_consume(p); // consume (
+
+	while (p->next != TOK_RPAR) {
 		if (p->next != TOK_ID) {
 			parse_err(p, "unextepcted token");
 			goto fail;
@@ -132,6 +139,8 @@ static struct acs_function *parse_function(struct parser *p)
 			continue;
 		parse_consume(p);
 	}
+
+	parse_consume(p);
 
 	f->block = parse_inst_block(p);
 	if (ERR_ON(!f->block, "parse_inst_block() failed"))
