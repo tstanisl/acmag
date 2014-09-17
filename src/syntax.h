@@ -28,8 +28,7 @@ struct acs_inst_block {
 struct acs_function {
 	bool exported;
 	struct list node;
-	struct list vars;
-	int n_args;
+	char **args;
 	struct acs_inst_block *block;
 	char name[];
 };

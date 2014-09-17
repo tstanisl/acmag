@@ -99,6 +99,16 @@ static struct acs_inst *parse_inst(struct parser *p)
 }
 */
 
+static void destroy_function(struct acs_function *f)
+{
+	for (int i = 0; i < vec_size(f->args); ++i)
+		free(f->args[i]);
+	vec_destroy(f->args);
+	if (f->block)
+		destroy_inst_block(f->block);
+	free(f);
+}
+
 static struct acs_function *parse_function(struct parser *p)
 {
 	bool exported = false;
@@ -118,10 +128,14 @@ static struct acs_function *parse_function(struct parser *p)
 	f->exported = exported;
 	strcpy(f->name, name);
 	f->block = NULL;
-	list_init(&f->vars);
 
 	// extract id list
 	parse_consume(p);
+
+	VEC_INIT(f->args);
+	if (ERR_ON(!f->args, "VEC_INIT() failed"))
+		goto fail;
+
 	if (p->next != TOK_LPAR) {
 		parse_err(p, "expected ( after function id");
 		goto fail;
@@ -133,6 +147,15 @@ static struct acs_function *parse_function(struct parser *p)
 			parse_err(p, "unextepcted token");
 			goto fail;
 		}
+		char *str = strdup(lxr_buffer(p->lxr));
+		if (ERR_ON(!str, "strdup() failed\n"))
+			goto fail;
+
+		if (!VEC_PUSH(f->args, str)) {
+			ERR("VEC_PUSH() failed");
+			goto fail;
+		}
+
 		// TODO: add argument parsing
 		parse_consume(p);
 		if (p->next != TOK_SEP)
@@ -144,15 +167,12 @@ static struct acs_function *parse_function(struct parser *p)
 
 	f->block = parse_inst_block(p);
 	if (ERR_ON(!f->block, "parse_inst_block() failed"))
-		goto fail_args;
+		goto fail;
 
 	return f;
 
-fail_args:
-	//free list
-
 fail:
-	free(f);
+	destroy_function(f);
 
 	return NULL;
 }
