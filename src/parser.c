@@ -68,7 +68,7 @@ static enum acs_inst *parse_inst(struct parser *p)
 		return &b->id;
 	}
 
-	return NULL;
+	return parse_err(p, "unexpected token %s", token_str[p->next]);
 }
 
 static void destroy_inst_block(struct acs_inst_block *b)
@@ -104,7 +104,9 @@ static struct acs_inst_block *parse_inst_block(struct parser *p)
 	if (ERR_ON(!block->inst, "VEC_INIT() failed"))
 		goto fail;
 
-	while (p->next != TOK_RBRA) {
+	for (;;) {
+		if (p->next == TOK_RBRA)
+			break;
 		enum acs_inst *inst = parse_inst(p);
 		if (!inst)
 			goto fail;
@@ -251,8 +253,8 @@ struct acs_script *parse_script(FILE *file, char *path)
 		struct acs_function *function;
 
 		function = parse_function(&parser);
-		if (!function)
-			break;
+		if (ERR_ON(!function, "parse_function() failed"))
+			goto fail;
 
 		list_add_tail(&function->node, &script->functions);
 	}
