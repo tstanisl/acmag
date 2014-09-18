@@ -52,6 +52,11 @@ struct acs_expr {
 	enum acs_inst *arg1;
 };
 
+struct acs_return {
+	enum acs_inst id;
+	enum acs_inst *expr;
+};
+
 struct acs_script *parse_script(FILE *file, char *path);
 void destroy_script(struct acs_script *script);
 void dump_script(struct acs_script *s);
