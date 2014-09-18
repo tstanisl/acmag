@@ -38,6 +38,46 @@ static void dump_block(struct acs_block *b, int depth);
 
 #define to_block(inst) \
 	container_of(inst, struct acs_block, id)
+#define to_literal(inst) \
+	container_of(inst, struct acs_literal, id)
+
+static struct acs_literal *parse_literal(struct parser *p)
+{
+	if (p->next == TOK_TRUE) {
+		static enum acs_inst inst = ACS_TRUE;
+		parse_consume(p);
+		return to_literal(&inst);
+	}
+	if (p->next == TOK_FALSE) {
+		static enum acs_inst inst = ACS_FALSE;
+		parse_consume(p);
+		return to_literal(&inst);
+	}
+	if (p->next == TOK_NULL) {
+		static enum acs_inst inst = ACS_NULL;
+		parse_consume(p);
+		return to_literal(&inst);
+	}
+	return parse_err(p, "unexpected token %s", token_str[p->next]);
+}
+
+static void dump_expr(enum acs_inst *expr, int depth)
+{
+	if (*expr == ACS_TRUE)
+		printf("true");
+	else if (*expr == ACS_FALSE)
+		printf("false");
+	else if (*expr == ACS_NULL)
+		printf("null");
+}
+
+static enum acs_inst *parse_expr(struct parser *p)
+{
+	struct acs_literal *l = parse_literal(p);
+	if (ERR_ON(!l, "parse_literal() failed"))
+		return NULL;
+	return &l->id;
+}
 
 static void destroy_inst(enum acs_inst *inst)
 {
@@ -51,6 +91,10 @@ static void dump_inst(enum acs_inst *inst, int depth)
 		dump_block(to_block(inst), depth);
 	if (*inst == ACS_NOP)
 		printf(";\n");
+	if (*inst >= ACS_EXPR) {
+		dump_expr(inst, depth);
+		printf(";\n");
+	}
 }
 
 static enum acs_inst *parse_inst(struct parser *p)
@@ -68,7 +112,16 @@ static enum acs_inst *parse_inst(struct parser *p)
 		return &b->id;
 	}
 
-	return parse_err(p, "unexpected token %s", token_str[p->next]);
+	enum acs_inst *expr = parse_expr(p);
+	if (ERR_ON(!expr, "parse_expr() failed"))
+		return NULL;
+	if (p->next != TOK_SCOLON) {
+		// TODO destory_expr()
+		return parse_err(p, "expected ; after expression");
+	}
+	parse_consume(p); // consume ;
+
+	return expr;
 }
 
 static void destroy_block(struct acs_block *b)
