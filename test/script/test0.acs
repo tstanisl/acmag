@@ -1,0 +1,4 @@
+fun() {}
+fun(a) {}
+export fun () {}
+export fun(a,b,c,d) {}
