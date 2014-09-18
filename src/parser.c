@@ -132,6 +132,7 @@ static void destroy_block(struct acs_block *b)
 {
 	for (int i = 0; i < vec_size(b->inst); ++i)
 		destroy_inst(b->inst[i]);
+	vec_destroy(b->inst);
 	free(b);
 }
 
