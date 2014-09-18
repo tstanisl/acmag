@@ -32,22 +32,60 @@ static void parse_consume(struct parser *p)
 	printf("next-token = %s\n", token_str[p->next]);
 }
 
-static enum acs_inst acs_nop = ACS_NOP;
+static struct acs_inst_block *parse_inst_block(struct parser *p);
+static void destroy_inst_block(struct acs_inst_block *b);
+static void dump_inst_block(struct acs_inst_block *b, int depth);
+
+#define to_block(inst) \
+	container_of(inst, struct acs_inst_block, id)
+
+static void destroy_inst(enum acs_inst *inst)
+{
+	if (*inst == ACS_BLOCK)
+		destroy_inst_block(to_block(inst));
+}
+
+static void dump_inst(enum acs_inst *inst, int depth)
+{
+	if (*inst == ACS_BLOCK)
+		dump_inst_block(to_block(inst), depth);
+	if (*inst == ACS_NOP)
+		printf(";\n");
+}
 
 static enum acs_inst *parse_inst(struct parser *p)
 {
-	return &acs_nop; // stub
+	if (p->next == TOK_SCOLON) {
+		static enum acs_inst acs_nop = ACS_NOP;
+		parse_consume(p);
+		return &acs_nop;
+	}
+
+	if (p->next == TOK_LBRA) {
+		struct acs_inst_block *b = parse_inst_block(p);
+		if (ERR_ON(!b, "parse_inst_block() failed"))
+			return NULL;
+		return &b->id;
+	}
+
+	return NULL;
 }
 
-void destroy_inst_block(struct acs_inst_block *b)
+static void destroy_inst_block(struct acs_inst_block *b)
 {
+	for (int i = 0; i < vec_size(b->inst); ++i)
+		destroy_inst(b->inst[i]);
 	free(b);
 }
 
 static void dump_inst_block(struct acs_inst_block *b, int depth)
 {
-	puts("{");
-	printf("%*s}", 2 * depth, "");
+	printf("{\n");
+	for (int i = 0; i < vec_size(b->inst); ++i) {
+		printf("%*s", 2 + 2 * depth, "");
+		dump_inst(b->inst[i], depth + 1);
+	}
+	printf("%*s}\n", 2 * depth, "");
 }
 
 static struct acs_inst_block *parse_inst_block(struct parser *p)
@@ -72,7 +110,7 @@ static struct acs_inst_block *parse_inst_block(struct parser *p)
 			goto fail;
 
 		if (!VEC_PUSH(block->inst, inst)) {
-			// TODO: release inst
+			destroy_inst(inst);
 			goto fail;
 		}
 	}
@@ -84,26 +122,6 @@ fail:
 	destroy_inst_block(block);
 	return NULL;
 }
-
-/*
-static struct acs_inst *parse_inst(struct parser *p)
-{
-	if (p->next == TOK_SCOLON) {
-		struct acs_inst *inst = calloc(1, sizeof *inst);
-		if (ERR_ON(!inst, "malloc() failed"))
-			return NULL;
-
-		inst->id = ACS_NOP;
-		parse_consume(p);
-		return inst;
-	}
-
-	if (p->next == TOK_LBRA && parse_block(p, inst))
-		return inst;
-
-	return parse_err(p, "unexpected token %s", token_str[p->next]);
-}
-*/
 
 static void destroy_function(struct acs_function *f)
 {
