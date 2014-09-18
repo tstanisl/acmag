@@ -79,6 +79,8 @@ static struct acs_literal *parse_literal(struct parser *p)
 
 static void destroy_expr(enum acs_inst *expr)
 {
+	if (*expr == ACS_NUM || *expr == ACS_ID || *expr == ACS_STR)
+		free(to_literal(expr));
 }
 
 static void dump_expr(enum acs_inst *expr, int depth)
@@ -107,6 +109,8 @@ static void destroy_inst(enum acs_inst *inst)
 {
 	if (*inst == ACS_BLOCK)
 		destroy_block(to_block(inst));
+	if (*inst >= ACS_EXPR)
+		destroy_expr(inst);
 }
 
 static void dump_inst(enum acs_inst *inst, int depth)
