@@ -61,6 +61,10 @@ static struct acs_literal *parse_literal(struct parser *p)
 	return parse_err(p, "unexpected token %s", token_str[p->next]);
 }
 
+static void destroy_expr(enum acs_inst *expr)
+{
+}
+
 static void dump_expr(enum acs_inst *expr, int depth)
 {
 	if (*expr == ACS_TRUE)
@@ -116,7 +120,7 @@ static enum acs_inst *parse_inst(struct parser *p)
 	if (ERR_ON(!expr, "parse_expr() failed"))
 		return NULL;
 	if (p->next != TOK_SCOLON) {
-		// TODO destory_expr()
+		destroy_expr(expr);
 		return parse_err(p, "expected ; after expression");
 	}
 	parse_consume(p); // consume ;
