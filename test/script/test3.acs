@@ -1,0 +1,4 @@
+fun1() {
+	return;
+	return 1;
+}

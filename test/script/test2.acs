@@ -1,0 +1,9 @@
+fun()
+{
+true;
+false;
+null;
+hello;
+1234;
+"dupa";
+}
