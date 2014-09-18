@@ -46,17 +46,17 @@ static void dump_block(struct acs_block *b, int depth);
 static struct acs_literal *parse_literal(struct parser *p)
 {
 	if (p->next == TOK_TRUE) {
-		static enum acs_inst inst = ACS_TRUE;
+		static enum acs_id inst = ACS_TRUE;
 		parse_consume(p);
 		return to_literal(&inst);
 	}
 	if (p->next == TOK_FALSE) {
-		static enum acs_inst inst = ACS_FALSE;
+		static enum acs_id inst = ACS_FALSE;
 		parse_consume(p);
 		return to_literal(&inst);
 	}
 	if (p->next == TOK_NULL) {
-		static enum acs_inst inst = ACS_NULL;
+		static enum acs_id inst = ACS_NULL;
 		parse_consume(p);
 		return to_literal(&inst);
 	}
@@ -79,13 +79,13 @@ static struct acs_literal *parse_literal(struct parser *p)
 	return l;
 }
 
-static void destroy_expr(enum acs_inst *expr)
+static void destroy_expr(enum acs_id *expr)
 {
 	if (*expr == ACS_NUM || *expr == ACS_ID || *expr == ACS_STR)
 		free(to_literal(expr));
 }
 
-static void dump_expr(enum acs_inst *expr, int depth)
+static void dump_expr(enum acs_id *expr, int depth)
 {
 	if (*expr == ACS_TRUE)
 		printf("true");
@@ -101,7 +101,7 @@ static void dump_expr(enum acs_inst *expr, int depth)
 		ERR("unexpected asc_inst=%d\n", (int)*expr);
 }
 
-static enum acs_inst *parse_expr(struct parser *p)
+static enum acs_id *parse_expr(struct parser *p)
 {
 	struct acs_literal *l = parse_literal(p);
 	if (ERR_ON(!l, "parse_literal() failed"))
@@ -109,7 +109,7 @@ static enum acs_inst *parse_expr(struct parser *p)
 	return &l->id;
 }
 
-static void destroy_inst(enum acs_inst *inst)
+static void destroy_inst(enum acs_id *inst)
 {
 	if (*inst == ACS_BLOCK)
 		destroy_block(to_block(inst));
@@ -123,7 +123,7 @@ static void destroy_inst(enum acs_inst *inst)
 	}
 }
 
-static void dump_inst(enum acs_inst *inst, int depth)
+static void dump_inst(enum acs_id *inst, int depth)
 {
 	if (*inst == ACS_BLOCK) {
 		dump_block(to_block(inst), depth);
@@ -144,9 +144,9 @@ static void dump_inst(enum acs_inst *inst, int depth)
 	}
 }
 
-static enum acs_inst *parse_expr_inst(struct parser *p)
+static enum acs_id *parse_expr_inst(struct parser *p)
 {
-	enum acs_inst *expr = parse_expr(p);
+	enum acs_id *expr = parse_expr(p);
 	if (ERR_ON(!expr, "parse_expr() failed"))
 		return NULL;
 	if (p->next != TOK_SCOLON) {
@@ -158,10 +158,10 @@ static enum acs_inst *parse_expr_inst(struct parser *p)
 	return expr;
 }
 
-static enum acs_inst *parse_inst(struct parser *p)
+static enum acs_id *parse_inst(struct parser *p)
 {
 	if (p->next == TOK_SCOLON) {
-		static enum acs_inst acs_nop = ACS_NOP;
+		static enum acs_id acs_nop = ACS_NOP;
 		parse_consume(p);
 		return &acs_nop;
 	}
@@ -233,7 +233,7 @@ static struct acs_block *parse_block(struct parser *p)
 	for (;;) {
 		if (p->next == TOK_RBRA)
 			break;
-		enum acs_inst *inst = parse_inst(p);
+		enum acs_id *inst = parse_inst(p);
 		if (!inst)
 			goto fail;
 

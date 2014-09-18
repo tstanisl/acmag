@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-enum acs_inst {
+enum acs_id {
 	ACS_NOP = 0,
 	ACS_BLOCK,
 	ACS_IF,
@@ -22,6 +22,7 @@ enum acs_inst {
 	ACS_ID,
 	__ACS_ARG1,
 	__ACS_ARG2,
+	ACS_LIST,
 };
 
 struct acs_script {
@@ -29,8 +30,8 @@ struct acs_script {
 };
 
 struct acs_block {
-	enum acs_inst id;
-	enum acs_inst **inst;
+	enum acs_id id;
+	enum acs_id **inst;
 };
 
 struct acs_function {
@@ -42,19 +43,19 @@ struct acs_function {
 };
 
 struct acs_literal {
-	enum acs_inst id;
+	enum acs_id id;
 	char payload[];
 };
 
 struct acs_expr {
-	enum acs_inst id;
-	enum acs_inst *arg0;
-	enum acs_inst *arg1;
+	enum acs_id id;
+	enum acs_id *arg0;
+	enum acs_id *arg1;
 };
 
 struct acs_return {
-	enum acs_inst id;
-	enum acs_inst *expr;
+	enum acs_id id;
+	enum acs_id *expr;
 };
 
 struct acs_script *parse_script(FILE *file, char *path);
