@@ -44,6 +44,12 @@ void destroy_inst_block(struct acs_inst_block *b)
 	free(b);
 }
 
+static void dump_inst_block(struct acs_inst_block *b, int depth)
+{
+	puts("{");
+	printf("%*s}", 2 * depth, "");
+}
+
 static struct acs_inst_block *parse_inst_block(struct parser *p)
 {
 	if (p->next != TOK_LBRA)
@@ -107,6 +113,18 @@ static void destroy_function(struct acs_function *f)
 	if (f->block)
 		destroy_inst_block(f->block);
 	free(f);
+}
+
+static void dump_function(struct acs_function *f)
+{
+	if (f->exported)
+		printf("export ");
+	printf("%s(", f->name);
+	for (int i = 0; i < vec_size(f->args); ++i)
+		printf("%s%s", i ? ", " : "", f->args[i]);
+	printf(") ");
+	dump_inst_block(f->block, 0);
+	puts("");
 }
 
 static struct acs_function *parse_function(struct parser *p)
@@ -175,6 +193,15 @@ fail:
 	destroy_function(f);
 
 	return NULL;
+}
+
+void dump_script(struct acs_script *s)
+{
+	list_foreach(l, &s->functions) {
+		struct acs_function *f = list_entry(l, struct acs_function, node);
+		dump_function(f);
+		puts("");
+	}
 }
 
 void destroy_script(struct acs_script *s)
