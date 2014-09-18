@@ -20,7 +20,7 @@ struct acs_script {
 	struct list functions;
 };
 
-struct acs_inst_block {
+struct acs_block {
 	enum acs_inst id;
 	enum acs_inst **inst;
 };
@@ -29,7 +29,7 @@ struct acs_function {
 	bool exported;
 	struct list node;
 	char **args;
-	struct acs_inst_block *block;
+	struct acs_block *block;
 	char name[];
 };
 

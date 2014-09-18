@@ -32,23 +32,23 @@ static void parse_consume(struct parser *p)
 	printf("next-token = %s\n", token_str[p->next]);
 }
 
-static struct acs_inst_block *parse_inst_block(struct parser *p);
-static void destroy_inst_block(struct acs_inst_block *b);
-static void dump_inst_block(struct acs_inst_block *b, int depth);
+static struct acs_block *parse_block(struct parser *p);
+static void destroy_block(struct acs_block *b);
+static void dump_block(struct acs_block *b, int depth);
 
 #define to_block(inst) \
-	container_of(inst, struct acs_inst_block, id)
+	container_of(inst, struct acs_block, id)
 
 static void destroy_inst(enum acs_inst *inst)
 {
 	if (*inst == ACS_BLOCK)
-		destroy_inst_block(to_block(inst));
+		destroy_block(to_block(inst));
 }
 
 static void dump_inst(enum acs_inst *inst, int depth)
 {
 	if (*inst == ACS_BLOCK)
-		dump_inst_block(to_block(inst), depth);
+		dump_block(to_block(inst), depth);
 	if (*inst == ACS_NOP)
 		printf(";\n");
 }
@@ -62,8 +62,8 @@ static enum acs_inst *parse_inst(struct parser *p)
 	}
 
 	if (p->next == TOK_LBRA) {
-		struct acs_inst_block *b = parse_inst_block(p);
-		if (ERR_ON(!b, "parse_inst_block() failed"))
+		struct acs_block *b = parse_block(p);
+		if (ERR_ON(!b, "parse_block() failed"))
 			return NULL;
 		return &b->id;
 	}
@@ -71,14 +71,14 @@ static enum acs_inst *parse_inst(struct parser *p)
 	return parse_err(p, "unexpected token %s", token_str[p->next]);
 }
 
-static void destroy_inst_block(struct acs_inst_block *b)
+static void destroy_block(struct acs_block *b)
 {
 	for (int i = 0; i < vec_size(b->inst); ++i)
 		destroy_inst(b->inst[i]);
 	free(b);
 }
 
-static void dump_inst_block(struct acs_inst_block *b, int depth)
+static void dump_block(struct acs_block *b, int depth)
 {
 	printf("{\n");
 	for (int i = 0; i < vec_size(b->inst); ++i) {
@@ -88,14 +88,14 @@ static void dump_inst_block(struct acs_inst_block *b, int depth)
 	printf("%*s}\n", 2 * depth, "");
 }
 
-static struct acs_inst_block *parse_inst_block(struct parser *p)
+static struct acs_block *parse_block(struct parser *p)
 {
 	if (p->next != TOK_LBRA)
 		return parse_err(p, "missing { at start of block");
 
 	parse_consume(p);
 
-	struct acs_inst_block *block = calloc(1, sizeof *block);
+	struct acs_block *block = calloc(1, sizeof *block);
 	if (ERR_ON(!block, "malloc() failed"))
 		return NULL;
 
@@ -121,7 +121,7 @@ static struct acs_inst_block *parse_inst_block(struct parser *p)
 	return block;
 
 fail:
-	destroy_inst_block(block);
+	destroy_block(block);
 	return NULL;
 }
 
@@ -131,7 +131,7 @@ static void destroy_function(struct acs_function *f)
 		free(f->args[i]);
 	vec_destroy(f->args);
 	if (f->block)
-		destroy_inst_block(f->block);
+		destroy_block(f->block);
 	free(f);
 }
 
@@ -143,7 +143,7 @@ static void dump_function(struct acs_function *f)
 	for (int i = 0; i < vec_size(f->args); ++i)
 		printf("%s%s", i ? ", " : "", f->args[i]);
 	printf(") ");
-	dump_inst_block(f->block, 0);
+	dump_block(f->block, 0);
 	puts("");
 }
 
@@ -203,8 +203,8 @@ static struct acs_function *parse_function(struct parser *p)
 
 	parse_consume(p);
 
-	f->block = parse_inst_block(p);
-	if (ERR_ON(!f->block, "parse_inst_block() failed"))
+	f->block = parse_block(p);
+	if (ERR_ON(!f->block, "parse_block() failed"))
 		goto fail;
 
 	return f;
