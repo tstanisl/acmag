@@ -58,7 +58,23 @@ static struct acs_literal *parse_literal(struct parser *p)
 		parse_consume(p);
 		return to_literal(&inst);
 	}
-	return parse_err(p, "unexpected token %s", token_str[p->next]);
+
+	/* payloaded literals */
+	if (p->next != TOK_ID && p->next != TOK_INT && p->next != TOK_STR)
+		return parse_err(p, "unexpected token %s", token_str[p->next]);
+
+	char *payload = lxr_buffer(p->lxr);
+	struct acs_literal *l = malloc(sizeof (*l) + strlen(payload) + 1);
+	if (ERR_ON(!l, "malloc() failed"))
+		return NULL;
+
+	l->id = p->next == TOK_INT ? ACS_NUM :
+		p->next == TOK_ID ? ACS_ID :
+		ACS_STR;
+	strcat(l->payload, payload);
+
+	parse_consume(p);
+	return l;
 }
 
 static void destroy_expr(enum acs_inst *expr)
@@ -73,6 +89,10 @@ static void dump_expr(enum acs_inst *expr, int depth)
 		printf("false");
 	else if (*expr == ACS_NULL)
 		printf("null");
+	else if (*expr == ACS_STR)
+		printf("\"%s\"", to_literal(expr)->payload);
+	else
+		printf("%s", to_literal(expr)->payload);
 }
 
 static enum acs_inst *parse_expr(struct parser *p)
