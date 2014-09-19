@@ -14,7 +14,8 @@ enum acs_id {
 	ACS_WHILE,
 	ACS_RETURN,
 	ACS_EXPR,
-	ACS_TRUE = ACS_EXPR,
+	ACS_LIST = ACS_EXPR,
+	ACS_TRUE,
 	ACS_FALSE,
 	ACS_NULL,
 	ACS_NUM,
@@ -22,7 +23,8 @@ enum acs_id {
 	ACS_ID,
 	__ACS_ARG1,
 	__ACS_ARG2,
-	ACS_LIST,
+	ACS_ASSIGN,
+	__ACS_MAX
 };
 
 struct acs_script {

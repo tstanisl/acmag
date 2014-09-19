@@ -47,6 +47,8 @@ static void dump_expr(enum acs_id *expr, int depth);
 	container_of(inst, struct acs_return, id)
 #define to_list(inst) \
 	container_of(inst, struct acs_list, id)
+#define to_expr(inst) \
+	container_of(inst, struct acs_expr, id)
 
 static enum acs_id *parse_literal(struct parser *p)
 {
@@ -138,14 +140,41 @@ static enum acs_id *parse_list(struct parser *p)
 	return &l->id;
 }
 
+static void destroy_arg_expr(enum acs_id *id)
+{
+	struct acs_expr *expr = to_expr(id);
+	destroy_expr(expr->arg0);
+	if (expr->id > __ACS_ARG2)
+		destroy_expr(expr->arg1);
+	free(expr);
+}
+
 static void destroy_expr(enum acs_id *expr)
 {
 	if (*expr == ACS_NUM || *expr == ACS_ID || *expr == ACS_STR)
 		free(to_literal(expr));
 	else if (*expr == ACS_LIST)
 		destroy_list(expr);
+	else if (*expr >= __ACS_ARG1)
+		destroy_arg_expr(expr);
 	else
 		ERR("unexpected asc_inst=%d\n", (int)*expr);
+}
+
+static char *op2str[__ACS_MAX] = {
+	[ACS_ASSIGN] = "=",
+};
+
+static void dump_arg2_expr(enum acs_id *id, int depth)
+{
+	struct acs_expr *expr = to_expr(id);
+	if (ERR_ON(!op2str[expr->id], "invalid asc_id = %d\n", (int)*id))
+		return;
+	//printf("(");
+	dump_expr(expr->arg0, depth);
+	printf(" %s ", op2str[expr->id]);
+	dump_expr(expr->arg1, depth);
+	//printf(")");
 }
 
 static void dump_expr(enum acs_id *expr, int depth)
@@ -162,13 +191,42 @@ static void dump_expr(enum acs_id *expr, int depth)
 		printf("%s", to_literal(expr)->payload);
 	else if (*expr == ACS_LIST)
 		dump_list(expr, depth);
+	else if (*expr >= __ACS_ARG2)
+		dump_arg2_expr(expr, depth);
 	else
 		ERR("unexpected asc_inst=%d\n", (int)*expr);
 }
 
 static enum acs_id *parse_expr(struct parser *p)
 {
-	return parse_list(p);
+	enum acs_id *lhs = parse_list(p);
+	if (ERR_ON(!lhs, "parse_list() failed"))
+		return NULL;
+
+	if (p->next != TOK_ASSIGN)
+		return lhs;
+	parse_consume(p);
+
+	/* TODO: check is lhs is really a valid LHS */
+	struct acs_expr *expr = malloc(sizeof *expr);
+	if (ERR_ON(!expr, "malloc() failed"))
+		goto fail_lhs;
+
+	expr->id = ACS_ASSIGN;
+	expr->arg0 = lhs;
+	expr->arg1 = parse_expr(p);
+	if (ERR_ON(!expr->arg1, "parse_list() failed"))
+		goto fail_expr;
+
+	return &expr->id;
+
+fail_expr:
+	free(expr);
+
+fail_lhs:
+	destroy_expr(lhs);
+
+	return NULL;
 }
 
 static void destroy_inst(enum acs_id *inst)
