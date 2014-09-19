@@ -356,10 +356,11 @@ static struct acs_block *parse_block(struct parser *p)
 		if (p->next == TOK_RBRA)
 			break;
 		enum acs_id *inst = parse_inst(p);
-		if (!inst)
+		if (ERR_ON(!inst, "parse_inst() failed"))
 			goto fail;
 
 		if (!VEC_PUSH(block->inst, inst)) {
+			ERR("VEC_PUSH() failed");
 			destroy_inst(inst);
 			goto fail;
 		}
