@@ -58,6 +58,11 @@ struct acs_return {
 	enum acs_id *expr;
 };
 
+struct acs_list {
+	enum acs_id id;
+	enum acs_id **args;
+};
+
 struct acs_script *parse_script(FILE *file, char *path);
 void destroy_script(struct acs_script *script);
 void dump_script(struct acs_script *s);

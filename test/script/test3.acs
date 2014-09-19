@@ -2,3 +2,10 @@ fun1() {
 	return;
 	return 1;
 }
+
+// list test
+fun2() { a,b,c;
+	return 1,"a";
+	1;
+	
+}
