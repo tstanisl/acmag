@@ -43,22 +43,22 @@ static void dump_block(struct acs_block *b, int depth);
 #define to_return(inst) \
 	container_of(inst, struct acs_return, id)
 
-static struct acs_literal *parse_literal(struct parser *p)
+static enum acs_id *parse_literal(struct parser *p)
 {
 	if (p->next == TOK_TRUE) {
-		static enum acs_id inst = ACS_TRUE;
+		static enum acs_id id = ACS_TRUE;
 		parse_consume(p);
-		return to_literal(&inst);
+		return &id;
 	}
 	if (p->next == TOK_FALSE) {
-		static enum acs_id inst = ACS_FALSE;
+		static enum acs_id id = ACS_FALSE;
 		parse_consume(p);
-		return to_literal(&inst);
+		return &id;
 	}
 	if (p->next == TOK_NULL) {
-		static enum acs_id inst = ACS_NULL;
+		static enum acs_id id = ACS_NULL;
 		parse_consume(p);
-		return to_literal(&inst);
+		return &id;
 	}
 
 	/* payloaded literals */
@@ -76,7 +76,7 @@ static struct acs_literal *parse_literal(struct parser *p)
 	strcat(l->payload, payload);
 
 	parse_consume(p);
-	return l;
+	return &l->id;
 }
 
 static void destroy_expr(enum acs_id *expr)
@@ -103,10 +103,7 @@ static void dump_expr(enum acs_id *expr, int depth)
 
 static enum acs_id *parse_expr(struct parser *p)
 {
-	struct acs_literal *l = parse_literal(p);
-	if (ERR_ON(!l, "parse_literal() failed"))
-		return NULL;
-	return &l->id;
+	return parse_literal(p);
 }
 
 static void destroy_inst(enum acs_id *inst)
