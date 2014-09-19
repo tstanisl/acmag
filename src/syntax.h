@@ -21,9 +21,32 @@ enum acs_id {
 	ACS_NUM,
 	ACS_STR,
 	ACS_ID,
+
 	__ACS_ARG1,
+
+	ACS_MINUS = __ACS_ARG1,
+	ACS_PLUS,
+	ACS_NOT,
+
 	__ACS_ARG2,
-	ACS_ASSIGN,
+
+	ACS_ASSIGN = __ACS_ARG2,
+
+	ACS_OR,
+	ACS_AND,
+	ACS_LESS,
+	ACS_GREAT,
+	ACS_EQ,
+	ACS_NEQ,
+	ACS_LEQ,
+	ACS_GREQ,
+	ACS_CONCAT,
+	ACS_ADD,
+	ACS_SUB,
+	ACS_MUL,
+	ACS_DIV,
+	ACS_MOD,
+
 	__ACS_MAX
 };
 

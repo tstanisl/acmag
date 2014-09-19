@@ -38,6 +38,7 @@ static void dump_block(struct acs_block *b, int depth);
 
 static void destroy_expr(enum acs_id *expr);
 static void dump_expr(enum acs_id *expr, int depth);
+static enum acs_id *parse_arg2_expr(struct parser *p, int level);
 
 #define to_block(inst) \
 	container_of(inst, struct acs_block, id)
@@ -107,7 +108,7 @@ static void dump_list(enum acs_id *id, int depth)
 
 static enum acs_id *parse_list(struct parser *p)
 {
-	enum acs_id *id = parse_literal(p);
+	enum acs_id *id = parse_arg2_expr(p, 0);
 	if (ERR_ON(!id, "parse_literal() failed"))
 		return NULL;
 
@@ -132,12 +133,72 @@ static enum acs_id *parse_list(struct parser *p)
 		if (p->next != TOK_SEP)
 			break;
 		parse_consume(p);
-		id = parse_literal(p);
+		id = parse_arg2_expr(p, 0);
 		if (ERR_ON(!id, "parse_literal() failed"))
 			return destroy_expr(&l->id), NULL;
 	}
 
 	return &l->id;
+}
+
+struct op2_desc {
+	enum acs_id id;
+	enum token token;
+};
+
+#define OP2(id) { ACS_ ## id, TOK_ ## id }
+static struct op2_desc *op2_desc[] = {
+	(struct op2_desc[]) { OP2(OR), { ACS_NOP } },
+	(struct op2_desc[]) { OP2(AND), { ACS_NOP } },
+	(struct op2_desc[]) { OP2(EQ), OP2(NEQ), OP2(LESS), OP2(LEQ),
+	                      OP2(GREAT), OP2(GREQ), { ACS_NOP } },
+	(struct op2_desc[]) { OP2(CONCAT), { ACS_NOP } },
+	(struct op2_desc[]) { {ACS_ADD, TOK_PLUS}, {ACS_SUB, TOK_MINUS}, { ACS_NOP } },
+	(struct op2_desc[]) { OP2(MUL), OP2(DIV), OP2(MOD),{ ACS_NOP } },
+	NULL,
+};
+
+static enum acs_id token_to_id(enum token token, int level)
+{
+	struct op2_desc *op = op2_desc[level];
+	for (int i = 0; op[i].id != ACS_NOP; ++i)
+		if (op[i].token == token)
+			return op[i].id;
+	return ACS_NOP;
+}
+
+static enum acs_id *parse_arg2_expr(struct parser *p, int level)
+{
+	if (!op2_desc[level])
+		return parse_literal(p);
+
+	enum acs_id *arg0 = parse_arg2_expr(p, level + 1);
+	if (ERR_ON(!arg0, "parse_arg2_expr(level=%d) failed", level + 1))
+		return NULL;
+
+	enum acs_id id = token_to_id(p->next, level);
+	if (id == ACS_NOP)
+		return arg0;
+
+	for (;;) {
+		parse_consume(p);
+		struct acs_expr *e = calloc(1, sizeof *e);
+		if (!e)
+			break;
+		e->id = id;
+		e->arg0 = arg0;
+		e->arg1 = parse_arg2_expr(p, level + 1);
+		arg0 = NULL;
+		if (ERR_ON(!e->arg1, "parse_arg2_expr(level=%d) failed", level + 1))
+			break;
+		id = token_to_id(p->next, level);
+		if (id == ACS_NOP)
+			return &e->id;
+		arg0 = &e->id;
+	}
+	if (arg0)
+		destroy_expr(arg0);
+	return NULL;
 }
 
 static void destroy_arg_expr(enum acs_id *id)
@@ -163,6 +224,20 @@ static void destroy_expr(enum acs_id *expr)
 
 static char *op2str[__ACS_MAX] = {
 	[ACS_ASSIGN] = "=",
+	[ACS_OR] = "||",
+	[ACS_AND] = "&&",
+	[ACS_EQ] = "==",
+	[ACS_NEQ] = "!=",
+	[ACS_LEQ] = "<=",
+	[ACS_GREQ] = ">=",
+	[ACS_LESS] = "<",
+	[ACS_GREAT] = ">",
+	[ACS_CONCAT] = "..",
+	[ACS_SUB] = "-",
+	[ACS_ADD] = "+",
+	[ACS_MUL] = "*",
+	[ACS_DIV] = "/",
+	[ACS_MOD] = "%",
 };
 
 static void dump_arg2_expr(enum acs_id *id, int depth)
