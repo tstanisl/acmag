@@ -141,6 +141,31 @@ static enum acs_id *parse_list(struct parser *p)
 	return &l->id;
 }
 
+static enum acs_id *parse_arg1_expr(struct parser *p)
+{
+	enum acs_id id = ACS_NOP;
+	if (p->next == TOK_NOT)
+		id = ACS_NOT;
+	else if (p->next == TOK_PLUS)
+		id = ACS_PLUS;
+	else if (p->next == TOK_MINUS)
+		id = ACS_MINUS;
+	else
+		return parse_literal(p);
+
+	parse_consume(p);
+
+	struct acs_expr *e = calloc(1, sizeof *e);
+	if (ERR_ON(!e, "malloc() failed"))
+		return NULL;
+
+	e->id = id;
+	e->arg0 = parse_arg1_expr(p);
+	if (ERR_ON(!e, "parse_arg1_expr() failed"))
+		return free(e), NULL;
+	return &e->id;
+}
+
 struct op2_desc {
 	enum acs_id id;
 	enum token token;
@@ -170,7 +195,7 @@ static enum acs_id token_to_id(enum token token, int level)
 static enum acs_id *parse_arg2_expr(struct parser *p, int level)
 {
 	if (!op2_desc[level])
-		return parse_literal(p);
+		return parse_arg1_expr(p);
 
 	enum acs_id *arg0 = parse_arg2_expr(p, level + 1);
 	if (ERR_ON(!arg0, "parse_arg2_expr(level=%d) failed", level + 1))
@@ -223,6 +248,9 @@ static void destroy_expr(enum acs_id *expr)
 }
 
 static char *op2str[__ACS_MAX] = {
+	[ACS_NOT] = "!",
+	[ACS_PLUS] = "-",
+	[ACS_MINUS] = "+",
 	[ACS_ASSIGN] = "=",
 	[ACS_OR] = "||",
 	[ACS_AND] = "&&",
@@ -239,6 +267,15 @@ static char *op2str[__ACS_MAX] = {
 	[ACS_DIV] = "/",
 	[ACS_MOD] = "%",
 };
+
+static void dump_arg1_expr(enum acs_id *id, int depth)
+{
+	struct acs_expr *expr = to_expr(id);
+	if (ERR_ON(!op2str[expr->id], "invalid asc_id = %d\n", (int)*id))
+		return;
+	printf("%s", op2str[expr->id]);
+	dump_expr(expr->arg0, depth);
+}
 
 static void dump_arg2_expr(enum acs_id *id, int depth)
 {
@@ -268,6 +305,8 @@ static void dump_expr(enum acs_id *expr, int depth)
 		dump_list(expr, depth);
 	else if (*expr >= __ACS_ARG2)
 		dump_arg2_expr(expr, depth);
+	else if (*expr >= __ACS_ARG1)
+		dump_arg1_expr(expr, depth);
 	else
 		ERR("unexpected asc_inst=%d\n", (int)*expr);
 }
