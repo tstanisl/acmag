@@ -60,6 +60,7 @@ enum lxr_state {
 	LST_ML_STAR,
 	LST_SL_COMM,
 	LST_OR,
+	LST_AND,
 	LST_EQ,
 	LST_NEQ,
 	LST_LEQ,
@@ -91,6 +92,7 @@ static void lxr_action_init(void)
 	lxr_action['<'] = LST_LEQ   | __LST;
 	lxr_action['>'] = LST_GREQ  | __LST;
 	lxr_action['|'] = LST_OR    | __LST;
+	lxr_action['&'] = LST_AND   | __LST;
 	lxr_action['!'] = LST_NEQ   | __LST;
 	lxr_action['='] = LST_EQ    | __LST;
 	lxr_action['.'] = LST_DOT   | __LST;
@@ -233,6 +235,10 @@ enum token lxr_get(struct lxr *lxr)
 		} else if (st == LST_OR) {
 			if (c == '|')
 				return TOK_OR;
+			return lxr_error(lxr, "invalid operator '|'");
+		} else if (st == LST_AND) {
+			if (c == '&')
+				return TOK_AND;
 			return lxr_error(lxr, "invalid operator '|'");
 		} else if (st == LST_EQ) {
 			if (c == '=')
