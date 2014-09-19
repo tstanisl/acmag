@@ -142,8 +142,10 @@ static void destroy_expr(enum acs_id *expr)
 {
 	if (*expr == ACS_NUM || *expr == ACS_ID || *expr == ACS_STR)
 		free(to_literal(expr));
-	if (*expr == ACS_LIST)
+	else if (*expr == ACS_LIST)
 		destroy_list(expr);
+	else
+		ERR("unexpected asc_inst=%d\n", (int)*expr);
 }
 
 static void dump_expr(enum acs_id *expr, int depth)
@@ -171,15 +173,17 @@ static enum acs_id *parse_expr(struct parser *p)
 
 static void destroy_inst(enum acs_id *inst)
 {
-	if (*inst == ACS_BLOCK)
+	if (*inst == ACS_BLOCK) {
 		destroy_block(to_block(inst));
-	if (*inst >= ACS_EXPR)
+	} else if (*inst >= ACS_EXPR) {
 		destroy_expr(inst);
-	if (*inst == ACS_RETURN) {
+	} else if (*inst == ACS_RETURN) {
 		struct acs_return *r = to_return(inst);
 		if (r->expr)
 			destroy_expr(r->expr);
 		free(r);
+	} else {
+		ERR("unexpected asc_inst=%d\n", (int)*inst);
 	}
 }
 
