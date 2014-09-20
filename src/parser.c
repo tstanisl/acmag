@@ -174,7 +174,7 @@ static void destroy_arg_expr(enum acs_id *id)
 {
 	struct acs_expr *expr = to_expr(id);
 	destroy_expr(expr->arg0);
-	if (expr->id > __ACS_ARG2)
+	if (expr->id >= __ACS_ARG2)
 		destroy_expr(expr->arg1);
 	free(expr);
 }
