@@ -13,9 +13,8 @@ enum acs_id {
 	ACS_IF,
 	ACS_WHILE,
 	ACS_RETURN,
-	ACS_EXPR,
-	ACS_LIST = ACS_EXPR,
-	ACS_TRUE,
+	__ACS_EXPR,
+	ACS_TRUE = __ACS_EXPR,
 	ACS_FALSE,
 	ACS_NULL,
 	ACS_NUM,
@@ -30,7 +29,8 @@ enum acs_id {
 
 	__ACS_ARG2,
 
-	ACS_ASSIGN = __ACS_ARG2,
+	ACS_COMMA = __ACS_ARG2,
+	ACS_ASSIGN,
 
 	ACS_OR,
 	ACS_AND,
@@ -81,11 +81,6 @@ struct acs_expr {
 struct acs_return {
 	enum acs_id id;
 	enum acs_id *expr;
-};
-
-struct acs_list {
-	enum acs_id id;
-	enum acs_id **args;
 };
 
 struct acs_script *parse_script(FILE *file, char *path);

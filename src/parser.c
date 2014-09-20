@@ -46,8 +46,6 @@ static enum acs_id *parse_arg2_expr(struct parser *p, int level);
 	container_of(inst, struct acs_literal, id)
 #define to_return(inst) \
 	container_of(inst, struct acs_return, id)
-#define to_list(inst) \
-	container_of(inst, struct acs_list, id)
 #define to_expr(inst) \
 	container_of(inst, struct acs_expr, id)
 
@@ -84,60 +82,6 @@ static enum acs_id *parse_literal(struct parser *p)
 	strcat(l->payload, payload);
 
 	parse_consume(p);
-	return &l->id;
-}
-
-static void destroy_list(enum acs_id *id)
-{
-	struct acs_list *l = to_list(id);
-
-	for (int i = 0; i < vec_size(l->args); ++i)
-		destroy_expr(l->args[i]);
-	vec_destroy(l->args);
-	free(l);
-}
-
-static void dump_list(enum acs_id *id, int depth)
-{
-	struct acs_list *l = to_list(id);
-	for (int i = 0; i < vec_size(l->args); ++i) {
-		printf(i ? ", " : "");
-		dump_expr(l->args[i], depth);
-	}
-}
-
-static enum acs_id *parse_list(struct parser *p)
-{
-	enum acs_id *id = parse_arg2_expr(p, 0);
-	if (ERR_ON(!id, "parse_literal() failed"))
-		return NULL;
-
-	if (p->next != TOK_SEP)
-		return id;
-
-	struct acs_list *l = calloc(1, sizeof *l);
-	if (ERR_ON(!l, "malloc failed()"))
-		return destroy_expr(id), NULL;
-
-	l->id = ACS_LIST;
-
-	VEC_INIT(l->args);
-	if (ERR_ON(!l->args, "VEC_INIT() failed"))
-		return free(l), destroy_expr(id), NULL;
-
-	// list object is valid now
-
-	for (;;) {
-		if (!VEC_PUSH(l->args, id))
-			return destroy_expr(&l->id), destroy_expr(id), NULL;
-		if (p->next != TOK_SEP)
-			break;
-		parse_consume(p);
-		id = parse_arg2_expr(p, 0);
-		if (ERR_ON(!id, "parse_literal() failed"))
-			return destroy_expr(&l->id), NULL;
-	}
-
 	return &l->id;
 }
 
@@ -239,8 +183,6 @@ static void destroy_expr(enum acs_id *expr)
 {
 	if (*expr == ACS_NUM || *expr == ACS_ID || *expr == ACS_STR)
 		free(to_literal(expr));
-	else if (*expr == ACS_LIST)
-		destroy_list(expr);
 	else if (*expr >= __ACS_ARG1)
 		destroy_arg_expr(expr);
 	else
@@ -248,10 +190,8 @@ static void destroy_expr(enum acs_id *expr)
 }
 
 static char *op2str[__ACS_MAX] = {
-	[ACS_NOT] = "!",
-	[ACS_PLUS] = "-",
-	[ACS_MINUS] = "+",
 	[ACS_ASSIGN] = "=",
+	[ACS_COMMA] = ",",
 	[ACS_OR] = "||",
 	[ACS_AND] = "&&",
 	[ACS_EQ] = "==",
@@ -266,6 +206,9 @@ static char *op2str[__ACS_MAX] = {
 	[ACS_MUL] = "*",
 	[ACS_DIV] = "/",
 	[ACS_MOD] = "%",
+	[ACS_NOT] = "!",
+	[ACS_PLUS] = "-",
+	[ACS_MINUS] = "+",
 };
 
 static void dump_arg1_expr(enum acs_id *id, int depth)
@@ -301,14 +244,36 @@ static void dump_expr(enum acs_id *expr, int depth)
 		printf("\"%s\"", to_literal(expr)->payload);
 	else if (*expr == ACS_NUM || *expr == ACS_ID)
 		printf("%s", to_literal(expr)->payload);
-	else if (*expr == ACS_LIST)
-		dump_list(expr, depth);
 	else if (*expr >= __ACS_ARG2)
 		dump_arg2_expr(expr, depth);
 	else if (*expr >= __ACS_ARG1)
 		dump_arg1_expr(expr, depth);
 	else
 		ERR("unexpected asc_inst=%d\n", (int)*expr);
+}
+
+static enum acs_id *parse_list(struct parser *p)
+{
+	enum acs_id *lhs = parse_arg2_expr(p, 0);
+	if (ERR_ON(!lhs, "parse_arg2_expr() failed"))
+		return NULL;
+
+	if (p->next != TOK_SEP)
+		return lhs;
+	parse_consume(p);
+
+	/* TODO: check is lhs is really a valid LHS */
+	struct acs_expr *expr = malloc(sizeof *expr);
+	if (ERR_ON(!expr, "malloc() failed"))
+		return destroy_expr(lhs), NULL;
+
+	expr->id = ACS_COMMA;
+	expr->arg0 = lhs;
+	expr->arg1 = parse_list(p);
+	if (ERR_ON(!expr->arg1, "parse_list() failed"))
+		return free(expr), destroy_expr(lhs), NULL;
+
+	return &expr->id;
 }
 
 static enum acs_id *parse_expr(struct parser *p)
@@ -324,30 +289,22 @@ static enum acs_id *parse_expr(struct parser *p)
 	/* TODO: check is lhs is really a valid LHS */
 	struct acs_expr *expr = malloc(sizeof *expr);
 	if (ERR_ON(!expr, "malloc() failed"))
-		goto fail_lhs;
+		return destroy_expr(lhs), NULL;
 
 	expr->id = ACS_ASSIGN;
 	expr->arg0 = lhs;
 	expr->arg1 = parse_expr(p);
-	if (ERR_ON(!expr->arg1, "parse_list() failed"))
-		goto fail_expr;
+	if (ERR_ON(!expr->arg1, "parse_expr() failed"))
+		return free(expr), destroy_expr(lhs), NULL;
 
 	return &expr->id;
-
-fail_expr:
-	free(expr);
-
-fail_lhs:
-	destroy_expr(lhs);
-
-	return NULL;
 }
 
 static void destroy_inst(enum acs_id *inst)
 {
 	if (*inst == ACS_BLOCK) {
 		destroy_block(to_block(inst));
-	} else if (*inst >= ACS_EXPR) {
+	} else if (*inst >= __ACS_EXPR) {
 		destroy_expr(inst);
 	} else if (*inst == ACS_RETURN) {
 		struct acs_return *r = to_return(inst);
@@ -365,7 +322,7 @@ static void dump_inst(enum acs_id *inst, int depth)
 		dump_block(to_block(inst), depth);
 	} else if (*inst == ACS_NOP) {
 		printf(";\n");
-	} else if (*inst >= ACS_EXPR) {
+	} else if (*inst >= __ACS_EXPR) {
 		dump_expr(inst, depth);
 		printf(";\n");
 	} else if (*inst == ACS_RETURN) {
