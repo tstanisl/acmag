@@ -1,0 +1,10 @@
+fib(n)
+{
+	fib(4);
+	return fib(n-1) + fib(n-2);
+	FIB[n] = 12;
+	f()();
+	a.b();
+	a().b;
+	a().b[3];
+}
