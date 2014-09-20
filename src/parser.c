@@ -92,32 +92,52 @@ static enum acs_id *parse_deref(struct parser *p)
 	if (ERR_ON(!arg0, "parse_literal() failed"))
 		return NULL;
 	enum token tok = p->next;
-	if (tok != TOK_LPAR && tok != TOK_LSQR)
+	if (tok != TOK_LPAR && tok != TOK_LSQR && tok != TOK_DOT)
 		return arg0;
 	for (;;) {
 		parse_consume(p);
 		struct acs_expr *e = calloc(1, sizeof *e);
 		if (ERR_ON(!e, "calloc() failed"))
 			break;
-		e->id = (tok == TOK_LPAR ? ACS_CALL : ACS_DEREF);
 		e->arg0 = arg0;
-		if (e->id == ACS_CALL && p->next == TOK_RPAR) {
+		arg0 = NULL;
+		if (tok == TOK_LPAR) {
+			e->id = ACS_CALL;
 			static enum acs_id nop = ACS_NOP;
-			e->arg1 = &nop;
-		} else {
+			if (p->next == TOK_RPAR) {
+				e->arg1 = &nop;
+			} else {
+				e->arg1 = parse_expr(p);
+				if (ERR_ON(!e->arg1, "parse_expr() failed"))
+					break;
+			}
+			if (p->next != TOK_RPAR) {
+				parse_err(p, "missing )");
+				break;
+			}
+			parse_consume(p);
+		} else if (tok == TOK_LSQR) {
+			e->id = ACS_CALL;
 			e->arg1 = parse_expr(p);
 			if (ERR_ON(!e->arg1, "parse_expr() failed"))
 				break;
+			if (p->next != TOK_RSQR) {
+				parse_err(p, "missing ]");
+				break;
+			}
+			parse_consume(p);
+		} else if (tok == TOK_DOT) {
+			e->id = ACS_DOT;
+			if (p->next != TOK_ID) {
+				parse_err(p, "expected id after .");
+				break;
+			}
+			e->arg1 = parse_literal(p);
+			if (ERR_ON(!e->arg1, "parse_literal() failed"))
+				break;
 		}
-		arg0 = NULL;
-		enum token pair_tok = (tok == TOK_LPAR ? TOK_RPAR : TOK_RSQR);
-		if (p->next != pair_tok) {
-			parse_err(p, "missing %s", token_str[pair_tok]);
-			break;
-		}
-		parse_consume(p);
 		tok = p->next;
-		if (tok != TOK_LPAR && tok != TOK_LSQR)
+		if (tok != TOK_LPAR && tok != TOK_LSQR && tok != TOK_DOT)
 			return &e->id;
 		arg0 = &e->id;
 	}
@@ -254,6 +274,7 @@ static char *op2str[__ACS_MAX] = {
 	[ACS_MINUS] = "+",
 	[ACS_CALL] = "(",
 	[ACS_DEREF] = "[",
+	[ACS_DOT] = ".",
 };
 
 static void dump_arg1_expr(enum acs_id *id, int depth)
@@ -276,6 +297,8 @@ static void dump_arg2_expr(enum acs_id *id, int depth)
 		printf("(");
 	else if (expr->id == ACS_DEREF)
 		printf("[");
+	else if (expr->id == ACS_DOT)
+		printf(".");
 	else
 		printf(" %s ", op2str[expr->id]);
 	dump_expr(expr->arg1, depth);
