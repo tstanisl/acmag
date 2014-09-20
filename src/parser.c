@@ -38,6 +38,7 @@ static void dump_block(struct acs_block *b, int depth);
 
 static void destroy_expr(enum acs_id *expr);
 static void dump_expr(enum acs_id *expr, int depth);
+static enum acs_id *parse_expr(struct parser *p);
 static enum acs_id *parse_arg2_expr(struct parser *p, int level);
 
 #define to_block(inst) \
@@ -85,6 +86,46 @@ static enum acs_id *parse_literal(struct parser *p)
 	return &l->id;
 }
 
+static enum acs_id *parse_deref(struct parser *p)
+{
+	enum acs_id *arg0 = parse_literal(p);
+	if (ERR_ON(!arg0, "parse_literal() failed"))
+		return NULL;
+	enum token tok = p->next;
+	if (tok != TOK_LPAR && tok != TOK_LSQR)
+		return arg0;
+	for (;;) {
+		parse_consume(p);
+		struct acs_expr *e = calloc(1, sizeof *e);
+		if (ERR_ON(!e, "calloc() failed"))
+			break;
+		e->id = (tok == TOK_LPAR ? ACS_CALL : ACS_DEREF);
+		e->arg0 = arg0;
+		if (e->id == ACS_CALL && p->next == TOK_RPAR) {
+			static enum acs_id nop = ACS_NOP;
+			e->arg1 = &nop;
+		} else {
+			e->arg1 = parse_expr(p);
+			if (ERR_ON(!e->arg1, "parse_expr() failed"))
+				break;
+		}
+		arg0 = NULL;
+		enum token pair_tok = (tok == TOK_LPAR ? TOK_RPAR : TOK_RSQR);
+		if (p->next != pair_tok) {
+			parse_err(p, "missing %s", token_str[pair_tok]);
+			break;
+		}
+		parse_consume(p);
+		tok = p->next;
+		if (tok != TOK_LPAR && tok != TOK_LSQR)
+			return &e->id;
+		arg0 = &e->id;
+	}
+	if (arg0)
+		destroy_expr(arg0);
+	return NULL;
+}
+
 static enum acs_id *parse_arg1_expr(struct parser *p)
 {
 	enum acs_id id = ACS_NOP;
@@ -95,7 +136,7 @@ static enum acs_id *parse_arg1_expr(struct parser *p)
 	else if (p->next == TOK_MINUS)
 		id = ACS_MINUS;
 	else
-		return parse_literal(p);
+		return parse_deref(p);
 
 	parse_consume(p);
 
@@ -185,6 +226,8 @@ static void destroy_expr(enum acs_id *expr)
 		free(to_literal(expr));
 	else if (*expr >= __ACS_ARG1)
 		destroy_arg_expr(expr);
+	else if (*expr == ACS_NOP)
+		;
 	else
 		ERR("unexpected asc_inst=%d\n", (int)*expr);
 }
@@ -209,6 +252,8 @@ static char *op2str[__ACS_MAX] = {
 	[ACS_NOT] = "!",
 	[ACS_PLUS] = "-",
 	[ACS_MINUS] = "+",
+	[ACS_CALL] = "(",
+	[ACS_DEREF] = "[",
 };
 
 static void dump_arg1_expr(enum acs_id *id, int depth)
@@ -227,8 +272,17 @@ static void dump_arg2_expr(enum acs_id *id, int depth)
 		return;
 	//printf("(");
 	dump_expr(expr->arg0, depth);
-	printf(" %s ", op2str[expr->id]);
+	if (expr->id == ACS_CALL)
+		printf("(");
+	else if (expr->id == ACS_DEREF)
+		printf("[");
+	else
+		printf(" %s ", op2str[expr->id]);
 	dump_expr(expr->arg1, depth);
+	if (expr->id == ACS_CALL)
+		printf(")");
+	else if (expr->id == ACS_DEREF)
+		printf("]");
 	//printf(")");
 }
 
@@ -244,6 +298,8 @@ static void dump_expr(enum acs_id *expr, int depth)
 		printf("\"%s\"", to_literal(expr)->payload);
 	else if (*expr == ACS_NUM || *expr == ACS_ID)
 		printf("%s", to_literal(expr)->payload);
+	else if (*expr == ACS_NOP)
+		;
 	else if (*expr >= __ACS_ARG2)
 		dump_arg2_expr(expr, depth);
 	else if (*expr >= __ACS_ARG1)

@@ -47,6 +47,10 @@ enum acs_id {
 	ACS_DIV,
 	ACS_MOD,
 
+	ACS_CALL,
+	ACS_DEREF,
+	ACS_DOT,
+
 	__ACS_MAX
 };
 
