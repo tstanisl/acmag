@@ -670,7 +670,7 @@ struct acs_script *parse_script(FILE *file, char *path)
 
 		function = parse_function(&parser);
 		if (ERR_ON(!function, "parse_function() failed"))
-			goto fail;
+			goto fail_lxr;
 
 		list_add_tail(&function->node, &script->functions);
 	}
@@ -685,6 +685,8 @@ struct acs_script *parse_script(FILE *file, char *path)
 
 	return script;
 
+fail_lxr:
+	lxr_destroy(parser.lxr);
 fail:
 	destroy_script(script);
 
