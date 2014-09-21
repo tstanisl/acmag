@@ -41,6 +41,9 @@ static void dump_expr(enum acs_id *expr, int depth);
 static enum acs_id *parse_expr(struct parser *p);
 static enum acs_id *parse_arg2_expr(struct parser *p, int level);
 
+static enum acs_id *parse_inst(struct parser *p);
+static void destroy_inst(enum acs_id *inst);
+
 #define to_block(inst) \
 	container_of(inst, struct acs_block, id)
 #define to_literal(inst) \
@@ -49,6 +52,8 @@ static enum acs_id *parse_arg2_expr(struct parser *p, int level);
 	container_of(inst, struct acs_return, id)
 #define to_expr(inst) \
 	container_of(inst, struct acs_expr, id)
+#define to_if(inst) \
+	container_of(inst, struct acs_if, id)
 
 static enum acs_id *parse_literal(struct parser *p)
 {
@@ -393,6 +398,100 @@ static enum acs_id *parse_expr(struct parser *p)
 	return &expr->id;
 }
 
+static enum acs_id *parse_expr_inst(struct parser *p)
+{
+	enum acs_id *expr = parse_expr(p);
+	if (ERR_ON(!expr, "parse_expr() failed"))
+		return NULL;
+	if (p->next != TOK_SCOLON) {
+		destroy_expr(expr);
+		return parse_err(p, "expected ; after expression");
+	}
+	parse_consume(p); // consume ;
+
+	return expr;
+}
+
+static void destroy_if(enum acs_id *id)
+{
+	struct acs_if *inst = to_if(id);
+	destroy_expr(inst->expr);
+	destroy_inst(inst->true_inst);
+	if (inst->false_inst)
+		destroy_inst(inst->false_inst);
+	free(inst);
+}
+
+static enum acs_id *parse_if(struct parser *p)
+{
+	parse_consume(p);
+
+	if (p->next != TOK_LPAR)
+		return parse_err(p, "missing ( after if");
+	parse_consume(p);
+
+	enum acs_id *expr = parse_expr(p);
+	if (ERR_ON(!expr, "parse_expr() failed"))
+		return NULL;
+
+	if (p->next != TOK_RPAR) {
+		parse_err(p, "missing ) after if's expression");
+		goto fail_expr;
+	}
+	parse_consume(p);
+
+	enum acs_id *true_inst = parse_inst(p);
+	if (ERR_ON(!true_inst, "parse_inst() failed"))
+		goto fail_expr;
+
+	struct acs_if *inst = calloc(1, sizeof *inst);
+	if (ERR_ON(!inst, "calloc() failed"))
+		goto fail_true_inst;
+
+	inst->id = ACS_IF;
+	inst->expr = expr;
+	inst->true_inst = true_inst;
+
+	if (p->next != TOK_ELSE)
+		return &inst->id;
+	parse_consume(p);
+
+	inst->false_inst = parse_inst(p);
+	if (ERR_ON(!inst->false_inst, "parse_inst() failed"))
+		goto fail_inst;
+
+	return &inst->id;
+
+fail_inst:
+	free(inst);
+fail_true_inst:
+	destroy_inst(true_inst);
+fail_expr:
+	destroy_expr(expr);
+
+	return NULL;
+}
+
+static enum acs_id *parse_return(struct parser *p)
+{
+	parse_consume(p);
+	struct acs_return *r = malloc(sizeof (*r));
+	if (ERR_ON(!r, "malloc() failed"))
+		return NULL;
+	r->id = ACS_RETURN;
+	if (p->next == TOK_SCOLON) {
+		r->expr = NULL;
+		parse_consume(p);
+		return &r->id;
+	}
+	r->expr = parse_expr_inst(p);
+	if (ERR_ON(!r->expr, "parse_expr_inst() failed")) {
+		free(r);
+		return NULL;
+	}
+	return &r->id;
+}
+
 static void destroy_inst(enum acs_id *inst)
 {
 	if (*inst == ACS_BLOCK) {
@@ -404,6 +503,10 @@ static void destroy_inst(enum acs_id *inst)
 		if (r->expr)
 			destroy_expr(r->expr);
 		free(r);
+	} else if (*inst == ACS_IF) {
+		destroy_if(inst);
+	} else if (*inst == ACS_NOP) {
+		printf(";\n");
 	} else {
 		ERR("unexpected asc_inst=%d\n", (int)*inst);
 	}
@@ -427,41 +530,20 @@ static void dump_inst(enum acs_id *inst, int depth)
 		} else {
 			printf("return;\n");
 		}
+	} else if (*inst == ACS_IF) {
+		struct acs_if *i = to_if(inst);
+		printf("if (");
+		dump_expr(i->expr, depth);
+		printf(")\n");
+		printf("%*s", 2 * depth + 2, "");
+		dump_inst(i->true_inst, depth + 1);
+		if (!i->false_inst)
+			return;
+		printf("%*s", 2 * depth, "");
+		printf("else\n");
+		printf("%*s", 2 * depth + 2, "");
+		dump_inst(i->false_inst, depth + 1);
 	}
-}
-
-static enum acs_id *parse_expr_inst(struct parser *p)
-{
-	enum acs_id *expr = parse_expr(p);
-	if (ERR_ON(!expr, "parse_expr() failed"))
-		return NULL;
-	if (p->next != TOK_SCOLON) {
-		destroy_expr(expr);
-		return parse_err(p, "expected ; after expression");
-	}
-	parse_consume(p); // consume ;
-
-	return expr;
-}
-
-static enum acs_id *parse_return(struct parser *p)
-{
-	parse_consume(p);
-	struct acs_return *r = malloc(sizeof (*r));
-	if (ERR_ON(!r, "malloc() failed"))
-		return NULL;
-	r->id = ACS_RETURN;
-	if (p->next == TOK_SCOLON) {
-		r->expr = NULL;
-		parse_consume(p);
-		return &r->id;
-	}
-	r->expr = parse_expr_inst(p);
-	if (ERR_ON(!r->expr, "parse_expr_inst() failed")) {
-		free(r);
-		return NULL;
-	}
-	return &r->id;
 }
 
 static enum acs_id *parse_inst(struct parser *p)
@@ -470,19 +552,18 @@ static enum acs_id *parse_inst(struct parser *p)
 		static enum acs_id acs_nop = ACS_NOP;
 		parse_consume(p);
 		return &acs_nop;
-	}
-
-	if (p->next == TOK_LBRA) {
+	} else if (p->next == TOK_LBRA) {
 		struct acs_block *b = parse_block(p);
 		if (ERR_ON(!b, "parse_block() failed"))
 			return NULL;
 		return &b->id;
-	}
-
-	if (p->next == TOK_RETURN)
+	} else if (p->next == TOK_RETURN) {
 		return parse_return(p);
-
-	return parse_expr_inst(p);
+	} else if (p->next == TOK_IF) {
+		return parse_if(p);
+	} else {
+		return parse_expr_inst(p);
+	}
 }
 
 static void destroy_block(struct acs_block *b)
