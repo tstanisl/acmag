@@ -11,3 +11,12 @@ fib(n) {
 		n, x, x_ = n - 1, x + x_, x;
 	return x;
 }
+
+break_and_continue()
+{
+	while (1)
+		break;
+	while (1)
+		while (2)
+			continue;
+}
