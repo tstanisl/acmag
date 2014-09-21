@@ -11,6 +11,7 @@ struct parser {
 	char *path;
 	struct lxr *lxr;
 	enum token next;
+	int loop_depth;
 };
 
 static void *parse_err(struct parser *p, char *fmt, ...)
@@ -440,7 +441,10 @@ static enum acs_id *parse_while(struct parser *p)
 	}
 	parse_consume(p);
 
+	++p->loop_depth;
 	enum acs_id *true_inst = parse_inst(p);
+	--p->loop_depth;
+
 	if (ERR_ON(!true_inst, "parse_inst() failed"))
 		goto fail_expr;
 
@@ -557,8 +561,7 @@ static void destroy_inst(enum acs_id *inst)
 		destroy_if(inst);
 	} else if (*inst == ACS_WHILE) {
 		destroy_while(inst);
-	} else if (*inst == ACS_NOP) {
-		printf(";\n");
+	} else if (*inst == ACS_NOP || *inst == ACS_BREAK || *inst == ACS_CONTINUE) {
 	} else {
 		ERR("unexpected asc_inst=%d\n", (int)*inst);
 	}
@@ -570,6 +573,10 @@ static void dump_inst(enum acs_id *inst, int depth)
 		dump_block(to_block(inst), depth);
 	} else if (*inst == ACS_NOP) {
 		printf(";\n");
+	} else if (*inst == ACS_BREAK) {
+		printf("break;\n");
+	} else if (*inst == ACS_CONTINUE) {
+		printf("continue;\n");
 	} else if (*inst >= __ACS_EXPR) {
 		dump_expr(inst, depth);
 		printf(";\n");
@@ -628,6 +635,24 @@ static enum acs_id *parse_inst(struct parser *p)
 		static enum acs_id acs_nop = ACS_NOP;
 		parse_consume(p);
 		return &acs_nop;
+	} else if (p->next == TOK_BREAK) {
+		if (!p->loop_depth)
+			return parse_err(p, "break outside loop");
+		parse_consume(p);
+		if (p->next != TOK_SCOLON)
+			return parse_err(p, "missing ; after break");
+		parse_consume(p);
+		static enum acs_id acs_break = ACS_BREAK;
+		return &acs_break;
+	} else if (p->next == TOK_CONTINUE) {
+		if (!p->loop_depth)
+			return parse_err(p, "continue outside loop");
+		parse_consume(p);
+		if (p->next != TOK_SCOLON)
+			return parse_err(p, "missing ; after continue");
+		static enum acs_id acs_continue = ACS_CONTINUE;
+		parse_consume(p);
+		return &acs_continue;
 	} else if (p->next == TOK_LBRA) {
 		struct acs_block *b = parse_block(p);
 		if (ERR_ON(!b, "parse_block() failed"))
