@@ -86,9 +86,23 @@ static enum acs_id *parse_literal(struct parser *p)
 	return &l->id;
 }
 
+static enum acs_id *parse_top(struct parser *p)
+{
+	if (p->next != TOK_LPAR)
+		return parse_literal(p);
+	parse_consume(p);
+	enum acs_id *expr = parse_expr(p);
+	if (ERR_ON(!p, "parse_expr() failed"))
+		return NULL;
+	if (p->next != TOK_RPAR)
+		destroy_expr(expr), parse_err(p, "missing )");
+	parse_consume(p);
+	return expr;
+}
+
 static enum acs_id *parse_deref(struct parser *p)
 {
-	enum acs_id *arg0 = parse_literal(p);
+	enum acs_id *arg0 = parse_top(p);
 	if (ERR_ON(!arg0, "parse_literal() failed"))
 		return NULL;
 	enum token tok = p->next;
