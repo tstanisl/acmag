@@ -54,6 +54,8 @@ static void destroy_inst(enum acs_id *inst);
 	container_of(inst, struct acs_expr, id)
 #define to_if(inst) \
 	container_of(inst, struct acs_if, id)
+#define to_while(inst) \
+	container_of(inst, struct acs_while, id)
 
 static enum acs_id *parse_literal(struct parser *p)
 {
@@ -412,6 +414,54 @@ static enum acs_id *parse_expr_inst(struct parser *p)
 	return expr;
 }
 
+static void destroy_while(enum acs_id *id)
+{
+	struct acs_while *inst = to_while(id);
+	destroy_expr(inst->expr);
+	destroy_inst(inst->inst);
+	free(inst);
+}
+
+static enum acs_id *parse_while(struct parser *p)
+{
+	parse_consume(p);
+
+	if (p->next != TOK_LPAR)
+		return parse_err(p, "missing ( after while");
+	parse_consume(p);
+
+	enum acs_id *expr = parse_expr(p);
+	if (ERR_ON(!expr, "parse_expr() failed"))
+		return NULL;
+
+	if (p->next != TOK_RPAR) {
+		parse_err(p, "missing ) after while's expression");
+		goto fail_expr;
+	}
+	parse_consume(p);
+
+	enum acs_id *true_inst = parse_inst(p);
+	if (ERR_ON(!true_inst, "parse_inst() failed"))
+		goto fail_expr;
+
+	struct acs_while *inst = calloc(1, sizeof *inst);
+	if (ERR_ON(!inst, "calloc() failed"))
+		goto fail_true_inst;
+
+	inst->id = ACS_WHILE;
+	inst->expr = expr;
+	inst->inst = true_inst;
+
+	return &inst->id;
+
+fail_true_inst:
+	destroy_inst(true_inst);
+fail_expr:
+	destroy_expr(expr);
+
+	return NULL;
+}
+
 static void destroy_if(enum acs_id *id)
 {
 	struct acs_if *inst = to_if(id);
@@ -505,6 +555,8 @@ static void destroy_inst(enum acs_id *inst)
 		free(r);
 	} else if (*inst == ACS_IF) {
 		destroy_if(inst);
+	} else if (*inst == ACS_WHILE) {
+		destroy_while(inst);
 	} else if (*inst == ACS_NOP) {
 		printf(";\n");
 	} else {
@@ -555,6 +607,18 @@ static void dump_inst(enum acs_id *inst, int depth)
 			printf("%*s", 2 * depth + 2, "");
 			dump_inst(i->false_inst, depth + 1);
 		}
+	} else if (*inst == ACS_WHILE) {
+		struct acs_while *w = to_while(inst);
+		printf("while (");
+		dump_expr(w->expr, depth);
+		if (*w->inst == ACS_BLOCK) {
+			printf(") ");
+			dump_inst(w->inst, depth);
+		} else {
+			printf(")\n");
+			printf("%*s", 2 * depth + 2, "");
+			dump_inst(w->inst, depth + 1);
+		}
 	}
 }
 
@@ -573,6 +637,8 @@ static enum acs_id *parse_inst(struct parser *p)
 		return parse_return(p);
 	} else if (p->next == TOK_IF) {
 		return parse_if(p);
+	} else if (p->next == TOK_WHILE) {
+		return parse_while(p);
 	} else {
 		return parse_expr_inst(p);
 	}

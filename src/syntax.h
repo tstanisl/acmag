@@ -94,6 +94,12 @@ struct acs_if {
 	enum acs_id *false_inst;
 };
 
+struct acs_while {
+	enum acs_id id;
+	enum acs_id *expr;
+	enum acs_id *inst;
+};
+
 struct acs_script *parse_script(FILE *file, char *path);
 void destroy_script(struct acs_script *script);
 void dump_script(struct acs_script *s);
