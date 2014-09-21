@@ -534,15 +534,27 @@ static void dump_inst(enum acs_id *inst, int depth)
 		struct acs_if *i = to_if(inst);
 		printf("if (");
 		dump_expr(i->expr, depth);
-		printf(")\n");
-		printf("%*s", 2 * depth + 2, "");
-		dump_inst(i->true_inst, depth + 1);
+		if (*i->true_inst == ACS_BLOCK) {
+			printf(") ");
+			dump_inst(i->true_inst, depth);
+			if (i->false_inst)
+				printf(" ");
+		} else {
+			printf(")\n");
+			printf("%*s", 2 * depth + 2, "");
+			dump_inst(i->true_inst, depth + 1);
+		}
 		if (!i->false_inst)
 			return;
 		printf("%*s", 2 * depth, "");
-		printf("else\n");
-		printf("%*s", 2 * depth + 2, "");
-		dump_inst(i->false_inst, depth + 1);
+		if (*i->false_inst == ACS_BLOCK) {
+			printf("else ");
+			dump_inst(i->false_inst, depth);
+		} else {
+			printf("else\n");
+			printf("%*s", 2 * depth + 2, "");
+			dump_inst(i->false_inst, depth + 1);
+		}
 	}
 }
 
