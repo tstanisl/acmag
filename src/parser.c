@@ -444,6 +444,26 @@ static enum acs_id *parse_expr_inst(struct parser *p)
 	return expr;
 }
 
+static enum acs_id *parse_return(struct parser *p)
+{
+	parse_consume(p);
+	struct acs_return *r = malloc(sizeof (*r));
+	if (ERR_ON(!r, "malloc() failed"))
+		return NULL;
+	r->id = ACS_RETURN;
+	if (p->next == TOK_SCOLON) {
+		r->expr = NULL;
+		parse_consume(p);
+		return &r->id;
+	}
+	r->expr = parse_expr_inst(p);
+	if (ERR_ON(!r->expr, "parse_expr_inst() failed")) {
+		free(r);
+		return NULL;
+	}
+	return &r->id;
+}
+
 static enum acs_id *parse_inst(struct parser *p)
 {
 	if (p->next == TOK_SCOLON) {
@@ -459,25 +479,8 @@ static enum acs_id *parse_inst(struct parser *p)
 		return &b->id;
 	}
 
-	if (p->next == TOK_RETURN) {
-		//printf("* got return\n");
-		parse_consume(p);
-		struct acs_return *r = malloc(sizeof (*r));
-		if (ERR_ON(!r, "malloc() failed"))
-			return NULL;
-		r->id = ACS_RETURN;
-		if (p->next == TOK_SCOLON) {
-			r->expr = NULL;
-			parse_consume(p);
-			return &r->id;
-		}
-		r->expr = parse_expr_inst(p);
-		if (ERR_ON(!r->expr, "parse_expr_inst() failed")) {
-			free(r);
-			return NULL;
-		}
-		return &r->id;
-	}
+	if (p->next == TOK_RETURN)
+		return parse_return(p);
 
 	return parse_expr_inst(p);
 }
