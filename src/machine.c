@@ -9,8 +9,8 @@
 enum acs_type {
 	VAL_VOID,
 	VAL_NULL,
-	__VAL_NONCONST,
-	VAL_BOOL = __VAL_NONCONST,
+	__VAL_DYNAMIC,
+	VAL_BOOL = __VAL_DYNAMIC,
 	VAL_NUM,
 	VAL_STR,
 	VAL_MAP,
@@ -26,6 +26,8 @@ enum acs_flow {
 	FL_CONTINUE,
 };
 
+struct acs_var;
+
 struct acs_value {
 	enum acs_type id;
 	struct acs_value *next;
@@ -33,7 +35,22 @@ struct acs_value {
 		int ival;
 		char *sval;
 		bool bval;
+		struct acs_function *fval;
+		struct acs_var *rval;
 	} u;
+};
+
+struct acs_var {
+	struct acs_var *next;
+	struct acs_value val;
+	char *name;
+	int refcnt;
+};
+
+struct acs_context {
+	/* TODO optimize using hash map */
+	struct acs_var *head;
+	struct acs_script *script;
 };
 
 /*struct acs_big_value {
@@ -97,18 +114,27 @@ static struct acs_value *make_value(enum acs_type type)
 
 static void destroy_value(struct acs_value *val)
 {
-	if (!val || val->id < __VAL_NONCONST)
+	if (!val || val->id < __VAL_DYNAMIC)
 		return;
 	free(val);
+}
+
+static struct acs_var *find_id(struct acs_context *ctx, char *name)
+{
+	for (struct acs_var *var = ctx->head; var; var = var->next)
+		if (strcmp(var->name, name) == 0)
+			return var;
+	return NULL;
 }
 
 static bool acs_is_true(struct acs_value *val)
 {
 	if (!val || val->id == VAL_NULL)
 		return false;
+	return true;
 }
 
-static struct acs_value *eval_expr(enum acs_id *id)
+static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 {
 	struct acs_value *val;
 	if (!id) {
@@ -126,22 +152,31 @@ static struct acs_value *eval_expr(enum acs_id *id)
 			return NULL;
 		val->u.sval = strdup(to_literal(id)->payload);
 		if (ERR_ON(!val->u.sval, "strdup() failed"))
-			return destroy_val(val), NULL;
+			return destroy_value(val), NULL;
 		return val;
 	} else if (*id == ACS_ID) {
-		
+		struct acs_literal *l = to_literal(id);
+		struct acs_var *var = find_id(ctx, l->payload);
+		if (ERR_ON(!var, "undefined identifier %s", l->payload))
+			return NULL;
+		struct acs_value *val = make_value(VAL_REF);
+		if (ERR_ON(!val, "make_value() failed"))
+			return NULL;
+		val->u.rval = var;
+		return val;
 	} else {
 		ERR("acs_id = %s is not supported", (int)*id);
 		return NULL;
 	}
 }
 
-static acs_value *to_rhs(struct acs_value *head)
+static struct acs_value *to_rhs(struct acs_value *head)
 {
-	
+	return NULL;
 }
 
-static struct acs_value *eval(enum acs_id *id, enum acs_flow *flow)
+static struct acs_value *eval(struct acs_context *ctx,
+	enum acs_id *id, enum acs_flow *flow)
 {
 	static struct acs_value void_value = { .id = VAL_VOID };
 	struct acs_value *val;
@@ -153,7 +188,7 @@ static struct acs_value *eval(enum acs_id *id, enum acs_flow *flow)
 		struct acs_block *b = to_block(id);
 		*flow = FL_NEXT;
 		for (int i = 0; i < vec_size(b->inst); ++i) {
-			val = eval(b->inst[i], flow);
+			val = eval(ctx, b->inst[i], flow);
 			if (*flow != FL_NEXT)
 				return val;
 			destroy_value(val);
@@ -161,22 +196,22 @@ static struct acs_value *eval(enum acs_id *id, enum acs_flow *flow)
 		return &void_value;
 	} else if (*id == ACS_IF) {
 		struct acs_if *i = to_if(id);
-		val = eval_expr(i->expr);
+		val = eval_expr(ctx, i->expr);
 		bool cond = acs_is_true(val);
 
 		destroy_value(val);
-		val = eval(cond ? i->true_inst : i->false_inst, flow);
+		val = eval(ctx, cond ? i->true_inst : i->false_inst, flow);
 		return val;
 	} else if (*id == ACS_WHILE) {
-		struct acs_if *w = to_while(id);
+		struct acs_while *w = to_while(id);
 		for (;;) {
-			val = eval_expr(w->expr);
+			val = eval_expr(ctx, w->expr);
 			bool cond = acs_is_true(val);
 			destroy_value(val);
 			if (!cond)
 				break;
 
-			val = eval(w->inst, flow);
+			val = eval(ctx, w->inst, flow);
 			if (*flow == FL_RETURN)
 				return val;
 
@@ -198,10 +233,10 @@ static struct acs_value *eval(enum acs_id *id, enum acs_flow *flow)
 	} else if (*id == ACS_RETURN) {
 		struct acs_return *r = to_return(id);
 		*flow = FL_RETURN;
-		return eval_expr(r->expr);
+		return eval_expr(ctx, r->expr);
 	} else if (*id >= __ACS_EXPR) {
 		*flow = FL_NEXT;
-		return eval_expr(id);
+		return eval_expr(ctx, id);
 	} else {
 		ERR("id=%d is not supported yet", (int)*id);
 	}
@@ -218,8 +253,10 @@ int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
 
 	// - copy stack to hash array by adding names
 	// - execute function block 
+	/* TODO: head should be arguments */
+	struct acs_context ctx = { .head = NULL, .script = s };
 	enum acs_flow flow;
-	enum acs_value *value = eval(&f->block->id, &flow);
+	struct acs_value *value = eval(&ctx, &f->block->id, &flow);
 	if (ERR_ON(!value, "calling %s failed", fname))
 		return -1;
 
