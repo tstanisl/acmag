@@ -260,9 +260,13 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 	if (*id == ACS_ASSIGN) {
 		ctx->lhs = old_lhs;
 		return eval_assign(ctx, lhs, rhs);
+	} else if (*id == ACS_COMMA) {
+		destroy_value(lhs->next);
+		lhs->next = rhs;
+		return lhs;
 	}
 
-	ERR("acs_id = %s is not supported by evaluator", (int)*id);
+	ERR("acs_id = %d is not supported by evaluator", id ? (int)*id : -1);
 
 	return NULL;
 }
