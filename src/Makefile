@@ -2,6 +2,7 @@ TARGET  := ../acmag
 SRCS    := \
 	cstr.c \
 	lxr.c \
+	machine.c \
 	main.c \
 	parser.c \
 	vec.c
