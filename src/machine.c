@@ -50,6 +50,7 @@ struct acs_context {
 	/* TODO optimize using hash map */
 	struct acs_var *vars;
 	struct acs_script *script;
+	bool lhs;
 };
 
 enum acs_flow {
@@ -82,12 +83,28 @@ static struct acs_function *script_find(struct acs_script *s, char *fname)
 	return NULL;
 }
 
-static struct acs_var *find_id(struct acs_var *head, char *name)
+static struct acs_var *find_var(struct acs_var *head, char *name)
 {
 	for (struct acs_var *var = head; var; var = var->next)
 		if (strcmp(var->name, name) == 0)
 			return var;
 	return NULL;
+}
+
+static struct acs_var *create_var(struct acs_var **head, char *name)
+{
+	struct acs_var *var = malloc(sizeof (*var) + strlen(name) + 1);
+	if (ERR_ON(!var, "malloc() failed"))
+		return NULL;
+
+	strcat(var->name, name);
+	memset(&var->val, 0, sizeof var->val);
+	var->val.id = VAL_NULL;
+
+	var->next = *head;
+	*head = var;
+
+	return var;
 }
 
 static struct acs_value *make_value(enum acs_type type)
@@ -203,16 +220,24 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 {
 	struct acs_expr *e = to_expr(id);
 
+	bool old_lhs = ctx->lhs;
+	if (*id == ACS_ASSIGN)
+		ctx->lhs = true;
+
 	struct acs_value *lhs = eval_expr(ctx, e->arg0);
 	if (ERR_ON(!lhs, "eval_expr() for LHS failed"))
 		return NULL;
+
+	ctx->lhs = false;
 
 	struct acs_value *rhs = eval_expr(ctx, e->arg1);
 	if (ERR_ON(!lhs, "eval_expr() for RHS failed"))
 		return destroy_value(lhs), NULL;
 
-	if (*id == ACS_ASSIGN)
+	if (*id == ACS_ASSIGN) {
+		ctx->lhs = old_lhs;
 		return eval_assign(ctx, lhs, rhs);
+	}
 
 	ERR("acs_id = %s is not supported by evaluator", (int)*id);
 
@@ -243,9 +268,15 @@ static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 		return val;
 	} else if (*id == ACS_ID) {
 		struct acs_literal *l = to_literal(id);
-		struct acs_var *var = find_id(ctx->vars, l->payload);
-		if (ERR_ON(!var, "undefined identifier %s", l->payload))
-			return NULL;
+		struct acs_var *var = find_var(ctx->vars, l->payload);
+		if (ctx->lhs) {
+			var = create_var(&ctx->vars, l->payload);
+			if (ERR_ON(!var, "create_var() failed"))
+				return NULL;
+		} else {
+			if (ERR_ON(!var, "undefined identifier %s", l->payload))
+				return NULL;
+		}
 		struct acs_value *val = make_value(VAL_VAR);
 		if (ERR_ON(!val, "make_value() failed"))
 			return NULL;
