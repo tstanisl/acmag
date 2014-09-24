@@ -97,7 +97,7 @@ static struct acs_var *create_var(struct acs_var **head, char *name)
 	if (ERR_ON(!var, "malloc() failed"))
 		return NULL;
 
-	strcat(var->name, name);
+	strcpy(var->name, name);
 	memset(&var->val, 0, sizeof var->val);
 	var->val.id = VAL_NULL;
 
@@ -142,7 +142,6 @@ static void dump_value(struct acs_value *val)
 		first = false;
 		val = val->next;
 	}
-	puts("");
 }
 static void destroy_value(struct acs_value *val)
 {
@@ -169,6 +168,14 @@ static void copy_value(struct acs_value *val,
 		str_get(old->u.sval);
 	val->u = old->u;
 	val->id = old->id;
+}
+
+static void deref_value(struct acs_value *val)
+{
+	if (val->id != VAL_VAR)
+		return;
+	// FIXME: add var_put()
+	copy_value(val, &val->u.vval->val);
 }
 
 /*static struct acs_value *duplicate_value(struct acs_value *old)
@@ -198,10 +205,15 @@ static bool value_to_bool(struct acs_value *val)
 static struct acs_value *eval_assign(struct acs_context *ctx,
 	struct acs_value *lhs_head, struct acs_value *rhs_head)
 {
-	struct acs_value *lhs = lhs_head;
-	struct acs_value *rhs = lhs_head;
+	struct acs_value *lhs, *rhs;
 
-	while (lhs) {
+	for (rhs = rhs_head; rhs; rhs = rhs->next) 
+		deref_value(rhs);
+	printf("deref(rhs) = " );
+	dump_value(rhs_head);
+	printf("\n");
+
+	for (rhs = rhs_head, lhs = lhs_head; lhs; lhs = lhs->next) {
 		// FIXME: should be detected on compiler stage
 		if (lhs->id != VAL_VAR) {
 			ERR("invalid L-value");
@@ -213,22 +225,13 @@ static struct acs_value *eval_assign(struct acs_context *ctx,
 		struct acs_value *lhs_val = &lhs->u.vval->val;
 		if (!rhs) {
 			clear_value(lhs_val);
-			lhs = lhs->next;
 			continue;
 		}
 
-		struct acs_value *next_rhs = rhs->next;
+		clear_value(lhs_val);
+		copy_value(lhs_val, rhs);
 
-		if (rhs->id == VAL_VAR)
-			rhs = &rhs->u.vval->val;
-
-		if (rhs != lhs_val) { // example a=a; nothing to do
-			clear_value(lhs_val);
-			copy_value(lhs_val, rhs);
-		}
-
-		lhs = lhs->next;
-		rhs = next_rhs;
+		rhs = rhs->next;
 	}
 
 	/* right expression is no longer needed */
@@ -258,10 +261,21 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 		return destroy_value(lhs), NULL;
 
 	if (*id == ACS_ASSIGN) {
+		dump_value(lhs);
+		printf("  :=  ");
+		dump_value(rhs);
+		printf("\n");
 		ctx->lhs = old_lhs;
-		return eval_assign(ctx, lhs, rhs);
-	} else if (*id == ACS_COMMA) {
-		destroy_value(lhs->next);
+		struct acs_value *val = eval_assign(ctx, lhs, rhs);
+		printf("result = ");
+		dump_value(val);
+		printf("\n");
+		return val;
+	}
+
+	destroy_value(lhs->next);
+
+	if (*id == ACS_COMMA) {
 		lhs->next = rhs;
 		return lhs;
 	}
@@ -274,7 +288,7 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 {
 	struct acs_value *val;
-	printf("processing id=%d\n", id ? *id : -1);
+	//printf("processing id=%d\n", id ? *id : -1);
 	if (!id || *id == ACS_NULL) {
 		val = make_value(VAL_NULL);
 		if (ERR_ON(!val, "make_value() failed"))
@@ -297,14 +311,15 @@ static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 		if (ERR_ON(!val, "make_value() failed"))
 			return NULL;
 		val->u.sval = str_create(to_literal(id)->payload);
-		if (ERR_ON(!val->u.sval, "cstr_create() failed"))
+		if (ERR_ON(!val->u.sval, "str_create() failed"))
 			return destroy_value(val), NULL;
 		return val;
 	} else if (*id == ACS_ID) {
 		struct acs_literal *l = to_literal(id);
 		struct acs_var *var = find_var(ctx->vars, l->payload);
 		if (ctx->lhs) {
-			var = create_var(&ctx->vars, l->payload);
+			if (!var)
+				var = create_var(&ctx->vars, l->payload);
 			if (ERR_ON(!var, "create_var() failed"))
 				return NULL;
 		} else {
@@ -339,6 +354,7 @@ static struct acs_value *eval(struct acs_context *ctx,
 			val = eval(ctx, b->inst[i], flow);
 			if (*flow != FL_NEXT)
 				return val;
+			dump_value(val); puts("");
 			destroy_value(val);
 		}
 		return make_value(VAL_NULL);
@@ -411,7 +427,11 @@ int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
 	if (ERR_ON(!value, "calling %s failed", fname))
 		return -1;
 
+	for (struct acs_value *v = value; v; v = v->next)
+		deref_value(v);
+
 	dump_value(value);
+	puts("");
 	destroy_value(value);
 
 	// - clear stack
