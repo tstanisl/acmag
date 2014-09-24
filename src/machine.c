@@ -83,6 +83,12 @@ static struct acs_function *script_find(struct acs_script *s, char *fname)
 	return NULL;
 }
 
+static void free_vars(struct acs_var *head)
+{
+	for (struct acs_var *var = head, *next; var; var = next)
+		next = var->next, free(var);
+}
+
 static struct acs_var *find_var(struct acs_var *head, char *name)
 {
 	for (struct acs_var *var = head; var; var = var->next)
@@ -433,6 +439,8 @@ int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
 	dump_value(value);
 	puts("");
 	destroy_value(value);
+
+	free_vars(ctx.vars);
 
 	// - clear stack
 	// - push results on stack
