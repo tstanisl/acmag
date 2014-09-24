@@ -3,6 +3,7 @@
 #include "list.h"
 #include "common.h"
 #include "syntax.h"
+#include "machine.h"
 
 int main()
 {
@@ -12,6 +13,14 @@ int main()
 		return -1;
 
 	dump_script(s);
+	for (int i = 0, ok = 1; ok; ++i) {
+		char buf[32];
+		sprintf(buf, "main%d", i);
+		printf("---- Running %s ----\n", buf);
+		ok = !machine_call(s, buf, NULL);
+		if (ERR_ON(!ok, "machine_call() failed"))
+			break;
+	}
 	destroy_script(s);
 
 	return 0;
