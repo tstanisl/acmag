@@ -25,7 +25,7 @@ char *cstr_create(char *str)
 
 	cstr->refcnt = 1;
 	cstr->magic = CSTR_MAGIC;
-	strcat(cstr->str, str);
+	strcpy(cstr->str, str);
 
 	return cstr->str;
 }
@@ -86,6 +86,7 @@ struct str *str_create(char *str)
 	s->refcnt = 1;
 	s->length = length;
 	s->hash = strhash(str);
+	strcpy(s->str, str);
 
 	return s;
 }
