@@ -268,7 +268,7 @@ static void destroy_expr(enum acs_id *expr)
 		free(to_literal(expr));
 	else if (*expr >= __ACS_ARG1)
 		destroy_arg_expr(expr);
-	else if (*expr == ACS_NOP)
+	else if (*expr == ACS_NOP || *expr == ACS_NULL || *expr == ACS_TRUE || *expr == ACS_FALSE)
 		;
 	else
 		ERR("unexpected asc_inst=%d\n", (int)*expr);
