@@ -67,3 +67,40 @@ void cstr_put(char *str)
 	cstr->magic = 0;
 	free(cstr);
 }
+
+unsigned strhash(char *s)
+{
+	unsigned hash;
+	for (hash = 0; *s; ++s)
+		hash = 33 * hash + *s;
+	return hash;
+}
+
+struct str *str_create(char *str)
+{
+	int length = strlen(str);
+	struct str *s = malloc(sizeof (*s) + length + 1);
+	if (ERR_ON(!s, "malloc() failed"))
+		return NULL;
+
+	s->refcnt = 1;
+	s->length = length;
+	s->hash = strhash(str);
+
+	return s;
+}
+
+struct str *str_reserve(int size)
+{
+	struct str *s = calloc(1, sizeof (struct str) + size);
+	if (ERR_ON(!s, "malloc() failed"))
+		return NULL;
+	s->refcnt = 1;
+	return s;
+}
+
+void str_update(struct str *s)
+{
+	s->length = strlen(s->str);
+	s->hash = strhash(s->str);
+}
