@@ -121,6 +121,29 @@ static struct acs_value *make_value(enum acs_type type)
 	return val;
 }
 
+static void dump_value(struct acs_value *val)
+{
+	bool first = true;
+	while (val) {
+		if (!first)
+			printf(", ");
+
+		if (val->id == VAL_NULL)
+			printf("null");
+		else if (val->id == VAL_STR)
+			printf("str:%s", val->u.sval->str);
+		else if (val->id == VAL_NUM)
+			printf("int:%d", val->u.ival);
+		else if (val->id == VAL_BOOL)
+			printf("bool:%s", val->u.bval ? "true" : "false");
+		else if (val->id == VAL_VAR)
+			printf("ref:%s", val->u.vval->name);
+
+		first = false;
+		val = val->next;
+	}
+	puts("");
+}
 static void destroy_value(struct acs_value *val)
 {
 	while (val) {
@@ -376,6 +399,9 @@ int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
 	struct acs_value *value = eval(&ctx, &f->block->id, &flow);
 	if (ERR_ON(!value, "calling %s failed", fname))
 		return -1;
+
+	dump_value(value);
+	destroy_value(value);
 
 	// - clear stack
 	// - push results on stack
