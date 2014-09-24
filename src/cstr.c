@@ -30,6 +30,18 @@ char *cstr_create(char *str)
 	return cstr->str;
 }
 
+char *cstr_reserve(int size)
+{
+	struct cstr *cstr = calloc(1, sizeof (*cstr) + size);
+	if (ERR_ON(!cstr, "malloc() failed"))
+		return NULL;
+
+	cstr->refcnt = 1;
+	cstr->magic = CSTR_MAGIC;
+
+	return cstr->str;
+}
+
 char *cstr_get(char *str)
 {
 	struct cstr *cstr = to_cstr(str);
