@@ -1,5 +1,6 @@
 TARGET  := ../acmag
 SRCS    := \
+	cstr.c \
 	lxr.c \
 	main.c \
 	parser.c \
