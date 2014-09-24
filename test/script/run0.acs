@@ -1,0 +1,8 @@
+main0() { return 1; }
+main1() { return "a"; }
+main2() { return; }
+main3() { return null; }
+main4() { return true; }
+main5() { return false; }
+main6() { }
+main7() { 1; "tomek"; true; }
