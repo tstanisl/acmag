@@ -148,7 +148,7 @@ static void destroy_value(struct acs_value *val)
 {
 	while (val) {
 		struct acs_value *next = val->next;
-		if (val->id == VAL_STR)
+		if (val->id == VAL_STR && val->u.sval)
 			str_put(val->u.sval);
 		free(val);
 		val = next;
@@ -157,7 +157,7 @@ static void destroy_value(struct acs_value *val)
 
 static void clear_value(struct acs_value *val)
 {
-	if (val->id == VAL_STR)
+	if (val->id == VAL_STR && val->u.sval)
 		str_put(val->u.sval);
 	memset(&val->u, 0, sizeof val->u);
 }
@@ -270,10 +270,17 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 {
 	struct acs_value *val;
-	if (!id) {
+	printf("processing id=%d\n", id ? *id : -1);
+	if (!id || *id == ACS_NULL) {
 		val = make_value(VAL_NULL);
 		if (ERR_ON(!val, "make_value() failed"))
 			return NULL;
+		return val;
+	} else if (*id == ACS_TRUE || *id == ACS_FALSE) {
+		val = make_value(VAL_BOOL);
+		if (ERR_ON(!val, "make_value() failed"))
+			return NULL;
+		val->u.bval = (*id == ACS_TRUE);
 		return val;
 	} else if (*id == ACS_NUM) {
 		val = make_value(VAL_NUM);
@@ -308,7 +315,7 @@ static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 	} else if (*id >= __ACS_ARG2) {
 		return eval_arg2_expr(ctx, id);
 	} else {
-		ERR("acs_id = %s is not supported", (int)*id);
+		ERR("acs_id = %s is not supported", id ? (int)*id : -1);
 		return NULL;
 	}
 }
