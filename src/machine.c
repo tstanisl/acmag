@@ -397,7 +397,7 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 		return NULL;
 
 	struct acs_value *rhs = eval_expr(ctx, e->arg1);
-	if (ERR_ON(!lhs, "eval_expr() for RHS failed"))
+	if (ERR_ON(!rhs, "eval_expr() for RHS failed"))
 		return destroy_value(lhs), NULL;
 
 	destroy_value(lhs->next);
