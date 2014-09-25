@@ -302,6 +302,47 @@ static struct acs_value *eval_bool(struct acs_context *ctx, enum acs_id *id, boo
 	return make_bool_value(cond);
 }
 
+static int do_cmp(struct acs_value *a, struct acs_value *b)
+{
+	if (a->id == VAL_NULL)
+		return 0;
+	if (a->id == VAL_BOOL)
+		return !!a->u.bval - !!b->u.bval;
+	if (a->id == VAL_NUM)
+		return a->u.ival - b->u.bval;
+	if (a->id == VAL_STR)
+		return strcmp(a->u.sval->str, b->u.sval->str);
+	if (a->id == VAL_VAR)
+		return a->u.vval != b->u.vval;
+	return 0;
+}
+
+static struct acs_value *eval_cmp(enum acs_id *id,
+	struct acs_value *lhs, struct acs_value *rhs)
+{
+	if (lhs->id != rhs->id) {
+		WARN("comparing not compatible types");
+		return make_bool_value(false);
+	}
+	int cmp = do_cmp(lhs, rhs);
+	cmp = cmp > 0 ? 1 : cmp;
+	cmp = cmp < -1 ? -1 : cmp;
+
+	destroy_value(lhs);
+	destroy_value(rhs);
+
+	static bool result[][3] = {
+		[ACS_LESS - __ACS_CMP] = {true, false, false},
+		[ACS_GREAT - __ACS_CMP] = {false, false, true},
+		[ACS_EQ - __ACS_CMP] = {false, true, false},
+		[ACS_NEQ - __ACS_CMP] = {true, false, true},
+		[ACS_LEQ - __ACS_CMP] = {true, true, false},
+		[ACS_GREQ - __ACS_CMP] = {false, true, true},
+	};
+
+	return make_bool_value(result[*id - __ACS_CMP][cmp + 1]);
+}
+
 static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id)
 {
 	struct acs_expr *e = to_expr(id);
@@ -322,14 +363,22 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 		return destroy_value(lhs), NULL;
 
 	destroy_value(lhs->next);
-
 	if (*id == ACS_COMMA) {
 		lhs->next = rhs;
 		return lhs;
 	}
 
-	destroy_value(rhs);
+	if (*id >= __ACS_CMP && *id < __ACS_CMP_MAX)
+		return eval_cmp(id, lhs, rhs);
+
+	destroy_value(rhs->next);
+	deref_value(rhs);
+	deref_value(lhs);
+
+
+
 	destroy_value(lhs);
+	destroy_value(rhs);
 
 	ERR("acs_id = %d is not supported by evaluator", id ? (int)*id : -1);
 
