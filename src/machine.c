@@ -638,6 +638,21 @@ static struct acs_value *eval(struct acs_context *ctx,
 	return NULL;
 }
 
+static struct acs_value *call_print(struct acs_user_function *ufunc,
+	struct acs_value *args)
+{
+	for (struct acs_value *val = args; val; val = val->next)
+		if (val->id == VAL_STR)
+			printf("%s", val->u.sval->str);
+		else if (val->id == VAL_NUM)
+			printf("%d", val->u.ival);
+		else if (val->id == VAL_BOOL)
+			printf("%s", val->u.bval ? "true" : "false");
+		else
+			printf("(invalid)");
+	return make_value(VAL_NULL);
+}
+
 static void machine_init(void)
 {
 	static bool initialized = false;
@@ -645,6 +660,9 @@ static void machine_init(void)
 		return;
 	varmap_init(&global_vars);
 	initialized = true;
+
+	static struct acs_user_function print = { .call = call_print };
+	register_user_function(&print, "print");
 }
 
 int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
