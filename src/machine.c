@@ -404,12 +404,12 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 		return lhs;
 	}
 
-	if (*id >= __ACS_CMP && *id < __ACS_CMP_MAX)
-		return eval_cmp(id, lhs, rhs);
-
 	destroy_value(rhs->next);
 	deref_value(rhs);
 	deref_value(lhs);
+
+	if (*id >= __ACS_CMP && *id < __ACS_CMP_MAX)
+		return eval_cmp(id, lhs, rhs);
 
 	if (*id >= __ACS_ARITH && *id < __ACS_ARITH_MAX)
 		return eval_arith(id, lhs, rhs);
