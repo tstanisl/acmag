@@ -456,24 +456,41 @@ static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 	} else if (*id == ACS_ID) {
 		struct acs_literal *l = to_literal(id);
 		struct acs_var *var = find_var(ctx->vars, l->payload);
+		if (var) {
+			struct acs_value *val = make_value(VAL_VAR);
+			if (ERR_ON(!val, "make_value() failed"))
+				return NULL;
+			val->u.vval = var;
+			return val;
+		}
+
+		struct acs_function *func = script_find(ctx->script, l->payload);
+		if (func) {
+			struct acs_value *val = make_value(VAL_FUNC);
+			if (ERR_ON(!val, "make_value() failed"))
+				return NULL;
+			val->u.fval = func;
+			return val;
+		}
+
 		if (ctx->lhs) {
-			if (!var)
-				var = create_var(&ctx->vars, l->payload);
+			var = create_var(&ctx->vars, l->payload);
 			if (ERR_ON(!var, "create_var() failed"))
 				return NULL;
-		} else {
-			if (ERR_ON(!var, "undefined identifier %s", l->payload))
+			struct acs_value *val = make_value(VAL_VAR);
+			if (ERR_ON(!val, "make_value() failed"))
 				return NULL;
-		}
-		struct acs_value *val = make_value(VAL_VAR);
-		if (ERR_ON(!val, "make_value() failed"))
+			val->u.vval = var;
+			return val;
+		} else {
+			ERR("undefined identifier %s", l->payload);
 			return NULL;
-		val->u.vval = var;
-		return val;
+		}
+
 	} else if (*id >= __ACS_ARG2) {
 		return eval_arg2_expr(ctx, id);
 	} else {
-		ERR("acs_id = %s is not supported", id ? (int)*id : -1);
+		ERR("acs_id = %d is not supported", id ? (int)*id : -1);
 		return NULL;
 	}
 }
