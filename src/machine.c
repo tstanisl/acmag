@@ -101,6 +101,14 @@ int varmap_delete(struct acs_varmap *vmap, char *name)
 
 static struct acs_varmap global_vars;
 
+static struct acs_value *var_find(struct acs_context *ctx, char *name)
+{
+	struct acs_value *val = varmap_find(&ctx->local, name);
+	if (val)
+		return val;
+	return varmap_find(&global_vars, name);
+}
+
 static struct acs_function *script_find(struct acs_script *s, char *fname)
 {
 	list_foreach(l, &s->functions) {
@@ -348,6 +356,14 @@ static struct acs_value *eval_cmp(enum acs_id *id,
 static struct acs_value *eval_call(enum acs_id *id,
 	struct acs_value *lhs, struct acs_value *rhs)
 {
+	if (lhs->id == VAL_USER) {
+		struct acs_user_function *ufunc = lhs->u.uval;
+		struct acs_value *ret = ufunc->call(ufunc, rhs);
+		destroy_value(lhs);
+		destroy_value(rhs);
+		return ret;
+	}
+
 	if (lhs->id != VAL_FUNC) {
 		ERR("non-function used in call statement");
 		destroy_value(lhs);
@@ -510,7 +526,7 @@ static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 		return val;
 	} else if (*id == ACS_ID) {
 		struct acs_literal *l = to_literal(id);
-		struct acs_value *rval = varmap_find(&ctx->local, l->payload);
+		struct acs_value *rval = var_find(ctx, l->payload);
 		if (rval) {
 			struct acs_value *val = make_value(VAL_REF);
 			if (ERR_ON(!val, "make_value() failed"))
@@ -661,5 +677,16 @@ int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
 
 	// - clear stack
 	// - push results on stack
+	return 0;
+}
+
+int register_user_function(struct acs_user_function *ufunc, char *name)
+{
+	struct acs_value *val = varmap_insert(&global_vars, name);
+	if (ERR_ON(!val, "varmap_insert() failed"))
+		return -1;
+	clear_value(val);
+	val->id = VAL_USER;
+	val->u.uval = ufunc;
 	return 0;
 }

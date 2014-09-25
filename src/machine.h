@@ -20,7 +20,12 @@ enum acs_type {
 	VAL_STR,
 	VAL_REF,
 	VAL_FUNC,
+	VAL_USER,
 	__VAL_MAX,
+};
+
+struct acs_user_function {
+	struct acs_value *(*call)(struct acs_user_function *, struct acs_value *);
 };
 
 struct acs_value {
@@ -31,9 +36,12 @@ struct acs_value {
 		struct str *sval;
 		bool bval;
 		struct acs_function *fval;
+		struct acs_user_function *uval;
 		struct acs_value *rval;
 	} u;
 };
+
+int register_user_function(struct acs_user_function *ufunc, char *name);
 
 /* Simple interface for variable maps */
 struct acs_varmap {
