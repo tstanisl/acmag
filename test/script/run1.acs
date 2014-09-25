@@ -1,0 +1,39 @@
+main0() {
+	if (true)
+		return "prawda";
+	return "falsz";
+}
+
+main1() {
+	if (false)
+		return "prawda";
+	return "falsz";
+}
+
+main2() {
+	return 1,2;
+}
+
+main3() {
+	1 = 1;
+	a = 1;
+	return a;
+}
+
+main4() {
+	a = 1;
+	b = 2;
+	return a,b;
+}
+
+main5() {
+	c = 1;
+	a = 1;
+	b = 2;
+	c = a;
+	c = b;
+	b, a = a, b;
+	c = a;
+	c = b;
+	return a,b;
+}

@@ -1,0 +1,22 @@
+main0() {
+	return true && false;
+}
+
+main1() {
+	return true && true;
+}
+
+main2() {
+	return true || false;
+}
+
+main3() {
+	return false || false;
+}
+
+main4() { return 1 == 2; }
+main5() { return 1 != 2; }
+main6() { return 1 > 2; }
+main7() { return 1 >= 2; }
+main8() { return 1 <= 2; }
+main9() { return 1 < 2; }

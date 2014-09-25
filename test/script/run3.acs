@@ -1,0 +1,13 @@
+main0() { return 1 + 2; }
+main1() { return 1 - 2; }
+main2() { return 1 * 2; }
+main3() { return 1 / 2; }
+main4() { return 1 % 2; }
+
+main5() {
+	n = 6;
+	x, x_ = 1, 0;
+	while (n > 0)
+		n, x, x_ = n - 1, x + x_, x;
+	return x;
+}
