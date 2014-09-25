@@ -427,8 +427,8 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 {
 	struct acs_value *val;
-	//printf("processing id=%d\n", id ? *id : -1);
-	if (!id || *id == ACS_NULL) {
+	printf("processing id=%d\n", id ? *id : -1);
+	if (!id || *id == ACS_NULL || *id == ACS_NOP) {
 		val = make_value(VAL_NULL);
 		if (ERR_ON(!val, "make_value() failed"))
 			return NULL;
