@@ -142,8 +142,11 @@ static void dump_value(struct acs_value *val)
 			printf("int:%d", val->u.ival);
 		else if (val->id == VAL_BOOL)
 			printf("bool:%s", val->u.bval ? "true" : "false");
-		else if (val->id == VAL_VAR)
-			printf("ref:%s", val->u.vval->name);
+		else if (val->id == VAL_VAR) {
+			printf("ref:%s(", val->u.vval->name);
+			dump_value(&val->u.vval->val);
+			printf(")");
+		}
 
 		first = false;
 		val = val->next;
