@@ -99,6 +99,8 @@ int varmap_delete(struct acs_varmap *vmap, char *name)
 	return -1;
 }
 
+static struct acs_varmap global_vars;
+
 static struct acs_function *script_find(struct acs_script *s, char *fname)
 {
 	list_foreach(l, &s->functions) {
@@ -620,8 +622,18 @@ static struct acs_value *eval(struct acs_context *ctx,
 	return NULL;
 }
 
+static void machine_init(void)
+{
+	static bool initialized = false;
+	if (initialized)
+		return;
+	varmap_init(&global_vars);
+	initialized = true;
+}
+
 int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
 {
+	machine_init();
 	// - find function object
 	struct acs_function *f = script_find(s, fname);
 	if (ERR_ON(!f, "failed to find function %s", fname))
