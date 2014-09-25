@@ -1,0 +1,25 @@
+main0() {
+	print("Hello world");
+}
+
+main1() {
+	x, x_ = 1, 0;
+	n = 0;
+	while (n < 10) {
+		print(x, " ");
+		n, x, x_ = n + 1, x + x_, x;
+	}
+}
+
+hanoi(n, src, dst) {
+	if (n == 0)
+		return;
+	mid = 6 - src - dst;
+	hanoi(n - 1, src, mid);
+	print("move ", src, " to ", dst, "\n");
+	hanoi(n - 1, mid, dst);
+}
+
+main2() {
+	hanoi(3, 1, 3);
+}
