@@ -227,7 +227,7 @@ static struct acs_value *eval_assign(struct acs_context *ctx, enum acs_id *id)
 	ctx->lhs = false;
 
 	struct acs_value *rhs_head = eval_expr(ctx, e->arg1);
-	if (ERR_ON(!lhs_head, "eval_expr() for RHS failed"))
+	if (ERR_ON(!rhs_head, "eval_expr() for RHS failed"))
 		return destroy_value(lhs_head), NULL;
 
 	ctx->lhs = old_lhs;
