@@ -215,9 +215,9 @@ static struct acs_value *eval_assign(struct acs_context *ctx,
 
 	for (rhs = rhs_head; rhs; rhs = rhs->next) 
 		deref_value(rhs);
-	printf("deref(rhs) = " );
+	/*printf("deref(rhs) = " );
 	dump_value(rhs_head);
-	printf("\n");
+	printf("\n");*/
 
 	for (rhs = rhs_head, lhs = lhs_head; lhs; lhs = lhs->next) {
 		// FIXME: should be detected on compiler stage
@@ -267,15 +267,15 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 		return destroy_value(lhs), NULL;
 
 	if (*id == ACS_ASSIGN) {
-		dump_value(lhs);
+		/*dump_value(lhs);
 		printf("  :=  ");
 		dump_value(rhs);
-		printf("\n");
+		printf("\n");*/
 		ctx->lhs = old_lhs;
 		struct acs_value *val = eval_assign(ctx, lhs, rhs);
-		printf("result = ");
+		/*printf("result = ");
 		dump_value(val);
-		printf("\n");
+		printf("\n");*/
 		return val;
 	}
 
@@ -285,6 +285,9 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 		lhs->next = rhs;
 		return lhs;
 	}
+
+	deref_value(rhs);
+	deref_value(lhs);
 
 	ERR("acs_id = %d is not supported by evaluator", id ? (int)*id : -1);
 
@@ -360,7 +363,7 @@ static struct acs_value *eval(struct acs_context *ctx,
 			val = eval(ctx, b->inst[i], flow);
 			if (*flow != FL_NEXT)
 				return val;
-			dump_value(val); puts("");
+			//dump_value(val); puts("");
 			destroy_value(val);
 		}
 		return make_value(VAL_NULL);
