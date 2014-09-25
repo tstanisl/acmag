@@ -322,6 +322,8 @@ static struct acs_value *eval_cmp(enum acs_id *id,
 {
 	if (lhs->id != rhs->id) {
 		WARN("comparing not compatible types");
+		destroy_value(lhs);
+		destroy_value(rhs);
 		return make_bool_value(false);
 	}
 	int cmp = do_cmp(lhs, rhs);
