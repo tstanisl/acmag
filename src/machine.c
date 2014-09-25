@@ -138,9 +138,9 @@ static void dump_value(struct acs_value *val)
 			printf("int:%d", val->u.ival);
 		else if (val->id == VAL_BOOL)
 			printf("bool:%s", val->u.bval ? "true" : "false");
-		else if (val->id == VAL_VAR) {
-			printf("ref:%s(", val->u.vval->name);
-			dump_value(&val->u.vval->val);
+		else if (val->id == VAL_REF) {
+			printf("ref:%s(", value_to_var(val->u.rval)->name);
+			dump_value(val->u.rval);
 			printf(")");
 		}
 
@@ -177,10 +177,10 @@ static void copy_value(struct acs_value *val,
 
 static void deref_value(struct acs_value *val)
 {
-	if (val->id != VAL_VAR)
+	if (val->id != VAL_REF)
 		return;
 	// FIXME: add var_put()
-	copy_value(val, &val->u.vval->val);
+	copy_value(val, val->u.rval);
 }
 
 /*static struct acs_value *duplicate_value(struct acs_value *old)
@@ -202,8 +202,8 @@ static bool value_to_bool(struct acs_value *val)
 		return false;
 	if (val->id == VAL_BOOL)
 		return val->u.bval;
-	if (val->id == VAL_VAR) /* FIXME: a[0] = a; if (a[0]) ... will boom !!! */
-		return value_to_bool(&val->u.vval->val);
+	if (val->id == VAL_REF) /* FIXME: a[0] = a; if (a[0]) ... will boom !!! */
+		return value_to_bool(val->u.rval);
 	return true;
 }
 
@@ -250,14 +250,14 @@ static struct acs_value *eval_assign(struct acs_context *ctx, enum acs_id *id)
 		deref_value(rhs);
 	for (rhs = rhs_head, lhs = lhs_head; lhs; lhs = lhs->next) {
 		// FIXME: should be detected on compiler stage
-		if (lhs->id != VAL_VAR) {
+		if (lhs->id != VAL_REF) {
 			ERR("invalid L-value");
 			destroy_value(lhs_head);
 			destroy_value(rhs_head);
 			return NULL;
 		}
 
-		struct acs_value *lhs_val = &lhs->u.vval->val;
+		struct acs_value *lhs_val = lhs->u.rval;
 		clear_value(lhs_val);
 		if (!rhs)
 			continue;
@@ -310,8 +310,8 @@ static int do_cmp(struct acs_value *a, struct acs_value *b)
 		return a->u.ival - b->u.bval;
 	if (a->id == VAL_STR)
 		return strcmp(a->u.sval->str, b->u.sval->str);
-	if (a->id == VAL_VAR)
-		return a->u.vval != b->u.vval;
+	if (a->id == VAL_REF)
+		return a->u.rval != b->u.rval;
 	return 0;
 }
 
@@ -508,12 +508,12 @@ static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 		return val;
 	} else if (*id == ACS_ID) {
 		struct acs_literal *l = to_literal(id);
-		struct acs_value *vval = varmap_find(&ctx->local, l->payload);
-		if (vval) {
-			struct acs_value *val = make_value(VAL_VAR);
+		struct acs_value *rval = varmap_find(&ctx->local, l->payload);
+		if (rval) {
+			struct acs_value *val = make_value(VAL_REF);
 			if (ERR_ON(!val, "make_value() failed"))
 				return NULL;
-			val->u.vval = value_to_var(vval);
+			val->u.rval = rval;
 			return val;
 		}
 
@@ -527,13 +527,13 @@ static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 		}
 
 		if (ctx->lhs) {
-			vval = varmap_insert(&ctx->local, l->payload);
-			if (ERR_ON(!vval, "varmap_insert() failed"))
+			rval = varmap_insert(&ctx->local, l->payload);
+			if (ERR_ON(!rval, "varmap_insert() failed"))
 				return NULL;
-			struct acs_value *val = make_value(VAL_VAR);
+			struct acs_value *val = make_value(VAL_REF);
 			if (ERR_ON(!val, "make_value() failed"))
 				return NULL;
-			val->u.vval = value_to_var(vval);
+			val->u.rval = rval;
 			return val;
 		} else {
 			ERR("undefined identifier %s", l->payload);

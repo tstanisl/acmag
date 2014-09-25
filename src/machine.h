@@ -18,12 +18,10 @@ enum acs_type {
 	VAL_BOOL,
 	VAL_NUM,
 	VAL_STR,
-	VAL_VAR,
+	VAL_REF,
 	VAL_FUNC,
 	__VAL_MAX,
 };
-
-struct acs_var;
 
 struct acs_value {
 	enum acs_type id;
@@ -33,7 +31,7 @@ struct acs_value {
 		struct str *sval;
 		bool bval;
 		struct acs_function *fval;
-		struct acs_var *vval;
+		struct acs_value *rval;
 	} u;
 };
 
