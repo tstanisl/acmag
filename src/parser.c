@@ -863,14 +863,12 @@ struct acs_script *parse_script(FILE *file, char *path)
 	// failure or not LeXeR is no longer needed
 	lxr_destroy(parser.lxr);
 
-	if (parser.next == TOK_ERR) {
-		parse_err(&parser, "%s", lxr_buffer(parser.lxr));
-		goto fail;
-	}
-
 	return script;
 
 fail_lxr:
+	if (parser.next == TOK_ERR)
+		parse_err(&parser, "%s", lxr_buffer(parser.lxr));
+
 	lxr_destroy(parser.lxr);
 fail:
 	destroy_script(script);
