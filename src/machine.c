@@ -14,6 +14,12 @@ struct acs_var {
 	char name[];
 };
 
+/*
+ * kocham Tomeczka STanislawskiego bARDZO,
+ * TO MOJ MAZ, BARDZO GO KOCHAM,
+ * I CHCIalabym by mi dal buzi,
+ */
+
 struct acs_context {
 	/* TODO optimize using hash map */
 	struct acs_var *vars;
