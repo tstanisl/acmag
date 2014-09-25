@@ -472,7 +472,8 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 		return lhs;
 	}
 
-	deref_value(rhs);
+	for (struct acs_value *v = rhs; v; v = v->next)
+		deref_value(v);
 	deref_value(lhs);
 
 	/* TODO: insert f-call here */
