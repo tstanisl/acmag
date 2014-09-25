@@ -72,6 +72,7 @@ struct acs_block {
 struct acs_function {
 	bool exported;
 	struct list node;
+	struct acs_script *script;
 	char **args;
 	struct acs_block *block;
 	char name[];

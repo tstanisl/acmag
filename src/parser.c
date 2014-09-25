@@ -857,6 +857,7 @@ struct acs_script *parse_script(FILE *file, char *path)
 			goto fail_lxr;
 
 		list_add_tail(&function->node, &script->functions);
+		function->script = script;
 	}
 
 	// failure or not LeXeR is no longer needed
