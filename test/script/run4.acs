@@ -1,0 +1,72 @@
+fun() { return "hello"; }
+
+main0() {
+	a = fun;
+}
+
+main1() {
+	return fun();
+}
+
+by2(n) {
+	return 2 * n;
+}
+
+main2() {
+	return by2(3);
+}
+
+factorial(n) {
+	if (n <= 1)
+		return 1;
+	return n * factorial(n - 1);
+}
+
+main3() {
+	return factorial(5);
+}
+
+sum(a,b) {
+	return a + b;
+}
+
+main4() {
+	return sum(2,3);
+}
+
+onetwo() {
+	return 1, 2;
+}
+
+main5() {
+	return onetwo(1,2);
+}
+
+
+swap(a,b) {
+	return b, a;
+}
+
+main6() {
+	return swap(1,2);
+}
+
+fib(n) {
+	if (n < 2)
+		return n;
+	return fib(n - 1) + fib(n - 2);
+}
+
+main7() { return fib(6); }
+// main8() { main8(); } // will boom
+
+gcd(a,b) {
+	while (b != 0)
+		a, b = b, a % b;
+	return a;
+}
+
+main8() {
+	return gcd(24, 15);
+}
+
