@@ -99,6 +99,31 @@ int varmap_delete(struct acs_varmap *vmap, char *name)
 	return -1;
 }
 
+int object_init(struct acs_object *obj, acs_object_dtor_cb dtor)
+{
+	int ret = varmap_init(&obj->fields);
+	if (ERR_ON(ret, "varmap_init() failed"))
+		return -1;
+	obj->dtor = dtor;
+	obj->refcnt = 1;
+	return 0;
+}
+
+struct acs_object *object_get(struct acs_object *obj)
+{
+	++obj->refcnt;
+	return obj;
+}
+
+void object_put(struct acs_object *obj)
+{
+	if (--obj->refcnt)
+		return;
+	varmap_deinit(&obj->fields);
+	if (obj->dtor)
+		obj->dtor(obj);
+}
+
 static struct acs_varmap global_vars;
 
 static struct acs_value *var_find(struct acs_context *ctx, char *name)
