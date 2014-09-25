@@ -7,43 +7,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum acs_type {
-	VAL_NULL = 0,
-	VAL_BOOL,
-	VAL_NUM,
-	VAL_STR,
-	VAL_VAR,
-	VAL_OBJ,
-	VAL_FUNC,
-	__VAL_MAX,
-};
-
-struct acs_var;
-struct acs_object;
-
-struct acs_value {
-	enum acs_type id;
-	struct acs_value *next; // used only by assignment
-	union {
-		int ival;
-		struct str *sval;
-		bool bval;
-		struct acs_function *fval;
-		struct acs_var *vval;
-		struct acs_object *oval;
-	} u;
-};
-
 struct acs_var {
 	/* FIXME: consider using val.next instead */
 	struct acs_var *next;
 	struct acs_value val;
 	char name[];
-};
-
-struct acs_object {
-	struct acs_var *subs;
-	int refcnt;
 };
 
 struct acs_context {
