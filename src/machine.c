@@ -211,6 +211,15 @@ static bool value_to_bool(struct acs_value *val)
 	return true;
 }
 
+static struct acs_value *make_bool_value(bool bval)
+{
+	struct acs_value *val = make_value(VAL_BOOL);
+	if (ERR_ON(!val, "make_value() failed"))
+		return NULL;
+	val->u.bval = bval;
+	return val;
+}
+
 static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id);
 
 static struct acs_value *eval_assign(struct acs_context *ctx, enum acs_id *id)
@@ -268,12 +277,41 @@ static struct acs_value *eval_assign(struct acs_context *ctx, enum acs_id *id)
 	return lhs_head;
 }
 
+static struct acs_value *eval_bool(struct acs_context *ctx, enum acs_id *id, bool is_or)
+{
+	struct acs_expr *e = to_expr(id);
+
+	struct acs_value *lhs = eval_expr(ctx, e->arg0);
+	if (ERR_ON(!lhs, "eval_expr() for LHS failed"))
+		return NULL;
+
+	deref_value(lhs);
+	bool cond = value_to_bool(lhs);
+	destroy_value(lhs);
+
+	if (cond == is_or)
+		return make_bool_value(is_or);
+
+	struct acs_value *rhs = eval_expr(ctx, e->arg1);
+	if (ERR_ON(!rhs, "eval_expr() for RHS failed"))
+		return destroy_value(lhs), NULL;
+
+	deref_value(rhs);
+	cond = value_to_bool(rhs);
+	destroy_value(rhs);
+	return make_bool_value(cond);
+}
+
 static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id)
 {
 	struct acs_expr *e = to_expr(id);
 
 	if (*id == ACS_ASSIGN)
 		return eval_assign(ctx, id);
+	if (*id == ACS_OR)
+		return eval_bool(ctx, id, true);
+	if (*id == ACS_AND)
+		return eval_bool(ctx, id, false);
 
 	struct acs_value *lhs = eval_expr(ctx, e->arg0);
 	if (ERR_ON(!lhs, "eval_expr() for LHS failed"))
