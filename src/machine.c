@@ -211,17 +211,36 @@ static bool value_to_bool(struct acs_value *val)
 	return true;
 }
 
-static struct acs_value *eval_assign(struct acs_context *ctx,
-	struct acs_value *lhs_head, struct acs_value *rhs_head)
-{
-	struct acs_value *lhs, *rhs;
+static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id);
 
-	for (rhs = rhs_head; rhs; rhs = rhs->next) 
-		deref_value(rhs);
-	/*printf("deref(rhs) = " );
+static struct acs_value *eval_assign(struct acs_context *ctx, enum acs_id *id)
+{
+	struct acs_expr *e = to_expr(id);
+
+	bool old_lhs = ctx->lhs;
+	ctx->lhs = true;
+
+	struct acs_value *lhs_head = eval_expr(ctx, e->arg0);
+	if (ERR_ON(!lhs_head, "eval_expr() for LHS failed"))
+		return NULL;
+
+	ctx->lhs = false;
+
+	struct acs_value *rhs_head = eval_expr(ctx, e->arg1);
+	if (ERR_ON(!lhs_head, "eval_expr() for RHS failed"))
+		return destroy_value(lhs_head), NULL;
+
+	ctx->lhs = old_lhs;
+
+	/*dump_value(lhs_head);
+	printf("  :=  ");
 	dump_value(rhs_head);
 	printf("\n");*/
 
+	struct acs_value *lhs, *rhs;
+	/* deref R-value to avoid side-effects in a,b = b,a; */
+	for (rhs = rhs_head; rhs; rhs = rhs->next)
+		deref_value(rhs);
 	for (rhs = rhs_head, lhs = lhs_head; lhs; lhs = lhs->next) {
 		// FIXME: should be detected on compiler stage
 		if (lhs->id != VAL_VAR) {
@@ -232,55 +251,37 @@ static struct acs_value *eval_assign(struct acs_context *ctx,
 		}
 
 		struct acs_value *lhs_val = &lhs->u.vval->val;
-		if (!rhs) {
-			clear_value(lhs_val);
-			continue;
-		}
-
 		clear_value(lhs_val);
+		if (!rhs)
+			continue;
 		copy_value(lhs_val, rhs);
-
 		rhs = rhs->next;
 	}
 
 	/* right expression is no longer needed */
 	destroy_value(rhs_head);
 
+	/*printf("result = ");
+	dump_value(lhs_head);
+	printf("\n");*/
+
 	return lhs_head;
 }
-
-static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id);
 
 static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id)
 {
 	struct acs_expr *e = to_expr(id);
 
-	bool old_lhs = ctx->lhs;
 	if (*id == ACS_ASSIGN)
-		ctx->lhs = true;
+		return eval_assign(ctx, id);
 
 	struct acs_value *lhs = eval_expr(ctx, e->arg0);
 	if (ERR_ON(!lhs, "eval_expr() for LHS failed"))
 		return NULL;
 
-	ctx->lhs = false;
-
 	struct acs_value *rhs = eval_expr(ctx, e->arg1);
 	if (ERR_ON(!lhs, "eval_expr() for RHS failed"))
 		return destroy_value(lhs), NULL;
-
-	if (*id == ACS_ASSIGN) {
-		/*dump_value(lhs);
-		printf("  :=  ");
-		dump_value(rhs);
-		printf("\n");*/
-		ctx->lhs = old_lhs;
-		struct acs_value *val = eval_assign(ctx, lhs, rhs);
-		/*printf("result = ");
-		dump_value(val);
-		printf("\n");*/
-		return val;
-	}
 
 	destroy_value(lhs->next);
 
@@ -289,8 +290,8 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 		return lhs;
 	}
 
-	deref_value(rhs);
-	deref_value(lhs);
+	destroy_value(rhs);
+	destroy_value(lhs);
 
 	ERR("acs_id = %d is not supported by evaluator", id ? (int)*id : -1);
 
