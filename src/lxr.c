@@ -66,6 +66,7 @@ enum lxr_state {
 	LST_LEQ,
 	LST_GREQ,
 	LST_DOT,
+	LST_STR_SLASH,
 	/* all states below fills token data */
 	__LST_ECHO,
 	LST_INT = __LST_ECHO,
@@ -200,6 +201,17 @@ enum token lxr_get(struct lxr *lxr)
 				return TOK_STR;
 			if (c == '\n' || c == EOF)
 				return lxr_error(lxr, "unfinished string");
+			if (c == '\\')
+				st = LST_STR_SLASH;
+			else
+				st = LST_STR;
+		} else if (st == LST_STR_SLASH) {
+			if (c == 'n')
+				c = '\n';
+			else if (c == '"' || c == '\\')
+				;
+			else
+				return lxr_error(lxr, "invalid escape character");
 			st = LST_STR;
 		} else if (st == LST_INT) {
 			if (!isdigit(c)) {
