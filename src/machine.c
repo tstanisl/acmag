@@ -96,6 +96,10 @@ static struct acs_var *find_var(struct acs_var *head, char *name)
 	for (struct acs_var *var = head; var; var = var->next)
 		if (strcmp(var->name, name) == 0)
 			return var;
+	/*printf("failed to find %s in vars:", name);
+	for (struct acs_var *v = head; v; v = v->next)
+		printf(" %s", v->name);
+	puts("");*/
 	return NULL;
 }
 
@@ -223,6 +227,8 @@ static struct acs_value *make_bool_value(bool bval)
 }
 
 static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id);
+static struct acs_value *eval(struct acs_context *ctx,
+	enum acs_id *id, enum acs_flow *flow);
 
 static struct acs_value *eval_assign(struct acs_context *ctx, enum acs_id *id)
 {
@@ -347,6 +353,58 @@ static struct acs_value *eval_cmp(enum acs_id *id,
 	return make_bool_value(result[*id - __ACS_CMP][cmp + 1]);
 }
 
+static struct acs_value *eval_call(enum acs_id *id,
+	struct acs_value *lhs, struct acs_value *rhs)
+{
+	if (lhs->id != VAL_FUNC) {
+		ERR("non-function used in call statement");
+		destroy_value(lhs);
+		destroy_value(rhs);
+		return NULL;
+	}
+	struct acs_function *f = lhs->u.fval;
+	struct acs_context ctx = { .vars = NULL, .script = f->script };
+	struct acs_value *value = NULL;
+	struct acs_value *n = rhs;
+	for (int i = 0; i < vec_size(f->args); ++i) {
+		struct acs_var *var = create_var(&ctx.vars, f->args[i]);
+		if (ERR_ON(!var, "create_var() failed"))
+			goto done;
+		if (n) {
+			copy_value(&var->val, n);
+			n = n->next;
+		} else {
+			var->val.id = VAL_NULL;
+		}
+	}
+
+	/*printf("calling %s with args:", f->name);
+	for (struct acs_var *v = ctx.vars; v; v = v->next)
+		printf(" %s", v->name);
+	puts("");*/
+
+	enum acs_flow flow;
+	value = eval(&ctx, &f->block->id, &flow);
+	if (ERR_ON(!value, "calling %s failed", f->name))
+		goto done;
+
+	/*printf("return = ");
+	dump_value(value);
+	puts("");*/
+	/* deref value to prevent to fix invalid adress after return a; */
+	for (struct acs_value *v = value; v; v = v->next)
+		deref_value(v);
+	/*printf("return = ");
+	dump_value(value);
+	puts("");*/
+
+done:
+	free_vars(ctx.vars);
+	destroy_value(lhs);
+	destroy_value(rhs);
+	return value;
+}
+
 static struct acs_value *eval_arith(enum acs_id *id,
 	struct acs_value *lhs, struct acs_value *rhs)
 {
@@ -406,9 +464,14 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 		return lhs;
 	}
 
-	destroy_value(rhs->next);
 	deref_value(rhs);
 	deref_value(lhs);
+
+	/* TODO: insert f-call here */
+	if (*id == ACS_CALL)
+		return eval_call(id, lhs, rhs);
+
+	destroy_value(rhs->next);
 
 	if (*id >= __ACS_CMP && *id < __ACS_CMP_MAX)
 		return eval_cmp(id, lhs, rhs);
