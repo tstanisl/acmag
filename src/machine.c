@@ -83,10 +83,12 @@ static struct acs_function *script_find(struct acs_script *s, char *fname)
 	return NULL;
 }
 
+static void clear_value(struct acs_value *val);
+
 static void free_vars(struct acs_var *head)
 {
 	for (struct acs_var *var = head, *next; var; var = next)
-		next = var->next, free(var);
+		next = var->next, clear_value(&var->val), free(var);
 }
 
 static struct acs_var *find_var(struct acs_var *head, char *name)
