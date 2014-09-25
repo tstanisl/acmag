@@ -654,6 +654,11 @@ static struct acs_value *call_print(struct acs_user_function *ufunc,
 	return make_value(VAL_NULL);
 }
 
+static void machine_deinit(void)
+{
+	varmap_deinit(&global_vars);
+}
+
 static void machine_init(void)
 {
 	static bool initialized = false;
@@ -661,6 +666,8 @@ static void machine_init(void)
 		return;
 	varmap_init(&global_vars);
 	initialized = true;
+
+	atexit(machine_deinit);
 
 	static struct acs_user_function print = { .call = call_print };
 	register_user_function(&print, "print");
