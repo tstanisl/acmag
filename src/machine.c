@@ -343,6 +343,40 @@ static struct acs_value *eval_cmp(enum acs_id *id,
 	return make_bool_value(result[*id - __ACS_CMP][cmp + 1]);
 }
 
+static struct acs_value *eval_arith(enum acs_id *id,
+	struct acs_value *lhs, struct acs_value *rhs)
+{
+	struct acs_value *val = NULL;
+	if (ERR_ON(lhs->id != VAL_NUM, "left arg is not int"))
+		goto done;
+	if (ERR_ON(rhs->id != VAL_NUM, "right arg is not int"))
+		goto done;
+
+	int ival = 0;
+	if (*id == ACS_ADD)
+		ival = lhs->u.ival + rhs->u.ival;
+	else if (*id == ACS_SUB)
+		ival = lhs->u.ival - rhs->u.ival;
+	else if (*id == ACS_MUL)
+		ival = lhs->u.ival * rhs->u.ival;
+	else if (*id == ACS_DIV)
+		ival = lhs->u.ival / rhs->u.ival;
+	else if (*id == ACS_MOD)
+		ival = lhs->u.ival % rhs->u.ival;
+	else
+		CRIT("unexpected acs_id = %d\n", (int)*id);
+
+	val = make_value(VAL_NUM);
+	if (ERR_ON(!val, "make_value() failed"))
+		goto done;
+
+	val->u.ival = ival;
+done:
+	destroy_value(lhs);
+	destroy_value(rhs);
+	return val;
+}
+
 static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id)
 {
 	struct acs_expr *e = to_expr(id);
@@ -375,7 +409,8 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 	deref_value(rhs);
 	deref_value(lhs);
 
-
+	if (*id >= __ACS_ARITH && *id < __ACS_ARITH_MAX)
+		return eval_arith(id, lhs, rhs);
 
 	destroy_value(lhs);
 	destroy_value(rhs);
