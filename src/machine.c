@@ -21,8 +21,7 @@ struct acs_var {
  */
 
 struct acs_context {
-	/* TODO optimize using hash map */
-	struct acs_var *vars;
+	struct acs_varmap local;
 	struct acs_script *script;
 	bool lhs;
 };
@@ -47,6 +46,59 @@ enum acs_flow {
 #define to_while(inst) \
 	container_of(inst, struct acs_while, id)
 
+#define value_to_var(value) \
+	container_of(value, struct acs_var, val)
+
+int varmap_init(struct acs_varmap *vmap)
+{
+	vmap->head = NULL;
+	return 0;
+}
+
+static void clear_value(struct acs_value *val);
+
+void varmap_deinit(struct acs_varmap *vmap)
+{
+	for (struct acs_var *var = vmap->head, *next; var; var = next) {
+		next = var->next;
+		clear_value(&var->val);
+		free(var);
+	}
+}
+
+struct acs_value *varmap_find(struct acs_varmap *vmap, char *name)
+{
+	for (struct acs_var *var = vmap->head; var; var = var->next)
+		if (strcmp(var->name, name) == 0)
+			return &var->val;
+	return NULL;
+}
+
+struct acs_value *varmap_insert(struct acs_varmap *vmap, char *name)
+{
+	struct acs_value *val = varmap_find(vmap, name);
+	if (val)
+		return val;
+
+	struct acs_var *var = calloc(1, sizeof (*var) + strlen(name) + 1);
+	if (ERR_ON(!var, "malloc() failed"))
+		return NULL;
+
+	strcpy(var->name, name);
+	memset(&var->val, 0, sizeof var->val);
+	var->val.id = VAL_NULL;
+
+	var->next = vmap->head;
+	vmap->head = var;
+
+	return &var->val;
+}
+
+int varmap_delete(struct acs_varmap *vmap, char *name)
+{
+	return -1;
+}
+
 static struct acs_function *script_find(struct acs_script *s, char *fname)
 {
 	list_foreach(l, &s->functions) {
@@ -55,42 +107,6 @@ static struct acs_function *script_find(struct acs_script *s, char *fname)
 			return f;
 	}
 	return NULL;
-}
-
-static void clear_value(struct acs_value *val);
-
-static void free_vars(struct acs_var *head)
-{
-	for (struct acs_var *var = head, *next; var; var = next)
-		next = var->next, clear_value(&var->val), free(var);
-}
-
-static struct acs_var *find_var(struct acs_var *head, char *name)
-{
-	for (struct acs_var *var = head; var; var = var->next)
-		if (strcmp(var->name, name) == 0)
-			return var;
-	/*printf("failed to find %s in vars:", name);
-	for (struct acs_var *v = head; v; v = v->next)
-		printf(" %s", v->name);
-	puts("");*/
-	return NULL;
-}
-
-static struct acs_var *create_var(struct acs_var **head, char *name)
-{
-	struct acs_var *var = malloc(sizeof (*var) + strlen(name) + 1);
-	if (ERR_ON(!var, "malloc() failed"))
-		return NULL;
-
-	strcpy(var->name, name);
-	memset(&var->val, 0, sizeof var->val);
-	var->val.id = VAL_NULL;
-
-	var->next = *head;
-	*head = var;
-
-	return var;
 }
 
 static struct acs_value *make_value(enum acs_type type)
@@ -337,19 +353,19 @@ static struct acs_value *eval_call(enum acs_id *id,
 		return NULL;
 	}
 	struct acs_function *f = lhs->u.fval;
-	struct acs_context ctx = { .vars = NULL, .script = f->script };
+	struct acs_context ctx = { .script = f->script };
+	varmap_init(&ctx.local);
+
 	struct acs_value *value = NULL;
 	struct acs_value *n = rhs;
 	for (int i = 0; i < vec_size(f->args); ++i) {
-		struct acs_var *var = create_var(&ctx.vars, f->args[i]);
-		if (ERR_ON(!var, "create_var() failed"))
+		struct acs_value *val = varmap_insert(&ctx.local, f->args[i]);
+		if (ERR_ON(!val, "varmap_insert() failed"))
 			goto done;
 		if (n) {
-			copy_value(&var->val, n);
+			copy_value(val, n);
 			n = n->next;
-		} else {
-			var->val.id = VAL_NULL;
-		}
+		} // val is VAL_NULL by default
 	}
 
 	/*printf("calling %s with args:", f->name);
@@ -373,7 +389,7 @@ static struct acs_value *eval_call(enum acs_id *id,
 	puts("");*/
 
 done:
-	free_vars(ctx.vars);
+	varmap_deinit(&ctx.local);
 	destroy_value(lhs);
 	destroy_value(rhs);
 	return value;
@@ -492,12 +508,12 @@ static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 		return val;
 	} else if (*id == ACS_ID) {
 		struct acs_literal *l = to_literal(id);
-		struct acs_var *var = find_var(ctx->vars, l->payload);
-		if (var) {
+		struct acs_value *vval = varmap_find(&ctx->local, l->payload);
+		if (vval) {
 			struct acs_value *val = make_value(VAL_VAR);
 			if (ERR_ON(!val, "make_value() failed"))
 				return NULL;
-			val->u.vval = var;
+			val->u.vval = value_to_var(vval);
 			return val;
 		}
 
@@ -511,13 +527,13 @@ static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 		}
 
 		if (ctx->lhs) {
-			var = create_var(&ctx->vars, l->payload);
-			if (ERR_ON(!var, "create_var() failed"))
+			vval = varmap_insert(&ctx->local, l->payload);
+			if (ERR_ON(!vval, "varmap_insert() failed"))
 				return NULL;
 			struct acs_value *val = make_value(VAL_VAR);
 			if (ERR_ON(!val, "make_value() failed"))
 				return NULL;
-			val->u.vval = var;
+			val->u.vval = value_to_var(vval);
 			return val;
 		} else {
 			ERR("undefined identifier %s", l->payload);
@@ -614,7 +630,9 @@ int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
 	// - copy stack to hash array by adding names
 	// - execute function block 
 	/* TODO: head should be arguments */
-	struct acs_context ctx = { .vars = NULL, .script = s };
+	struct acs_context ctx = { .script = s };
+	varmap_init(&ctx.local);
+
 	enum acs_flow flow;
 	struct acs_value *value = eval(&ctx, &f->block->id, &flow);
 	if (ERR_ON(!value, "calling %s failed", fname))
@@ -627,7 +645,7 @@ int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
 	puts("");
 	destroy_value(value);
 
-	free_vars(ctx.vars);
+	varmap_deinit(&ctx.local);
 
 	// - clear stack
 	// - push results on stack

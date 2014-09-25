@@ -37,4 +37,17 @@ struct acs_value {
 	} u;
 };
 
+/* Simple interface for variable maps */
+struct acs_varmap {
+	struct acs_var *head;
+};
+
+//struct acs_varmap *varmap_create(void);
+//void varmap_destroy(struct acs_varmap *vmap);
+int varmap_init(struct acs_varmap *vmap);
+void varmap_deinit(struct acs_varmap *vmap);
+struct acs_value *varmap_find(struct acs_varmap *vmap, char *name);
+struct acs_value *varmap_insert(struct acs_varmap *vmap, char *name);
+int varmap_delete(struct acs_varmap *vmap, char *name);
+
 #endif /* MACHINE_H */
