@@ -173,6 +173,8 @@ static void dump_value(struct acs_value *val)
 			printf("int:%d", val->u.ival);
 		else if (val->id == VAL_BOOL)
 			printf("bool:%s", val->u.bval ? "true" : "false");
+		else if (val->id == VAL_OBJ)
+			printf("object:%p", (void*)val->u.oval);
 		else if (val->id == VAL_REF) {
 			printf("ref:%s(", value_to_var(val->u.rval)->name);
 			dump_value(val->u.rval);
@@ -189,6 +191,8 @@ static void destroy_value(struct acs_value *val)
 		struct acs_value *next = val->next;
 		if (val->id == VAL_STR && val->u.sval)
 			str_put(val->u.sval);
+		if (val->id == VAL_OBJ && val->u.oval)
+			object_put(val->u.oval);
 		free(val);
 		val = next;
 	}
@@ -198,6 +202,8 @@ static void clear_value(struct acs_value *val)
 {
 	if (val->id == VAL_STR && val->u.sval)
 		str_put(val->u.sval);
+	if (val->id == VAL_OBJ && val->u.oval)
+		object_put(val->u.oval);
 	memset(&val->u, 0, sizeof val->u);
 }
 
@@ -206,6 +212,8 @@ static void copy_value(struct acs_value *val,
 {
 	if (old->id == VAL_STR)
 		str_get(old->u.sval);
+	if (old->id == VAL_OBJ)
+		object_get(old->u.oval);
 	val->u = old->u;
 	val->id = old->id;
 }
@@ -347,6 +355,8 @@ static int do_cmp(struct acs_value *a, struct acs_value *b)
 		return strcmp(a->u.sval->str, b->u.sval->str);
 	if (a->id == VAL_REF)
 		return a->u.rval != b->u.rval;
+	if (a->id == VAL_OBJ)
+		return a->u.oval != b->u.oval;
 	return 0;
 }
 

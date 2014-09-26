@@ -21,6 +21,7 @@ enum acs_type {
 	VAL_REF,
 	VAL_FUNC,
 	VAL_USER,
+	VAL_OBJ,
 	__VAL_MAX,
 };
 
@@ -38,6 +39,7 @@ struct acs_value {
 		struct acs_function *fval;
 		struct acs_user_function *uval;
 		struct acs_value *rval;
+		struct acs_object *oval;
 	} u;
 };
 
