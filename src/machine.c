@@ -689,6 +689,22 @@ static struct acs_value *call_print(struct acs_user_function *ufunc,
 	return make_value(VAL_NULL);
 }
 
+static struct acs_value *call_obj(struct acs_user_function *ufunc,
+	struct acs_value *args)
+{
+	struct acs_object *obj = calloc(1, sizeof *obj);
+	if (ERR_ON(!obj, "malloc() failed"))
+		return NULL;
+	object_init(obj, (acs_object_dtor_cb)free);
+
+	struct acs_value *ret = make_value(VAL_OBJ);
+	if (ERR_ON(!obj, "malloc() failed"))
+		return object_put(obj), NULL;
+
+	ret->u.oval = obj;
+	return ret;
+}
+
 static void machine_deinit(void)
 {
 	varmap_deinit(&global_vars);
@@ -706,6 +722,8 @@ static void machine_init(void)
 
 	static struct acs_user_function print = { .call = call_print };
 	register_user_function(&print, "print");
+	static struct acs_user_function obj = { .call = call_obj };
+	register_user_function(&obj, "obj");
 }
 
 int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
