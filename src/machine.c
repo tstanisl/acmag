@@ -272,6 +272,7 @@ static struct acs_value *do_assign(struct acs_context *ctx,
 		struct acs_value *vval = varmap_insert(&ctx->local, l->payload);
 		if (ERR_ON(!vval, "varmap_insert() failed"))
 			return NULL;
+		clear_value(vval);
 		copy_value(vval, rhs);
 		destroy_value(rhs->next);
 		rhs->next = NULL;
