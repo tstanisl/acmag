@@ -16,3 +16,19 @@ main0()
 	show(obj());
 	show(main0);
 }
+
+main1()
+{
+	a = str("1 + 2 = ", 1 + 2);
+	print(a, "\n");
+	b = str(1, true, false, null, "abs", main1, str, obj());
+	print(b, "\n");
+}
+
+main2() {
+	x, x_, n = "a", "b", 1;
+	while (n < 10) {
+		x, x_, n = str(x,x_), x, n + 1;
+		print(x, "\n");
+	}
+}
