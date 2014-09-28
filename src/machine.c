@@ -304,38 +304,29 @@ static void convert_value_to_num(struct acs_value *val)
 	val->u.ival = ival;
 }
 
-static int convert_value_to_str(struct acs_value *val)
+static char *value_to_str(struct acs_value *val)
 {
-	struct str *sval = NULL;
-	char buf[32];
+	static char buf[32];
+
 	if (val->id == VAL_STR) {
-		return 0; /* nothing to do */
-	} if (val->id == VAL_NULL) {
-		sval = str_create("null");
-	} if (val->id == VAL_NUM) {
+		return val->u.sval->str; /* nothing to do */
+	} else if (val->id == VAL_NULL) {
+		strcpy(buf, "null");
+	} else if (val->id == VAL_NUM) {
 		sprintf(buf, "%d", val->u.ival);
-		sval = str_create(buf);
 	} else if (val->id == VAL_BOOL) {
-		sval = str_create(val->u.bval ? "true" : "false");
+		strcpy(buf, val->u.bval ? "true" : "false");
 	} else if (val->id == VAL_FUNC) {
 		sprintf(buf, "(func):%s", val->u.fval->name);
-		sval = str_create(buf);
 	} else if (val->id == VAL_USER) {
 		sprintf(buf, "(user):%p", (void*)val->u.uval);
-		sval = str_create(buf);
 	} else if (val->id == VAL_OBJ) {
 		sprintf(buf, "(obj):%p", (void*)val->u.oval);
-		sval = str_create(buf);
 	} else {
 		ERR("value type not supported id=%d", (int)val->id);
-		return -1;
+		buf[0] = 0;
 	}
-	if (ERR_ON(!sval, "str_create() failed"))
-		return -1;
-	clear_value(val);
-	val->id = VAL_STR;
-	val->u.sval = sval;
-	return 0;
+	return buf;
 }
 
 static struct acs_value *make_bool_value(bool bval)
@@ -811,18 +802,45 @@ static struct acs_value *eval(struct acs_context *ctx,
 	return NULL;
 }
 
+static struct acs_value *call_str(struct acs_user_function *ufunc,
+	struct acs_value *args)
+{
+	int size = 1;
+	for (struct acs_value *val = args; val; val = val->next) {
+		char *sval = value_to_str(val);
+		if (ERR_ON(!sval, "value_to_str() failed"))
+			return NULL;
+		size += strlen(sval);
+	}
+
+	struct str *s = str_reserve(size);
+	if (ERR_ON(!s, "str_reserve(%d) failed", size))
+		return NULL;
+
+	int pos = 0;
+
+	for (struct acs_value *val = args; val; val = val->next) {
+		char *sval = value_to_str(val);
+		if (ERR_ON(!sval, "value_to_str() failed"))
+			return NULL;
+		strcpy(s->str + pos, sval);
+		pos += strlen(sval);
+	}
+
+	struct acs_value *val = make_value(VAL_STR);
+	if (ERR_ON(!val, "make_value() failed"))
+		return str_put(s), NULL;
+
+	str_update(s);
+	val->u.sval = s;
+	return val;
+}
+
 static struct acs_value *call_print(struct acs_user_function *ufunc,
 	struct acs_value *args)
 {
 	for (struct acs_value *val = args; val; val = val->next)
-		if (val->id == VAL_STR)
-			printf("%s", val->u.sval->str);
-		else if (val->id == VAL_NUM)
-			printf("%d", val->u.ival);
-		else if (val->id == VAL_BOOL)
-			printf("%s", val->u.bval ? "true" : "false");
-		else
-			printf("(invalid)");
+		printf("%s", value_to_str(val));
 	return make_value(VAL_NULL);
 }
 
@@ -861,6 +879,8 @@ static void machine_init(void)
 	register_user_function(&print, "print");
 	static struct acs_user_function obj = { .call = call_obj };
 	register_user_function(&obj, "obj");
+	static struct acs_user_function str = { .call = call_str };
+	register_user_function(&str, "str");
 }
 
 int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
