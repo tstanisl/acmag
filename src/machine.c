@@ -130,9 +130,11 @@ void object_put(struct acs_object *obj)
 {
 	if (--obj->refcnt)
 		return;
+	struct acs_field *fields = obj->fields;
 	if (obj->dtor)
 		obj->dtor(obj);
-	for (struct acs_field *f = obj->fields, *f_; f_ = f->next, f; f = f_) {
+	for (struct acs_field *f = fields, *f_; f; f = f_) {
+		f_ = f->next;
 		clear_value(&f->key);
 		clear_value(&f->val);
 		free(f);
