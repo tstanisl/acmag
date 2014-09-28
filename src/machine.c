@@ -304,6 +304,40 @@ static void convert_value_to_num(struct acs_value *val)
 	val->u.ival = ival;
 }
 
+static int convert_value_to_str(struct acs_value *val)
+{
+	struct str *sval = NULL;
+	char buf[32];
+	if (val->id == VAL_STR) {
+		return 0; /* nothing to do */
+	} if (val->id == VAL_NULL) {
+		sval = str_create("null");
+	} if (val->id == VAL_NUM) {
+		sprintf(buf, "%d", val->u.ival);
+		sval = str_create(buf);
+	} else if (val->id == VAL_BOOL) {
+		sval = str_create(val->u.bval ? "true" : "false");
+	} else if (val->id == VAL_FUNC) {
+		sprintf(buf, "(func):%s", val->u.fval->name);
+		sval = str_create(buf);
+	} else if (val->id == VAL_USER) {
+		sprintf(buf, "(user):%p", (void*)val->u.uval);
+		sval = str_create(buf);
+	} else if (val->id == VAL_OBJ) {
+		sprintf(buf, "(obj):%p", (void*)val->u.oval);
+		sval = str_create(buf);
+	} else {
+		ERR("value type not supported id=%d", (int)val->id);
+		return -1;
+	}
+	if (ERR_ON(!sval, "str_create() failed"))
+		return -1;
+	clear_value(val);
+	val->id = VAL_STR;
+	val->u.sval = sval;
+	return 0;
+}
+
 static struct acs_value *make_bool_value(bool bval)
 {
 	struct acs_value *val = make_value(VAL_BOOL);
