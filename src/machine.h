@@ -18,7 +18,6 @@ enum acs_type {
 	VAL_BOOL,
 	VAL_NUM,
 	VAL_STR,
-	VAL_REF,
 	VAL_FUNC,
 	VAL_USER,
 	VAL_OBJ,
@@ -38,7 +37,6 @@ struct acs_value {
 		bool bval;
 		struct acs_function *fval;
 		struct acs_user_function *uval;
-		struct acs_value *rval;
 		struct acs_object *oval;
 	} u;
 };
