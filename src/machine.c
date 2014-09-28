@@ -14,6 +14,15 @@ struct acs_var {
 	char name[];
 };
 
+struct acs_field {
+	struct acs_value key;
+	struct acs_value val;
+	struct acs_field *next;
+};
+
+#define to_field(node) \
+	container_of(node, struct acs_field, node)
+
 /*
  * kocham Tomeczka STanislawskiego bARDZO,
  * TO MOJ MAZ, BARDZO GO KOCHAM,
@@ -98,11 +107,14 @@ int varmap_delete(struct acs_varmap *vmap, char *name)
 	return -1;
 }
 
+static int cmp_value(struct acs_value *a, struct acs_value *b);
+static void clear_value(struct acs_value *val);
+static void copy_value(struct acs_value *val,
+	struct acs_value *old);
+
 int object_init(struct acs_object *obj, acs_object_dtor_cb dtor)
 {
-	int ret = varmap_init(&obj->fields);
-	if (ERR_ON(ret, "varmap_init() failed"))
-		return -1;
+	obj->fields = NULL;
 	obj->dtor = dtor;
 	obj->refcnt = 1;
 	return 0;
@@ -118,9 +130,37 @@ void object_put(struct acs_object *obj)
 {
 	if (--obj->refcnt)
 		return;
-	varmap_deinit(&obj->fields);
 	if (obj->dtor)
 		obj->dtor(obj);
+	for (struct acs_field *f = obj->fields, *f_; f_ = f->next, f; f = f_) {
+		clear_value(&f->key);
+		clear_value(&f->val);
+		free(f);
+	}
+}
+
+struct acs_value *object_get_field(struct acs_object *obj,
+	struct acs_value *key)
+{
+	for (struct acs_field *f = obj->fields; f; f = f->next)
+		if (cmp_value(&f->key, key) == 0)
+			return &f->val;
+	struct acs_field *f = calloc(1, sizeof *f);
+	if (ERR_ON(!f, "calloc() failed"))
+		return NULL;
+	copy_value(&f->key, key);
+	f->next = obj->fields;
+	obj->fields = f;
+	return &f->val;
+}
+
+struct acs_value *object_try_field(struct acs_object *obj,
+	struct acs_value *key)
+{
+	for (struct acs_field *f = obj->fields; f; f = f->next)
+		if (cmp_value(&f->key, key) == 0)
+			return &f->val;
+	return NULL;
 }
 
 static struct acs_varmap global_vars;
