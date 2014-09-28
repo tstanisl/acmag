@@ -30,7 +30,7 @@ static void *parse_err(struct parser *p, char *fmt, ...)
 static void parse_consume(struct parser *p)
 {
 	p->next = lxr_get(p->lxr);
-	printf("next-token = %s\n", token_str[p->next]);
+	//printf("next-token = %s\n", token_str[p->next]);
 }
 
 static struct acs_block *parse_block(struct parser *p);
