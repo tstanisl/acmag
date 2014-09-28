@@ -139,7 +139,7 @@ static enum acs_id *parse_deref(struct parser *p)
 			}
 			parse_consume(p);
 		} else if (tok == TOK_LSQR) {
-			e->id = ACS_CALL;
+			e->id = ACS_DEREF;
 			e->arg1 = parse_expr(p);
 			if (ERR_ON(!e->arg1, "parse_expr() failed"))
 				break;
