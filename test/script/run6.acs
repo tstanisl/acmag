@@ -1,0 +1,83 @@
+main0() {
+	a = obj();
+	b = a;
+	a = 1;
+	return b;
+}
+
+main1() {
+	a = obj();
+	a[1] = 2;
+	return a[0], a[1], a[2];
+}
+
+main2() {
+	a = obj();
+	n = 0;
+	while (n < 10) {
+		a[2 * n] = n * n;
+		n = n + 1;
+	}
+	n = 0;
+	while (n < 25) {
+		print("a[", n, "] = ", a[n], "\n");
+		n = n + 1;
+	}
+}
+
+main3() {
+	h = obj();
+	h.a = 1;
+	h.b = obj();
+	h.b.a = 2;
+	return h;
+}
+
+hero(name)
+{
+	h = obj();
+	h.name = name;
+	return h;
+}
+
+main4()
+{
+	a = hero("tomek");
+	print(a.name, "\n");
+}
+
+next(o)
+{
+	o.value = o.value + o.inc;
+	return o.value;
+}
+
+iterator(inc)
+{
+	o = obj();
+	o.value = 0;
+	o.inc = inc;
+	o.next = next;
+	return o;
+}
+
+main5()
+{
+	it = iterator(2);
+	print(it.next(it), "\n");
+	print(it.next(it), "\n");
+	print(it.next(it), "\n");
+	print(it.next(it), "\n");
+}
+
+
+
+/*
+main3()
+{
+	a = obj();
+	a[0] = a;
+	a = null;
+}
+*/
+
