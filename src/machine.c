@@ -282,6 +282,28 @@ static bool value_to_bool(struct acs_value *val)
 	return true;
 }
 
+static void convert_value_to_bool(struct acs_value *val)
+{
+	bool bval = value_to_bool(val);
+	clear_value(val);
+	val->id = VAL_BOOL;
+	val->u.bval = bval;
+}
+
+static void convert_value_to_num(struct acs_value *val)
+{
+	int ival = 0;
+	if (val->id == VAL_NUM)
+		ival = val->u.ival;
+	else if (val->id == VAL_BOOL)
+		ival = (val->u.bval ? 1 : 0);
+	else if (val->id == VAL_STR)
+		ival = atoi(val->u.sval->str);
+	clear_value(val);
+	val->id = VAL_NUM;
+	val->u.ival = ival;
+}
+
 static struct acs_value *make_bool_value(bool bval)
 {
 	struct acs_value *val = make_value(VAL_BOOL);
@@ -598,6 +620,30 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 	return NULL;
 }
 
+static struct acs_value *eval_arg1_expr(struct acs_context *ctx, enum acs_id *id)
+{
+	struct acs_expr *e = to_expr(id);
+	struct acs_value *arg = eval_expr(ctx, e->arg0);
+	if (ERR_ON(!arg, "eval_expr() failed"))
+		return NULL;
+
+	if (*id == ACS_NOT) {
+		convert_value_to_bool(arg);
+		arg->u.bval = !arg->u.bval;
+		return arg;
+	}
+
+	convert_value_to_num(arg);
+
+	if (*id == ACS_PLUS)
+		;
+	else if (*id == ACS_MINUS)
+		arg->u.ival = -arg->u.ival;
+	else
+		CRIT("unexpected acs_id = %d\n", (int)*id);
+	return arg;
+}
+
 static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 {
 	struct acs_value *val;
@@ -651,6 +697,8 @@ static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
 		return NULL;
 	} else if (*id >= __ACS_ARG2) {
 		return eval_arg2_expr(ctx, id);
+	} else if (*id >= __ACS_ARG1) {
+		return eval_arg1_expr(ctx, id);
 	} else {
 		ERR("acs_id = %d is not supported", id ? (int)*id : -1);
 		return NULL;
