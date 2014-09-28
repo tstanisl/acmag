@@ -322,9 +322,7 @@ static struct acs_value *do_assign(struct acs_context *ctx,
 		head->next = tail;
 
 		return head;
-	}
-
-	if (*id == ACS_ID) {
+	} else if (*id == ACS_ID) {
 		struct acs_literal *l = to_literal(id);
 		struct acs_value *vval = varmap_insert(&ctx->local, l->payload);
 		if (ERR_ON(!vval, "varmap_insert() failed"))
@@ -334,11 +332,38 @@ static struct acs_value *do_assign(struct acs_context *ctx,
 		destroy_value(rhs->next);
 		rhs->next = NULL;
 		return rhs;
-	}
+	} else if (*id == ACS_DEREF) {
+		struct acs_value *lhs = eval_expr(ctx, e->arg0);
+		if (ERR_ON(!lhs, "eval_expr() failed"))
+			return destroy_value(rhs), NULL;
+		if (lhs->id != VAL_OBJ) {
+			WARN("accessing field in non-object");
+			destroy_value(lhs);
+			clear_value(rhs);
+			return rhs;
+		}
+		struct acs_value *idx = eval_expr(ctx, e->arg1);
+		if (ERR_ON(!idx, "eval_expr() failed"))
+			return destroy_value(rhs), destroy_value(lhs), NULL;
 
-	ERR("unexpected acs_id = %d\n", (int)*id);
-	destroy_value(rhs);
-	return NULL;
+		struct acs_object *obj = lhs->u.oval;
+		struct acs_value *val = object_get_field(obj, idx);
+		/* sucess or not, idx is no longer needed */
+		destroy_value(idx);
+		if (ERR_ON(!val, "object_get_field() failed"))
+			return destroy_value(lhs), destroy_value(rhs), NULL;
+
+		clear_value(val);
+		copy_value(val, rhs);
+		destroy_value(rhs->next);
+		rhs->next = NULL;
+		destroy_value(lhs);
+		return rhs;
+	} else {
+		ERR("unexpected acs_id = %d\n", (int)*id);
+		destroy_value(rhs);
+		return NULL;
+	}
 }
 
 static struct acs_value *eval_assign(struct acs_context *ctx, enum acs_id *id)
@@ -499,6 +524,28 @@ done:
 	return val;
 }
 
+static struct acs_value *eval_deref(enum acs_id *id,
+	struct acs_value *lhs, struct acs_value *rhs)
+{
+	if (lhs->id != VAL_OBJ) {
+		WARN("accessing field in non-object");
+		destroy_value(lhs);
+		clear_value(rhs);
+		return rhs;
+	}
+	struct acs_object *obj = lhs->u.oval;
+	struct acs_value *val = object_try_field(obj, rhs);
+	if (!val) {
+		destroy_value(lhs);
+		destroy_value(rhs);
+		return make_value(VAL_NULL);
+	}
+	clear_value(rhs);
+	copy_value(rhs, val);
+	destroy_value(lhs);
+	return rhs;
+}
+
 static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id)
 {
 	struct acs_expr *e = to_expr(id);
@@ -533,6 +580,9 @@ static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id
 	/* TODO: drop all tail values, to be removed */
 	destroy_value(rhs->next);
 	rhs->next = NULL;
+
+	if (*id == ACS_DEREF)
+		return eval_deref(id, lhs, rhs);
 
 	if (*id >= __ACS_CMP && *id < __ACS_CMP_MAX)
 		return eval_cmp(id, lhs, rhs);
