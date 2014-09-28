@@ -214,6 +214,21 @@ static void copy_value(struct acs_value *val,
 	val->id = old->id;
 }
 
+static int cmp_value(struct acs_value *a, struct acs_value *b)
+{
+	if (a->id == VAL_NULL)
+		return 0;
+	if (a->id == VAL_BOOL)
+		return !!a->u.bval - !!b->u.bval;
+	if (a->id == VAL_NUM)
+		return a->u.ival - b->u.bval;
+	if (a->id == VAL_STR)
+		return strcmp(a->u.sval->str, b->u.sval->str);
+	if (a->id == VAL_OBJ)
+		return a->u.oval != b->u.oval;
+	return 0;
+}
+
 static bool value_to_bool(struct acs_value *val)
 {
 	if (!val)
@@ -322,21 +337,6 @@ static struct acs_value *eval_bool(struct acs_context *ctx, enum acs_id *id, boo
 	return make_bool_value(cond);
 }
 
-static int do_cmp(struct acs_value *a, struct acs_value *b)
-{
-	if (a->id == VAL_NULL)
-		return 0;
-	if (a->id == VAL_BOOL)
-		return !!a->u.bval - !!b->u.bval;
-	if (a->id == VAL_NUM)
-		return a->u.ival - b->u.bval;
-	if (a->id == VAL_STR)
-		return strcmp(a->u.sval->str, b->u.sval->str);
-	if (a->id == VAL_OBJ)
-		return a->u.oval != b->u.oval;
-	return 0;
-}
-
 static struct acs_value *eval_cmp(enum acs_id *id,
 	struct acs_value *lhs, struct acs_value *rhs)
 {
@@ -346,7 +346,7 @@ static struct acs_value *eval_cmp(enum acs_id *id,
 		destroy_value(rhs);
 		return make_bool_value(false);
 	}
-	int cmp = do_cmp(lhs, rhs);
+	int cmp = cmp_value(lhs, rhs);
 	cmp = cmp > 0 ? 1 : cmp;
 	cmp = cmp < -1 ? -1 : cmp;
 
