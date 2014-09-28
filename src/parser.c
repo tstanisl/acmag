@@ -149,7 +149,7 @@ static enum acs_id *parse_deref(struct parser *p)
 			}
 			parse_consume(p);
 		} else if (tok == TOK_DOT) {
-			e->id = ACS_DOT;
+			e->id = ACS_DEREF;
 			if (p->next != TOK_ID) {
 				parse_err(p, "expected id after .");
 				break;
@@ -157,6 +157,8 @@ static enum acs_id *parse_deref(struct parser *p)
 			e->arg1 = parse_literal(p);
 			if (ERR_ON(!e->arg1, "parse_literal() failed"))
 				break;
+			/* change from id to string because a.b means a["b"] */
+			*(e->arg1) = ACS_STR;
 		}
 		tok = p->next;
 		if (tok != TOK_LPAR && tok != TOK_LSQR && tok != TOK_DOT)
@@ -296,7 +298,6 @@ static char *op2str[__ACS_MAX] = {
 	[ACS_MINUS] = "+",
 	[ACS_CALL] = "(",
 	[ACS_DEREF] = "[",
-	[ACS_DOT] = ".",
 };
 
 static void dump_arg1_expr(enum acs_id *id, int depth)
@@ -319,8 +320,6 @@ static void dump_arg2_expr(enum acs_id *id, int depth)
 		printf("(");
 	else if (expr->id == ACS_DEREF)
 		printf("[");
-	else if (expr->id == ACS_DOT)
-		printf(".");
 	else
 		printf(" %s ", op2str[expr->id]);
 	dump_expr(expr->arg1, depth);

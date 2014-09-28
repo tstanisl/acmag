@@ -55,7 +55,6 @@ enum acs_id {
 
 	ACS_CALL = __ACS_ARITH_MAX,
 	ACS_DEREF,
-	ACS_DOT,
 
 	__ACS_MAX
 };
