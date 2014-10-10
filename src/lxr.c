@@ -64,16 +64,6 @@ static enum token lxr_error(struct lxr *lxr, char *fmt, ...)
 	return TOK_ERR;
 }
 
-enum lxr_state {
-	LST_NONE,
-	LST_ML_COMM,
-	LST_SL_COMM,
-	/* all states below fills token data */
-	__LST_ECHO,
-	/* used to mark that lexer hidden state is used */
-	__LST = 128,
-};
-
 #define LXR_HMASK ((1 << 8) - 1)
 static enum token lxr_hash[LXR_HMASK + 1];
 
@@ -169,67 +159,15 @@ static enum token lxr_get_int(struct lxr *lxr)
 	return TOK_INT;
 }
 
-static int lxr_get_action(struct lxr *lxr, int c)
+static int lxr_ml_comm(struct lxr *lxr)
 {
-	if (isalpha(c) || c == '_')
-		return lxr_ungetc(lxr, c), lxr_get_id(lxr);
-	if (isdigit(c))
-		return lxr_ungetc(lxr, c), lxr_get_int(lxr);
-	if (isspace(c))
-		return LST_NONE | __LST;
-
-	switch (c) {
-		case EOF: return TOK_EOF;
-		case '(': return TOK_LPAR;
-		case ')': return TOK_RPAR;
-		case '{': return TOK_LBRA;
-		case '}': return TOK_RBRA;
-		case '[': return TOK_LSQR;
-		case ']': return TOK_RSQR;
-		case ',': return TOK_SEP;
-		case '-': return TOK_MINUS;
-		case '+': return TOK_PLUS;
-		case '*': return TOK_MUL;
-		case '%': return TOK_MOD;
-		case ';': return TOK_SCOLON;
-		case '"': return lxr_get_str(lxr);
-	}
-
-	/* parse digraphs */
-	int d = lxr_getc(lxr);
-	if (c == '/') {
-		if (d == '/')
-			return LST_SL_COMM | __LST;
-		if (d == '*')
-			return LST_ML_COMM | __LST;
-		return lxr_ungetc(lxr, d), TOK_DIV;
-	} else if (c == '<') {
-		if (d == '=')
-			return TOK_LEQ;
-		return lxr_ungetc(lxr, d), TOK_LESS;
-	} else if (c == '>') {
-		if (d == '=')
-			return TOK_GREQ;
-		return lxr_ungetc(lxr, d), TOK_GREAT;
-	} else if (c == '=') {
-		if (d == '=')
-			return TOK_EQ;
-		return lxr_ungetc(lxr, d), TOK_ASSIGN;
-	} else if (c == '!') {
-		if (d == '=')
-			return TOK_NEQ;
-		return lxr_ungetc(lxr, d), TOK_NOT;
-	} else if (c == '.') {
-		if (d == '.')
-			return TOK_CONCAT;
-		return lxr_ungetc(lxr, d), TOK_DOT;
-	} else if (c == '|' && d == '|') {
-		return TOK_OR;
-	} else if (c == '&' && d == '&') {
-		return TOK_AND;
-	} else {
-		lxr_ungetc(lxr, d);
-		return lxr_error(lxr, "invalid character '%c'", c);
+	for (int c = lxr_getc(lxr); ; c = lxr_getc(lxr)) {
+		if (c == EOF)
+			return -1;
+		while (c == '*')
+			c = lxr_getc(lxr);
+		if (c == '/')
+			return 0;
 	}
 }
 
@@ -237,44 +175,75 @@ static int lxr_get_action(struct lxr *lxr, int c)
 
 enum token lxr_get(struct lxr *lxr)
 {
-	enum lxr_state st = LST_NONE;
-	int pos = 0;
-
-	lxr->data[pos] = 0;
 	for (;;) {
 		int c = lxr_getc(lxr);
 
-		if (st == LST_NONE) {
-			int action = lxr_get_action(lxr, c);
-			if (~action & __LST)
-				return action;
-			st = action & ~__LST;
-		} else if (st == LST_SL_COMM) {
-			for (; c != '\n'; c = lxr_getc(lxr))
-				if (c == EOF)
-					return TOK_EOF;
-			st = LST_NONE;
-		} else if (st == LST_ML_COMM) {
-			for (;;) {
-				if (c == EOF)
-					return lxr_error(lxr, "unfinished comment");
-				while (c == '*')
-					c = lxr_getc(lxr);
-				if (c == '/')
-					break;
-				c = lxr_getc(lxr);
-			}
-			st = LST_NONE;
-		} else { /* not possible */
-			ERR("lexer reached undefined state (%d)", st);
-			exit(-1);
+		if (isalpha(c) || c == '_')
+			return lxr_ungetc(lxr, c), lxr_get_id(lxr);
+		if (isdigit(c))
+			return lxr_ungetc(lxr, c), lxr_get_int(lxr);
+		if (isspace(c))
+			continue;
+
+		switch (c) {
+			case EOF: return TOK_EOF;
+			case '(': return TOK_LPAR;
+			case ')': return TOK_RPAR;
+			case '{': return TOK_LBRA;
+			case '}': return TOK_RBRA;
+			case '[': return TOK_LSQR;
+			case ']': return TOK_RSQR;
+			case ',': return TOK_SEP;
+			case '-': return TOK_MINUS;
+			case '+': return TOK_PLUS;
+			case '*': return TOK_MUL;
+			case '%': return TOK_MOD;
+			case ';': return TOK_SCOLON;
+			case '"': return lxr_get_str(lxr);
 		}
 
-		if (st >= __LST_ECHO) {
-			if (pos >= lxr->size)
-				return lxr_error(lxr, "too long sequence");
-			lxr->data[pos++] = c;
-			lxr->data[pos] = 0;
+		/* parse digraphs */
+		int d = lxr_getc(lxr);
+		if (c == '/') {
+			if (d == '/') {
+				for (; c != '\n'; c = lxr_getc(lxr))
+					if (c == EOF)
+						return TOK_EOF;
+				continue;
+			}
+			if (d == '*') {
+				if (lxr_ml_comm(lxr) == 0)
+					continue;
+				return lxr_error(lxr, "unfinished comment");
+			}
+			return lxr_ungetc(lxr, d), TOK_DIV;
+		} else if (c == '<') {
+			if (d == '=')
+				return TOK_LEQ;
+			return lxr_ungetc(lxr, d), TOK_LESS;
+		} else if (c == '>') {
+			if (d == '=')
+				return TOK_GREQ;
+			return lxr_ungetc(lxr, d), TOK_GREAT;
+		} else if (c == '=') {
+			if (d == '=')
+				return TOK_EQ;
+			return lxr_ungetc(lxr, d), TOK_ASSIGN;
+		} else if (c == '!') {
+			if (d == '=')
+				return TOK_NEQ;
+			return lxr_ungetc(lxr, d), TOK_NOT;
+		} else if (c == '.') {
+			if (d == '.')
+				return TOK_CONCAT;
+			return lxr_ungetc(lxr, d), TOK_DOT;
+		} else if (c == '|' && d == '|') {
+			return TOK_OR;
+		} else if (c == '&' && d == '&') {
+			return TOK_AND;
+		} else {
+			lxr_ungetc(lxr, d);
+			return lxr_error(lxr, "invalid character '%c'", c);
 		}
 	}
 }
