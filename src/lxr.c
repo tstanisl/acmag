@@ -67,18 +67,8 @@ static enum token lxr_error(struct lxr *lxr, char *fmt, ...)
 enum lxr_state {
 	LST_NONE,
 	LST_STRB,
-	LST_SLASH,
 	LST_ML_COMM,
-	LST_ML_STAR,
 	LST_SL_COMM,
-	LST_OR,
-	LST_AND,
-	LST_EQ,
-	LST_NEQ,
-	LST_LEQ,
-	LST_GREQ,
-	LST_DOT,
-	LST_STR_SLASH,
 	/* all states below fills token data */
 	__LST_ECHO,
 	LST_INT = __LST_ECHO,
@@ -230,82 +220,37 @@ enum token lxr_get(struct lxr *lxr)
 				return TOK_STR;
 			if (c == '\n' || c == EOF)
 				return lxr_error(lxr, "unfinished string");
-			if (c == '\\')
-				st = LST_STR_SLASH;
-			else
-				st = LST_STR;
-		} else if (st == LST_STR_SLASH) {
-			if (c == 'n')
-				c = '\n';
-			else if (c == '"' || c == '\\')
-				;
-			else
-				return lxr_error(lxr, "invalid escape character");
+			if (c == '\\') {
+				c = lxr_getc(lxr);
+				if (c == 'n')
+					c = '\n';
+				else if (c == '"' || c == '\\')
+					;
+				else
+					return lxr_error(lxr, "invalid escape character");
+			}
 			st = LST_STR;
 		} else if (st == LST_INT) {
 			if (!isdigit(c)) {
 				lxr_ungetc(lxr, c);
 				return TOK_INT;
 			}
-		} else if (st == LST_SLASH) {
-			if (c == '/') {
-				st = LST_SL_COMM;
-			} else if (c == '*') {
-				st = LST_ML_COMM;
-			} else {
-				lxr_ungetc(lxr, c);
-				return TOK_DIV;
-			}
 		} else if (st == LST_SL_COMM) {
-			if (c == '\n')
-				st = LST_NONE;
-			else if (c == EOF)
-				return TOK_EOF;
+			for (; c != '\n'; c = lxr_getc(lxr))
+				if (c == EOF)
+					return TOK_EOF;
+			st = LST_NONE;
 		} else if (st == LST_ML_COMM) {
-			if (c == '*')
-				st = LST_ML_STAR;
-			else if (c == EOF)
-				return lxr_error(lxr, "unfinished comment");
-		} else if (st == LST_ML_STAR) {
-			if (c == '/')
-				st = LST_NONE;
-			else if (c == EOF)
-				return lxr_error(lxr, "unfinished comment");
-			else if (c != '*')
-				st = LST_ML_COMM;
-		} else if (st == LST_OR) {
-			if (c == '|')
-				return TOK_OR;
-			return lxr_error(lxr, "invalid operator '|'");
-		} else if (st == LST_AND) {
-			if (c == '&')
-				return TOK_AND;
-			return lxr_error(lxr, "invalid operator '|'");
-		} else if (st == LST_EQ) {
-			if (c == '=')
-				return TOK_EQ;
-			lxr_ungetc(lxr, c);
-			return TOK_ASSIGN;
-		} else if (st == LST_NEQ) {
-			if (c == '=')
-				return TOK_NEQ;
-			lxr_ungetc(lxr, c);
-			return TOK_NOT;
-		} else if (st == LST_LEQ) {
-			if (c == '=')
-				return TOK_LEQ;
-			lxr_ungetc(lxr, c);
-			return TOK_LESS;
-		} else if (st == LST_GREQ) {
-			if (c == '=')
-				return TOK_GREQ;
-			lxr_ungetc(lxr, c);
-			return TOK_GREAT;
-		} else if (st == LST_DOT) {
-			if (c == '.')
-				return TOK_CONCAT;
-			lxr_ungetc(lxr, c);
-			return TOK_DOT;
+			for (;;) {
+				if (c == EOF)
+					return lxr_error(lxr, "unfinished comment");
+				while (c == '*')
+					c = lxr_getc(lxr);
+				if (c == '/')
+					break;
+				c = lxr_getc(lxr);
+			}
+			st = LST_NONE;
 		} else { /* not possible */
 			ERR("lexer reached undefined state (%d)", st);
 			exit(-1);
