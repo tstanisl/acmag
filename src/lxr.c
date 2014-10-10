@@ -88,41 +88,6 @@ enum lxr_state {
 	__LST = 128,
 };
 
-static int lxr_action[128];
-
-static void lxr_action_init(void)
-{
-	for (int i = 0; i < 128; ++i)
-		if (isalpha(i) || i == '_')
-			lxr_action[i] = LST_ID | __LST;
-	for (int i = '0'; i <= '9'; ++i)
-		lxr_action[i] = LST_INT | __LST;
-	char wspc[] = " \r\n\t";
-	for (int i = 0; wspc[i]; ++i)
-		lxr_action[(int)wspc[i]] = LST_NONE | __LST;
-	lxr_action['/'] = LST_SLASH | __LST;
-	lxr_action['"'] = LST_STRB  | __LST;
-	lxr_action['<'] = LST_LEQ   | __LST;
-	lxr_action['>'] = LST_GREQ  | __LST;
-	lxr_action['|'] = LST_OR    | __LST;
-	lxr_action['&'] = LST_AND   | __LST;
-	lxr_action['!'] = LST_NEQ   | __LST;
-	lxr_action['='] = LST_EQ    | __LST;
-	lxr_action['.'] = LST_DOT   | __LST;
-	lxr_action['('] = TOK_LPAR;
-	lxr_action[')'] = TOK_RPAR;
-	lxr_action['{'] = TOK_LBRA;
-	lxr_action['}'] = TOK_RBRA;
-	lxr_action['['] = TOK_LSQR;
-	lxr_action[']'] = TOK_RSQR;
-	lxr_action[','] = TOK_SEP;
-	lxr_action['-'] = TOK_MINUS;
-	lxr_action['+'] = TOK_PLUS;
-	lxr_action['*'] = TOK_MUL;
-	lxr_action['%'] = TOK_MOD;
-	lxr_action[';'] = TOK_SCOLON;
-}
-
 #define LXR_HMASK ((1 << 8) - 1)
 static enum token lxr_hash[LXR_HMASK + 1];
 
@@ -157,8 +122,13 @@ static enum token lxr_hash_find(char *str)
 	return 0;
 }
 
-static void lxr_hash_init(void)
+static void lxr_init(void)
 {
+	static int lxr_initialized = 0;
+	if (lxr_initialized)
+		return;
+	lxr_initialized = 1;
+
 	enum token tokarr[] = {
 		TOK_TRUE, TOK_FALSE, TOK_NULL,
 		TOK_RETURN, TOK_IF, TOK_ELSE,
@@ -167,18 +137,6 @@ static void lxr_hash_init(void)
 	};
 	for (int i = 0; i < ARRAY_SIZE(tokarr); ++i)
 		lxr_hash_insert(tokarr[i]);
-}
-
-static void lxr_init(void)
-{
-	static int lxr_initialized = 0;
-
-	if (lxr_initialized)
-		return;
-
-	lxr_action_init();
-	lxr_hash_init();
-	lxr_initialized = 1;
 }
 
 static int lxr_get_action(struct lxr *lxr, int c)
