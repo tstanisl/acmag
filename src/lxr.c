@@ -181,6 +181,70 @@ static void lxr_init(void)
 	lxr_initialized = 1;
 }
 
+static int lxr_get_action(struct lxr *lxr, int c)
+{
+	if (isalpha(c) || c == '_')
+		return LST_ID | __LST;
+	if (isdigit(c))
+		return LST_INT | __LST;
+	if (isspace(c))
+		return LST_NONE | __LST;
+
+	switch (c) {
+		case EOF: return TOK_EOF;
+		case '(': return TOK_LPAR;
+		case ')': return TOK_RPAR;
+		case '{': return TOK_LBRA;
+		case '}': return TOK_RBRA;
+		case '[': return TOK_LSQR;
+		case ']': return TOK_RSQR;
+		case ',': return TOK_SEP;
+		case '-': return TOK_MINUS;
+		case '+': return TOK_PLUS;
+		case '*': return TOK_MUL;
+		case '%': return TOK_MOD;
+		case ';': return TOK_SCOLON;
+		case '"': return LST_STRB | __LST;
+	}
+
+	/* parse digraphs */
+	int d = lxr_getc(lxr);
+	if (c == '/') {
+		if (d == '/')
+			return LST_SL_COMM | __LST;
+		if (d == '*')
+			return LST_ML_COMM | __LST;
+		return lxr_ungetc(lxr, d), TOK_DIV;
+	} else if (c == '<') {
+		if (d == '=')
+			return TOK_LEQ;
+		return lxr_ungetc(lxr, d), TOK_LESS;
+	} else if (c == '>') {
+		if (d == '=')
+			return TOK_GREQ;
+		return lxr_ungetc(lxr, d), TOK_GREAT;
+	} else if (c == '=') {
+		if (d == '=')
+			return TOK_EQ;
+		return lxr_ungetc(lxr, d), TOK_ASSIGN;
+	} else if (c == '!') {
+		if (d == '=')
+			return TOK_NEQ;
+		return lxr_ungetc(lxr, d), TOK_NOT;
+	} else if (c == '.') {
+		if (d == '.')
+			return TOK_CONCAT;
+		return lxr_ungetc(lxr, d), TOK_DOT;
+	} else if (c == '|' && d == '|') {
+		return TOK_OR;
+	} else if (c == '&' && d == '&') {
+		return TOK_AND;
+	} else {
+		lxr_ungetc(lxr, d);
+		return lxr_error(lxr, "invalid character '%c'", c);
+	}
+}
+
 /*************** EXTERNALS ***************/
 
 enum token lxr_get(struct lxr *lxr)
@@ -193,12 +257,7 @@ enum token lxr_get(struct lxr *lxr)
 		int c = lxr_getc(lxr);
 
 		if (st == LST_NONE) {
-			if (c == EOF)
-				return TOK_EOF;
-			if (c < 0 || c >= ARRAY_SIZE(lxr_action) || !lxr_action[c])
-				return lxr_error(lxr, "invalid char '%c'", c);
-
-			int action = lxr_action[c];
+			int action = lxr_get_action(lxr, c);
 			if (~action & __LST)
 				return action;
 			st = action & ~__LST;
