@@ -73,7 +73,6 @@ enum lxr_state {
 	__LST_ECHO,
 	LST_INT = __LST_ECHO,
 	LST_STR,
-	LST_ID,
 	/* used to mark that lexer hidden state is used */
 	__LST = 128,
 };
@@ -129,10 +128,24 @@ static void lxr_init(void)
 		lxr_hash_insert(tokarr[i]);
 }
 
+static enum token lxr_get_id(struct lxr *lxr)
+{
+	int p, c = lxr_getc(lxr);
+	for (p = 0; isalnum(c) || c == '_'; ++p, c = lxr_getc(lxr)) {
+		if (p >= lxr->size)
+			return lxr_error(lxr, "too long identifier");
+		lxr->data[p] = c;
+	}
+	lxr->data[p] = 0;
+	lxr_ungetc(lxr, c);
+	enum token token = lxr_hash_find(lxr->data);
+	return token ? token : TOK_ID;
+}
+
 static int lxr_get_action(struct lxr *lxr, int c)
 {
 	if (isalpha(c) || c == '_')
-		return LST_ID | __LST;
+		return lxr_ungetc(lxr, c), lxr_get_id(lxr);
 	if (isdigit(c))
 		return LST_INT | __LST;
 	if (isspace(c))
@@ -209,12 +222,6 @@ enum token lxr_get(struct lxr *lxr)
 			if (~action & __LST)
 				return action;
 			st = action & ~__LST;
-		} else if (st == LST_ID) {
-			if (!isalnum(c) && c != '_') {
-				lxr_ungetc(lxr, c);
-				enum token token = lxr_hash_find(lxr->data);
-				return token ? token : TOK_ID;
-			}
 		} else if (st == LST_STR || st == LST_STRB) {
 			if (c == '"')
 				return TOK_STR;
