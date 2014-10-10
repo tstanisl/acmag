@@ -66,13 +66,11 @@ static enum token lxr_error(struct lxr *lxr, char *fmt, ...)
 
 enum lxr_state {
 	LST_NONE,
-	LST_STRB,
 	LST_ML_COMM,
 	LST_SL_COMM,
 	/* all states below fills token data */
 	__LST_ECHO,
 	LST_INT = __LST_ECHO,
-	LST_STR,
 	/* used to mark that lexer hidden state is used */
 	__LST = 128,
 };
@@ -136,6 +134,29 @@ static enum token lxr_get_id(struct lxr *lxr)
 	return TOK_ID;
 }
 
+static enum token lxr_get_str(struct lxr *lxr)
+{
+	int p, c = lxr_getc(lxr);
+	for (p = 0; c != '"'; ++p, c = lxr_getc(lxr)) {
+		if (c == '\n' || c == EOF)
+			return lxr_error(lxr, "unfinished string");
+		if (c == '\\') { /* process escapes */
+			c = lxr_getc(lxr);
+			if (c == 'n')
+				c = '\n';
+			else if (c == '"' || c == '\\')
+				;
+			else
+				return lxr_error(lxr, "invalid escape character");
+		}
+		if (p >= lxr->size)
+			return lxr_error(lxr, "too long identifier");
+		lxr->data[p] = c;
+	}
+	lxr->data[p] = 0;
+	return TOK_STR;
+}
+
 static int lxr_get_action(struct lxr *lxr, int c)
 {
 	if (isalpha(c) || c == '_')
@@ -159,7 +180,7 @@ static int lxr_get_action(struct lxr *lxr, int c)
 		case '*': return TOK_MUL;
 		case '%': return TOK_MOD;
 		case ';': return TOK_SCOLON;
-		case '"': return LST_STRB | __LST;
+		case '"': return lxr_get_str(lxr);
 	}
 
 	/* parse digraphs */
@@ -216,21 +237,6 @@ enum token lxr_get(struct lxr *lxr)
 			if (~action & __LST)
 				return action;
 			st = action & ~__LST;
-		} else if (st == LST_STR || st == LST_STRB) {
-			if (c == '"')
-				return TOK_STR;
-			if (c == '\n' || c == EOF)
-				return lxr_error(lxr, "unfinished string");
-			if (c == '\\') {
-				c = lxr_getc(lxr);
-				if (c == 'n')
-					c = '\n';
-				else if (c == '"' || c == '\\')
-					;
-				else
-					return lxr_error(lxr, "invalid escape character");
-			}
-			st = LST_STR;
 		} else if (st == LST_INT) {
 			if (!isdigit(c)) {
 				lxr_ungetc(lxr, c);
