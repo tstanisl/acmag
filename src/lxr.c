@@ -64,44 +64,6 @@ static enum token lxr_error(struct lxr *lxr, char *fmt, ...)
 	return TOK_ERR;
 }
 
-#define LXR_HMASK ((1 << 8) - 1)
-static enum token lxr_hash[LXR_HMASK + 1];
-
-static unsigned strhash(char *str)
-{
-	unsigned hash = 9231;
-	for (; *str; ++str)
-		hash = 33 * hash + *str;
-	return hash ^ (hash >> 16);
-}
-
-static void lxr_init(void)
-{
-	static int lxr_initialized = 0;
-	if (lxr_initialized)
-		return;
-	lxr_initialized = 1;
-
-	enum token tokarr[] = {
-		TOK_TRUE, TOK_FALSE, TOK_NULL,
-		TOK_RETURN, TOK_IF, TOK_ELSE,
-		TOK_WHILE, TOK_FOR, TOK_BREAK,
-		TOK_CONTINUE, TOK_EXPORT, TOK_IMPORT,
-	};
-
-	/* initialize hash map for keywords */
-	for (int i = 0; i < ARRAY_SIZE(tokarr); ++i) {
-		enum token token = tokarr[i];
-		unsigned hash = strhash(token_str[token]);
-
-		for (unsigned step = 0; lxr_hash[hash & LXR_HMASK]; hash += ++step)
-			if (lxr_hash[hash & LXR_HMASK] == token)
-				return;
-
-		lxr_hash[hash & LXR_HMASK] = token;
-	}
-}
-
 static enum token lxr_get_id(struct lxr *lxr)
 {
 	int p, c = lxr_getc(lxr);
@@ -113,13 +75,17 @@ static enum token lxr_get_id(struct lxr *lxr)
 	lxr->data[p] = 0;
 	lxr_ungetc(lxr, c);
 
-	/* try to find identifier in keywords hashmap */
-	unsigned hash = strhash(lxr->data);
-	enum token token;
+	enum token keywords[] = {
+		TOK_TRUE, TOK_FALSE, TOK_NULL,
+		TOK_RETURN, TOK_IF, TOK_ELSE,
+		TOK_WHILE, TOK_FOR, TOK_BREAK,
+		TOK_CONTINUE, TOK_EXPORT, TOK_IMPORT,
+	};
 
-	for (unsigned step = 0; (token = lxr_hash[hash & LXR_HMASK]); hash += ++step)
-		if (strcmp(lxr->data, token_str[token]) == 0)
-			return token;
+	for (int i = 0; i < ARRAY_SIZE(keywords); ++i)
+		if (strcmp(lxr->data, token_str[keywords[i]]) == 0)
+			return keywords[i];
+
 	return TOK_ID;
 }
 
@@ -254,8 +220,6 @@ struct lxr *lxr_create(FILE *file, int max_token_size)
 
 	if (ERR_ON(!lxr, "calloc() failed"))
 		return NULL;
-
-	lxr_init();
 
 	lxr->line = 1;
 	lxr->size = max_token_size;
