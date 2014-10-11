@@ -3,6 +3,7 @@
 #include "common.h"
 
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 /*************** TYPE DECLARATIONS  ***************/
@@ -100,10 +101,13 @@ static enum token lxr_get_str(struct lxr *lxr)
 	return TOK_STR;
 }
 
-static enum token lxr_get_int(struct lxr *lxr)
+static enum token lxr_get_num(struct lxr *lxr)
 {
 	int p, c = lxr_getc(lxr);
-	for (p = 0; isdigit(c); ++p, c = lxr_getc(lxr)) {
+	bool frac = false;
+	for (p = 0; isdigit(c) || (!frac && c == '.'); ++p, c = lxr_getc(lxr)) {
+		if (c == '.')
+			frac = true;
 		if (p >= lxr->size)
 			return lxr_error(lxr, "too long identifier");
 		lxr->data[p] = c;
@@ -135,7 +139,7 @@ enum token lxr_get(struct lxr *lxr)
 		if (isalpha(c) || c == '_')
 			return lxr_ungetc(lxr, c), lxr_get_id(lxr);
 		if (isdigit(c))
-			return lxr_ungetc(lxr, c), lxr_get_int(lxr);
+			return lxr_ungetc(lxr, c), lxr_get_num(lxr);
 		if (isspace(c))
 			continue;
 
