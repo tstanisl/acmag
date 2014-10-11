@@ -37,11 +37,11 @@ struct parser {
 	struct list code;
 };
 
-struct function {
-	// list of constants
-	// list of upvalues
-	// list of arguments
-	// code
+struct function_instance {
+	struct value *consts;
+	struct value *closures;
+	char **args;
+	uint16_t *code;
 };
 
 enum valtype {
@@ -66,24 +66,46 @@ struct value {
 	} u;
 };
 
-#define CSTACK_SIZE (1 << 8)
+#define ARGBITS 6
+#define ARGMASK ((1 << ARGBITS) - 1)
+#define STBITS 12
+#define STMASK ((1 << STBITS) - 1)
+#define PC_OFFSET (1 << (STBITS - 1))
 
-static struct st_entry {
+#define CALLST_SIZE (1 << 8)
+static struct callst {
 	uint16_t *code;
-	int pc;
+	int pc, maxpc;
 	int sp;
+	int fp;
 	struct value *consts;
 	int argin;
 	int argout;
-} call_stack[CSTACK_SIZE];
+} callst[CALLST_SIZE];
+static int callsp = 0;
 
-int execute(struct st_entry *st_entry)
+#define DATAST_SIZE (64 * CSTACK_SIZE)
+static struct value datast[DATAST_SIZE];
+static int datasp = 0;
+
+static int new_callst(int arg)
 {
-	int pc = st_entry->pc;
-	uint16_t 
-	for (int pc = 0; ; ++pc) {
-		int op = code[pc] >> 12;
-		int arg = code[pc] & 4095;
+	int argin = arg & ARGMASK;
+	int argout = arg >> ARGBITS;
+}
+
+int execute(/* function should be here */)
+{
+	struct callst *ctx = &callst[0];
+	int pc = 0;
+	struct value *st = data_stack;
+	for (;;) {
+		CRIT_ON(pc < 0 || pc >= maxpc, "invalid program counter");
+
+		int code = ctx->code[pc];
+		int op = code >> STBITS;
+		int arg = code & STMASK;
+		++pc;
 
 		if (op == OP_NOP) {
 			/* nothing to do */
@@ -112,20 +134,32 @@ int execute(struct st_entry *st_entry)
 		} else if (op == OP_RET) {
 			/* TODO: nothing by now */
 		} else if (op == OP_JMP) {
-			pc += arg - 2048;
+			pc += arg - PC_OFFSET;
 		} else if (op == OP_JNZ) {
 			--sp;
 			bool cond = value_to_bool(&st[sp]);
 			value_clear(&st[sp]);
 			if (cond)
-				pc += arg - 2048;
+				pc += arg - PC_OFFSET;
 		} else if (op == OP_JZ) {
 			--sp;
 			bool cond = value_to_bool(&st[sp]);
 			value_clear(&st[sp]);
 			if (!cond)
-				pc += arg - 2048;
+				pc += arg - PC_OFFSET;
 		}
 	}
+}
+
+void usage(void)
+{
+	struct acs_stack st;
+	acs_stack_init(&st);
+	acs_push_int(&st, 5);
+	acs_push_str(&st, "hello");
+	acs_execute_function("foo", &st);
+	int val = acs_pop_int(&st);
+	struct str *str = acs_pop_str(&st);
+	printf("foo(%d, \"%s\") = %d, \"%s\"\n", 5, "hello", val, str->str);
 }
 
