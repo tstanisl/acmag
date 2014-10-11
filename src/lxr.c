@@ -159,13 +159,12 @@ enum token lxr_get(struct lxr *lxr)
 		/* parse digraphs */
 		int d = lxr_getc(lxr);
 		if (c == '/') {
-			if (d == '/') {
+			if (d == '/') { // single line comment
 				for (; c != '\n'; c = lxr_getc(lxr))
 					if (c == EOF)
 						return TOK_EOF;
 				continue;
-			}
-			if (d == '*') {
+			} else if (d == '*') { /* multi line comment */
 				if (lxr_ml_comm(lxr) == 0)
 					continue;
 				return lxr_error(lxr, "unfinished comment");
