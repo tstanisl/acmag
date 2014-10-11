@@ -7,8 +7,6 @@
 
 /*************** TYPE DECLARATIONS  ***************/
 
-#define LXR_MAX_UNGET 4
-
 /**
  * struct lxr - LeXeR object
  * @file - input stream with source code
@@ -20,8 +18,6 @@ struct lxr {
         FILE *file;
 	int line;
 	int size;
-	int n_unget;
-	int unget[LXR_MAX_UNGET];
 	char data[];
 };
 
@@ -30,13 +26,7 @@ struct lxr {
 
 static int lxr_getc(struct lxr *lxr)
 {
-	int c;
-
-	if (lxr->n_unget)
-		c = lxr->unget[--lxr->n_unget];
-	else
-		c = fgetc(lxr->file);
-
+	int c = fgetc(lxr->file);
 	if (c == '\n')
 		++lxr->line;
 	return c;
@@ -44,13 +34,11 @@ static int lxr_getc(struct lxr *lxr)
 
 static void lxr_ungetc(struct lxr *lxr, int c)
 {
-	if (lxr->n_unget >= LXR_MAX_UNGET)
+	if (c == EOF)
 		return;
-
 	if (c == '\n')
 		--lxr->line;
-
-	lxr->unget[lxr->n_unget++] = c;
+	ungetc(c, lxr->file);
 }
 
 static enum token lxr_error(struct lxr *lxr, char *fmt, ...)
@@ -216,9 +204,9 @@ enum token lxr_get(struct lxr *lxr)
 
 struct lxr *lxr_create(FILE *file, int max_token_size)
 {
-	struct lxr *lxr = calloc(1, sizeof (*lxr) + max_token_size);
+	struct lxr *lxr = malloc(sizeof (*lxr) + max_token_size);
 
-	if (ERR_ON(!lxr, "calloc() failed"))
+	if (ERR_ON(!lxr, "malloc() failed"))
 		return NULL;
 
 	lxr->line = 1;
