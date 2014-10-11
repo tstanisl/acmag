@@ -77,7 +77,7 @@ static enum acs_id *parse_literal(struct parser *p)
 	}
 
 	/* payloaded literals */
-	if (p->next != TOK_ID && p->next != TOK_INT && p->next != TOK_STR)
+	if (p->next != TOK_ID && p->next != TOK_NUM && p->next != TOK_STR)
 		return parse_err(p, "unexpected token %s", token_str[p->next]);
 
 	char *payload = lxr_buffer(p->lxr);
@@ -85,7 +85,7 @@ static enum acs_id *parse_literal(struct parser *p)
 	if (ERR_ON(!l, "calloc() failed"))
 		return NULL;
 
-	l->id = p->next == TOK_INT ? ACS_NUM :
+	l->id = p->next == TOK_NUM ? ACS_NUM :
 		p->next == TOK_ID ? ACS_ID :
 		ACS_STR;
 	strcat(l->payload, payload);

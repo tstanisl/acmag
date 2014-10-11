@@ -110,7 +110,7 @@ static enum token lxr_get_int(struct lxr *lxr)
 	}
 	lxr->data[p] = 0;
 	lxr_ungetc(lxr, c);
-	return TOK_INT;
+	return TOK_NUM;
 }
 
 static int lxr_ml_comm(struct lxr *lxr)
@@ -233,7 +233,7 @@ int lxr_line(struct lxr *lxr)
 char *token_str[] = {
 	[TOK_ERR] = "#error",
 	[TOK_EOF] = "#eof",
-	[TOK_INT] = "#integer",
+	[TOK_NUM] = "#number",
 	[TOK_STR] = "#string",
 	[TOK_ID] = "#identifier",
 	[TOK_TRUE] = "true",

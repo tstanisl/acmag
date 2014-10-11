@@ -6,7 +6,7 @@
 enum token {
 	TOK_ERR = 0,
 	TOK_EOF,
-	TOK_INT,
+	TOK_NUM,
 	TOK_STR,
 	TOK_ID,
 	TOK_TRUE,
