@@ -1,6 +1,8 @@
 #ifndef VALUE_H
 #define VALUE_H __LINE__
 
+#include <stdbool.h>
+
 enum acs_type {
 	VAL_NULL = 0,
 	VAL_BOOL,
@@ -16,16 +18,15 @@ struct str;
 struct acs_function;
 struct acs_user_function;
 struct acs_object;
+struct acs_finstance;
 
 struct acs_value {
 	enum acs_type id;
-	struct acs_value *next; // used only by assignment
 	union {
-		int ival;
+		float nval;
 		struct str *sval;
 		bool bval;
-		struct acs_function *fval;
-		struct acs_user_function *uval;
+		struct acs_finstance *fval;
 		struct acs_object *oval;
 	} u;
 };
