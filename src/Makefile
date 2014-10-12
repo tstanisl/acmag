@@ -5,6 +5,7 @@ SRCS    := \
 	main.c \
 	parser.c \
 	stack_machine.c \
+	value.c \
 	vec.c
 	
 

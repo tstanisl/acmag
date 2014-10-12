@@ -31,6 +31,12 @@ struct acs_value {
 	} u;
 };
 
+void value_clear(struct acs_value *val);
+void value_convert_num(struct acs_value *val);
+bool value_to_bool(struct acs_value *val);
+void value_convert_bool(struct acs_value *val);
+void value_copy(struct acs_value *dst, struct acs_value *src);
+
 struct acs_object;
 typedef void (*acs_object_dtor_cb)(struct acs_object *obj);
 struct acs_field;
