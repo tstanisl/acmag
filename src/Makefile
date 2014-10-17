@@ -1,5 +1,6 @@
 TARGET  := ../acmag
 SRCS    := \
+	common.c \
 	cstr.c \
 	lxr.c \
 	main.c \
@@ -13,7 +14,7 @@ SRCS    := \
 
 CC = gcc
 CFLAGS = -std=gnu99 -O0 -Wall -pedantic -g -ggdb
-LDFLAGS = 
+LDFLAGS = -rdynamic
 LIBS    = 
 
 OBJS    := ${SRCS:.c=.o} 

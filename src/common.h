@@ -12,4 +12,7 @@
 	((type*)(((const char*)ptr) - offsetof(type,member)))
 #endif
 
+void stackdump(void);
+void *ac_alloc(unsigned size);
+
 #endif /* COMMON_H */
