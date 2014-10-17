@@ -1,5 +1,9 @@
-#include "value.h"
 #include "cstr.h"
+#include "debug.h"
+#include "value.h"
+
+#include <string.h>
+#include <stdlib.h>
 
 void value_clear(struct acs_value *val)
 {
