@@ -3,6 +3,7 @@ SRCS    := \
 	cstr.c \
 	lxr.c \
 	main.c \
+	object.c \
 	parser.c \
 	stack_machine.c \
 	value.c \
