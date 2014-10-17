@@ -56,29 +56,6 @@ struct acs_user_function {
 	void (*cleanup)(struct acs_user_function *);
 };
 
-#if 0
-enum acs_type {
-	VAL_NULL = 0,
-	VAL_BOOL,
-	VAL_NUM,
-	VAL_STR,
-	VAL_FUNC,
-	VAL_OBJ,
-	__VAL_MAX,
-};
-
-struct acs_value {
-	enum acs_type id;
-	union {
-		bool bval;
-		float nval;
-		struct str *sval;
-		struct acs_finstance *fval;
-		struct object *oval;
-	} u;
-};
-#endif
-
 struct acs_finstance {
 	bool ufunc;
 	union {
@@ -241,6 +218,7 @@ int acs_call_by_name(char *fname, struct acs_stack *st)
 		return -1;
 	if (ERR_ON(val->id != VAL_FUNC, "%s is not a function", fname))
 		return -1;
+	callsp = 0;
 	return acs_call(val, st);
 }
 
@@ -248,7 +226,7 @@ struct acs_stack {
 	int dummy;
 };
 
-int acs_stack_init(struct acs_stack *st)
+void acs_stack_init(struct acs_stack *st)
 {
 	st->dummy = 0;
 }
@@ -293,7 +271,7 @@ void usage(void)
 	acs_call_by_name("foo", &st);
 	float val = acs_pop_num(&st);
 	struct str *str = acs_pop_str(&st);
-	printf("foo(%d, \"%s\") = %d, \"%s\"\n", 5, "hello", val, str->str);
+	printf("foo(%d, \"%s\") = %g, \"%s\"\n", 5, "hello", val, str->str);
 	acs_stack_deinit(&st);
 }
 
