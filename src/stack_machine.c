@@ -133,61 +133,6 @@ enum base {
 	BS_SET_FIELD,
 };
 
-static void value_clear(struct acs_value *val)
-{
-	if (val->id == VAL_STR && val->u.sval)
-		str_put(val->u.sval);
-	if (val->id == VAL_OBJ && val->u.oval)
-		object_put(val->u.oval);
-	/* FIXME: what about function instance */
-	memset(&val->u, 0, sizeof val->u);
-}
-
-void value_convert_num(struct acs_value *val)
-{
-	float nval = 0;
-	if (val->id == VAL_NUM)
-		nval = val->u.nval;
-	else if (val->id == VAL_BOOL)
-		nval = (val->u.bval ? 1 : 0);
-	else if (val->id == VAL_STR)
-		nval = atof(val->u.sval->str);
-	value_clear(val);
-	val->id = VAL_NUM;
-	val->u.nval = nval;
-}
-
-static bool value_to_bool(struct acs_value *val)
-{
-	if (!val)
-		return false;
-	if (val->id == VAL_NULL)
-		return false;
-	if (val->id == VAL_BOOL)
-		return val->u.bval;
-	return true;
-}
-
-static void value_convert_bool(struct acs_value *val)
-{
-	bool bval = value_to_bool(val);
-	value_clear(val);
-	val->id = VAL_BOOL;
-	val->u.bval = bval;
-}
-
-static void value_copy(struct acs_value *dst,
-	struct acs_value *src)
-{
-	WARN_ON(src->id != VAL_NULL, "copying to non-NULL");
-	if (src->id == VAL_STR)
-		str_get(src->u.sval);
-	if (src->id == VAL_OBJ)
-		object_get(src->u.oval);
-	dst->u = src->u;
-	dst->id = src->id;
-}
-
 #define ST(n) datast[datasp - n]
 
 static int execute_base(enum base cmd)
@@ -317,7 +262,7 @@ int acs_push_num(struct acs_stack *st, float nval)
 	return 0;
 }
 
-int acs_push_str(struct acs_stack *st, char *str)
+int acs_push_cstr(struct acs_stack *st, char *str)
 {
 	struct str *sval = str_create(str);
 	if (ERR_ON(!sval, "str_create() failed"))
@@ -328,14 +273,24 @@ int acs_push_str(struct acs_stack *st, char *str)
 	return 0;
 }
 
+float acs_pop_num(struct acs_stack *st)
+{
+	return 0.0;
+}
+
+struct str *acs_pop_str(struct acs_stack *st)
+{
+	return NULL;
+}
+
 void usage(void)
 {
 	struct acs_stack st;
 	acs_stack_init(&st);
-	acs_push_int(&st, 5);
-	acs_push_str(&st, "hello");
+	acs_push_num(&st, 5);
+	acs_push_cstr(&st, "hello");
 	acs_call_by_name("foo", &st);
-	int val = acs_pop_int(&st);
+	float val = acs_pop_num(&st);
 	struct str *str = acs_pop_str(&st);
 	printf("foo(%d, \"%s\") = %d, \"%s\"\n", 5, "hello", val, str->str);
 	acs_stack_deinit(&st);

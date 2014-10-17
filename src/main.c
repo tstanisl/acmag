@@ -5,6 +5,7 @@
 #include "syntax.h"
 #include "machine.h"
 
+#if 0
 int main()
 {
 	struct acs_script *s = parse_script(stdin, "stdin");
@@ -25,3 +26,4 @@ int main()
 
 	return 0;
 }
+#endif
