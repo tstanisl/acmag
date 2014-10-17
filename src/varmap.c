@@ -17,8 +17,6 @@ int varmap_init(struct acs_varmap *vmap)
 	return 0;
 }
 
-static void clear_value(struct acs_value *val);
-
 void varmap_deinit(struct acs_varmap *vmap)
 {
 	for (struct acs_var *var = vmap->head, *next; var; var = next) {
