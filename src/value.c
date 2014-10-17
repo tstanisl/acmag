@@ -59,3 +59,23 @@ void value_copy(struct acs_value *dst, struct acs_value *src)
 	dst->id = src->id;
 }
 
+static inline int fsign(float f)
+{
+	return f > 0.0 ? 1 : (f < 0.0 ? -1 : 0);
+}
+
+int value_cmp(struct acs_value *a, struct acs_value *b)
+{
+	if (a->id == VAL_NULL)
+		return 0;
+	if (a->id == VAL_BOOL)
+		return !!a->u.bval - !!b->u.bval;
+	if (a->id == VAL_NUM)
+		return fsign(a->u.nval - b->u.nval);
+	if (a->id == VAL_STR)
+		return strcmp(a->u.sval->str, b->u.sval->str);
+	if (a->id == VAL_OBJ)
+		return a->u.oval != b->u.oval;
+	return 0;
+}
+
