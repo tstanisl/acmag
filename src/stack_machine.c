@@ -5,6 +5,7 @@
 #include "vec.h"
 #include "cstr.h"
 #include "value.h"
+#include "varmap.h"
 
 #include <stdarg.h>
 #include <stdbool.h>

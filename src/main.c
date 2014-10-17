@@ -5,9 +5,9 @@
 #include "syntax.h"
 #include "machine.h"
 
-#if 0
 int main()
 {
+#if 0
 	struct acs_script *s = parse_script(stdin, "stdin");
 
 	if (ERR_ON(!s, "parse_script() failed"))
@@ -25,5 +25,5 @@ int main()
 	destroy_script(s);
 
 	return 0;
-}
 #endif
+}
