@@ -7,6 +7,7 @@ SRCS    := \
 	parser.c \
 	stack_machine.c \
 	value.c \
+	varmap.c \
 	vec.c
 	
 
