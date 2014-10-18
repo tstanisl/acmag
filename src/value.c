@@ -16,15 +16,20 @@ void value_clear(struct acs_value *val)
 	memset(&val->u, 0, sizeof val->u);
 }
 
+float value_to_num(struct acs_value *val)
+{
+	if (val->id == VAL_NUM)
+		return val->u.nval;
+	else if (val->id == VAL_BOOL)
+		return val->u.bval ? 1 : 0;
+	else if (val->id == VAL_STR)
+		return atof(val->u.sval->str);
+	return 0;
+}
+
 void value_convert_num(struct acs_value *val)
 {
-	float nval = 0;
-	if (val->id == VAL_NUM)
-		nval = val->u.nval;
-	else if (val->id == VAL_BOOL)
-		nval = (val->u.bval ? 1 : 0);
-	else if (val->id == VAL_STR)
-		nval = atof(val->u.sval->str);
+	float nval = value_to_num(val);
 	value_clear(val);
 	val->id = VAL_NUM;
 	val->u.nval = nval;
@@ -47,6 +52,35 @@ void value_convert_bool(struct acs_value *val)
 	value_clear(val);
 	val->id = VAL_BOOL;
 	val->u.bval = bval;
+}
+
+char *value_to_cstr(struct acs_value *val)
+{
+	static char buf[32];
+
+	if (val->id == VAL_STR) {
+		return val->u.sval->str; /* nothing to do */
+	} else if (val->id == VAL_NULL) {
+		strcpy(buf, "null");
+	} else if (val->id == VAL_NUM) {
+		sprintf(buf, "%g", val->u.nval);
+	} else if (val->id == VAL_BOOL) {
+		strcpy(buf, val->u.bval ? "true" : "false");
+	} else if (val->id == VAL_FUNC) {
+		sprintf(buf, "(func):%p", (void*)val->u.fval);
+	} else if (val->id == VAL_OBJ) {
+		sprintf(buf, "(obj):%p", (void*)val->u.oval);
+	} else {
+		CRIT("value type not supported id=%d", (int)val->id);
+	}
+	return buf;
+}
+
+struct str *value_to_str(struct acs_value *val)
+{
+	if (val->id == VAL_STR)
+		return val->u.sval;
+	return str_create(value_to_cstr(val));
 }
 
 void value_copy(struct acs_value *dst, struct acs_value *src)
