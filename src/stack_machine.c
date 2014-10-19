@@ -356,8 +356,29 @@ void usage_embed(void)
 
 int usage_extend(struct acs_user_function *unused)
 {
-	float a = acs_arg_num(0);
-	float b = acs_arg_num(1);
+	float a = acs_argv_num(0);
+	float b = acs_argv_num(1);
 	acs_push_num(a + b);
 	return 0;
+}
+
+static int print_call(struct acs_user_function *ufunc)
+{
+	int argc = acs_argc();
+	for (int i = 1; i <= argc; ++i) {
+		struct str *str = acs_argv_str(i);
+		printf("%s", str->str);
+		str_put(str);
+	}
+	return 0;
+}
+
+void machine_init(void)
+{
+	varmap_init(&extern_vars);
+
+	static struct acs_user_function print_ufunc = { .call = print_call };
+	acs_register_user_function(&print_ufunc, "print");
+
+	/* TODO: add test */
 }
