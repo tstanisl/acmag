@@ -25,5 +25,6 @@ struct acs_user_function {
 };
 
 int acs_register_user_function(struct acs_user_function *ufunc, char *name);
+void acs_init(void);
 
 #endif /* MACHINE_H */

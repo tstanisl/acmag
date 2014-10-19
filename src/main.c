@@ -7,6 +7,7 @@
 
 int main()
 {
+	acs_init();
 #if 0
 	struct acs_script *s = parse_script(stdin, "stdin");
 

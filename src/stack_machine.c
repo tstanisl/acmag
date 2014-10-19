@@ -373,8 +373,13 @@ static int print_call(struct acs_user_function *ufunc)
 	return 0;
 }
 
-void machine_init(void)
+void acs_init(void)
 {
+	static bool initialized;
+	if (initialized)
+		return;
+	initialized = true;
+
 	varmap_init(&extern_vars);
 
 	static struct acs_user_function print_ufunc = { .call = print_call };
