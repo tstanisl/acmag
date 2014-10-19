@@ -386,6 +386,25 @@ static int print_call(struct acs_user_function *ufunc)
 	return 0;
 }
 
+static int do_machine_test(uint16_t *code)
+{
+	struct acs_value *consts = varmap_find(&extern_vars, "print");
+	struct acs_function func = { .consts = consts, .code = code };
+	struct acs_finstance fi = { .ufunc = false};
+	fi.u.func = &func;
+	return call_instance(&fi, 0, 0);
+}
+
+static void machine_test(void)
+{
+#define CMD(op,arg) (((unsigned)(OP_ ## op) << 12) | (unsigned)(arg))
+	uint16_t code1[] = {
+		CMD(PUSHI, 1),
+		CMD(RET, 1),
+	};
+	do_machine_test(code1);
+}
+
 void acs_init(void)
 {
 	static bool initialized;
@@ -399,4 +418,5 @@ void acs_init(void)
 	acs_register_user_function(&print_ufunc, "print");
 
 	/* TODO: add test */
+	machine_test();
 }
