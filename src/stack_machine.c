@@ -1,7 +1,7 @@
 #include "debug.h"
 #include "list.h"
 #include "lxr.h"
-//#include "syntax.h"
+#include "machine.h"
 #include "vec.h"
 #include "cstr.h"
 #include "value.h"
@@ -91,6 +91,11 @@ static int callsp = 0;
 static struct acs_value datast[DATAST_SIZE];
 static int datasp = 0;
 
+static struct callst *current(void)
+{
+	return &callst[callsp - 1];
+}
+
 /*
 static int new_callst(int arg)
 {
@@ -133,7 +138,7 @@ static int execute_base(enum base cmd)
 	return 0;
 }
 
-int execute()
+int execute(void)
 {
 	struct callst *ctx = &callst[0];
 	int pc = 0;
@@ -256,17 +261,16 @@ void acs_push_str(struct str *sval)
 
 const struct acs_value *acs_argv(int arg)
 {
-	/* FIXME: add checks againts argc */
-	int base = callst[callsp].argp;
-	return &datast[base + arg];
+	static struct acs_value null = { .id = VAL_NULL };
+	struct callst *cs = current();
+	if (arg >= cs->argin)
+		return &null;
+	return &datast[cs->argp + arg];
 }
-
-#define acs_arg_num(arg) value_to_num(acs_argv(arg))
-#define acs_arg_str(arg) value_to_str(acs_argv(arg))
 
 int acs_argc(void)
 {
-	return 0;
+	return current()->argin;
 }
 
 struct str *acs_pop_str(void)
