@@ -15,11 +15,11 @@
 enum opcode {
 	OP_NOP = 0,
 	OP_PUSHC,
-	OP_PUSHS,
+	OP_PUSHR,
 	OP_PUSHI,
 	OP_PUSHN,
 	OP_POPN,
-	OP_POPS,
+	OP_POPR,
 	OP_BSCALL,
 	OP_CALL,
 	OP_RET,
@@ -72,6 +72,7 @@ struct callst {
 	struct acs_value *consts;
 	int pc;
 	int sp;
+	int fp;
 	int argp;
 	int argin;
 	int argout;
@@ -96,6 +97,11 @@ static struct callst *current(void)
 	return &callst[callsp - 1];
 }
 
+static inline struct acs_value *ntop(void)
+{
+	return &datast[datasp];
+}
+
 static inline struct acs_value *top(void)
 {
 	return &datast[datasp - 1];
@@ -110,14 +116,6 @@ static inline void pop(void)
 {
 	value_clear(&datast[--datasp]);
 }
-
-/*
-static int new_callst(int arg)
-{
-	int argin = arg & ARGMASK;
-	int argout = arg >> ARGBITS;
-}
-*/
 
 enum base {
 	BS_ADD2,
@@ -136,7 +134,7 @@ enum base {
 
 #define ST(n) datast[datasp - n]
 
-static int execute_base(enum base cmd)
+static int call_base(enum base cmd)
 {
 	switch (cmd) {
 	case BS_ADD2:
@@ -153,68 +151,7 @@ static int execute_base(enum base cmd)
 	return 0;
 }
 
-int execute(void)
-{
-	struct callst *ctx = &callst[0];
-	int pc = 0;
-	int maxpc = vec_size(ctx->code);
-	for (;;) {
-		CRIT_ON(pc < 0 || pc >= maxpc, "invalid program counter");
-
-		int code = ctx->code[pc];
-		int op = code >> STBITS;
-		int arg = code & STMASK;
-		++pc;
-
-		if (op == OP_NOP) {
-			/* nothing to do */
-		} else if (op == OP_PUSHC) {
-			value_copy(&ST(0), &ctx->consts[arg]);
-			++datasp;
-		} else if (op == OP_PUSHN) {
-			datasp += arg;
-		} else if (op == OP_PUSHS) {
-			value_copy(&ST(0), &ST(arg));
-			++datasp;
-		} else if (op == OP_PUSHI) {
-			ST(0).id = VAL_NUM;
-			ST(0).u.nval = arg;
-			++datasp;
-		} else if (op == OP_POPN) {
-			/* consider freeing only during rewriting */
-			while (arg--)
-				--datasp, value_clear(&ST(0));
-		} else if (op == OP_POPS) {
-			--datasp;
-			value_copy(&ST(arg), &ST(0)); 
-			value_clear(&ST(0));
-		} else if (op == OP_BSCALL) {
-			execute_base(arg);
-		} else if (op == OP_CALL) {
-			/* TODO: nothing by now */
-		} else if (op == OP_RET) {
-			/* TODO: nothing by now */
-		} else if (op == OP_JMP) {
-			pc += arg - PC_OFFSET;
-		} else if (op == OP_JNZ) {
-			bool cond = value_to_bool(&ST(1));
-			value_clear(&ST(1));
-			--datasp;
-			if (cond)
-				pc += arg - PC_OFFSET;
-		} else if (op == OP_JZ) {
-			bool cond = value_to_bool(&ST(1));
-			value_clear(&ST(1));
-			--datasp;
-			if (!cond)
-				pc += arg - PC_OFFSET;
-		}
-	}
-}
-
-struct acs_varmap extern_vars;
-
-int acs_call(struct acs_value *val, int argin, int argout)
+static int new_call(struct acs_value *val, int argin, int argout)
 {
 	if (val->id != VAL_FUNC) {
 		ERR("calling non-function value");
@@ -223,23 +160,117 @@ int acs_call(struct acs_value *val, int argin, int argout)
 	struct acs_finstance *fi = val->u.fval;
 	if (fi->ufunc)
 		return fi->u.ufunc->call(fi->u.ufunc);
+
 	if (callsp >= ARRAY_SIZE(callst)) {
 		ERR("call stack exceeded");
+		/* TODO; add acs_stackdump() */
 		return -1;
 	}
 
 	// TODO: construct closure values
 	struct acs_function *func = fi->u.func;
-	struct callst *cst = &callst[callsp];
-	cst->code = func->code;
-	cst->pc = 0;
-	cst->sp = datasp;
-	cst->argp = datasp - argin;
-	cst->argin = argin;
-	cst->argout = argout;
-	cst->consts = func->consts;
+	struct callst *cs = &callst[callsp];
+
+	cs->code = func->code;
+	cs->pc = 0;
+	cs->sp = datasp;
+	cs->fp = datasp;
+	cs->argin = argin;
+	cs->argout = argout;
+	cs->consts = func->consts;
+
 	/* move call stack pointer by 1 */
 	++callsp;
+
+	return 0;
+}
+
+static void do_return(int argout)
+{
+	int src = datasp - argout;
+	int dst = current()->argp;
+	for (; argout--; ++src, ++dst) {
+		value_clear(&datast[dst]);
+		value_copy(&datast[dst], &datast[src]);
+	}
+	while (datasp > dst)
+		pop();
+	--callsp;
+}
+
+int execute(void)
+{
+	int start_datasp = datasp;
+	int start_callsp = callsp;
+	for (;;) {
+		struct callst *cs = current();
+
+		int code = cs->code[cs->pc];
+		int op = code >> STBITS;
+		int arg = code & STMASK;
+		++cs->pc;
+
+		if (op == OP_NOP) {
+			/* nothing to do */
+		} else if (op == OP_PUSHC) {
+			push(&cs->consts[arg]);
+		} else if (op == OP_PUSHN) {
+			datasp += arg;
+		} else if (op == OP_PUSHR) {
+			push(&datast[cs->fp + arg]);
+		} else if (op == OP_PUSHI) {
+			ntop()->id = VAL_NUM;
+			ntop()->u.nval = arg;
+			++datasp;
+		} else if (op == OP_POPN) {
+			/* consider freeing only during rewriting */
+			while (arg--)
+				pop();
+		} else if (op == OP_POPR) {
+			value_copy(&datast[cs->fp + arg], top());
+			pop();
+		} else if (op == OP_BSCALL) {
+			call_base(arg);
+		} else if (op == OP_CALL) {
+			int argin = arg & ARGMASK;
+			int argout = arg >> ARGBITS;
+			struct acs_value *val = &datast[cs->sp - argin];
+			if (new_call(val, argin, argout) == 0)
+				continue;
+			/* FIXME: this cleanup is probably totally wrong */
+			while (datasp > start_datasp)
+				pop();
+			callsp = start_callsp;
+			return -1;
+		} else if (op == OP_RET) {
+			do_return(arg);
+			if (callsp < start_callsp)
+				return 0;
+		} else if (op == OP_JMP) {
+			cs->pc += arg - PC_OFFSET;
+		} else if (op == OP_JNZ) {
+			bool cond = value_to_bool(top());
+			pop();
+			if (cond)
+				cs->pc += arg - PC_OFFSET;
+		} else if (op == OP_JZ) {
+			bool cond = value_to_bool(top());
+			pop();
+			if (!cond)
+				cs->pc += arg - PC_OFFSET;
+		}
+	}
+}
+
+struct acs_varmap extern_vars;
+
+int acs_call(struct acs_value *val, int argin, int argout)
+{
+	if (new_call(val, argin, argout) != 0) {
+		ERR("new_call() failed");
+		return -1;
+	}
+
 	return execute();
 }
 
