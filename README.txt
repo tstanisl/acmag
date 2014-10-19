@@ -255,4 +255,10 @@ ASN_EXPR -> BAS_EXPR ',' ASN_EXPR ',' BAS_EXPR
 ASN_EXPR -> BAS_EXPR '=' BAS_EXPR
 
 
+Let's go back to initial idea.
+Access to argument is dome using buildin helper functions:
+BASE_ARGC, BASE_ARG0..BASE_ARG31 and BASE_ARGN.
+Writing to an argument variable forces making its copy
+at the start of the script.
+THe arguments can be accessed in function like manner by calling arg(n).
 
