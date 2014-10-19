@@ -49,8 +49,6 @@ struct acs_function {
 	struct list node;
 };
 
-struct acs_stack;
-
 struct acs_user_function {
 	int (*call)(struct acs_user_function *);
 	void (*cleanup)(struct acs_user_function *);

@@ -12,8 +12,8 @@ void acs_push_cstr(char *str);
 void acs_push_str(struct str *sval);
 
 const struct acs_value *acs_argv(int arg);
-#define acs_arg_num(arg) value_to_num(acs_argv(arg))
-#define acs_arg_str(arg) value_to_str(acs_argv(arg))
+#define acs_argv_num(arg) value_to_num(acs_argv(arg))
+#define acs_argv_str(arg) value_to_str(acs_argv(arg))
 int acs_argc(void);
 
 struct str *acs_pop_str(void);
