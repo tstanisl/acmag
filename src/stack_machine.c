@@ -176,13 +176,8 @@ static int push_call(int argin, int argout)
 	return 0;
 }
 
-static int call(struct acs_value *val, int argin, int argout)
+static int call_instance(struct acs_finstance *fi, int argin, int argout)
 {
-	if (ERR_ON(val->id != VAL_FUNC, "calling non-function value"))
-		return -1;
-
-	struct acs_finstance *fi = val->u.fval;
-
 	if (push_call(argin, argout) != 0)
 		return -1;
 
@@ -204,6 +199,14 @@ static int call(struct acs_value *val, int argin, int argout)
 	cs->consts = func->consts;
 
 	return 0;
+}
+
+static int call(struct acs_value *val, int argin, int argout)
+{
+	if (ERR_ON(val->id != VAL_FUNC, "calling non-function value"))
+		return -1;
+
+	return call_instance(val->u.fval, argin, argout);
 }
 
 int execute(void)
