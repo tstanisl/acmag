@@ -374,6 +374,9 @@ int acs_register_user_function(struct acs_user_function *ufunc, char *name)
 	fi->u.ufunc = ufunc;
 	fi->refcnt = 1;
 
+	val->id = VAL_FUNC;
+	val->u.fval = fi;
+
 	return 0;
 }
 
