@@ -274,12 +274,7 @@ struct acs_varmap extern_vars;
 
 int acs_call(struct acs_value *val, int argin, int argout)
 {
-	if (new_call(val, argin, argout) != 0) {
-		ERR("new_call() failed");
-		return -1;
-	}
-
-	return execute();
+	return -1;
 }
 
 int acs_call_by_name(char *fname, int argin, int argout)
