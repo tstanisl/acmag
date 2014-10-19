@@ -235,6 +235,11 @@ int execute(void)
 		int code = cs->code[cs->pc];
 		int op = code >> STBITS;
 		int arg = code & STMASK;
+		printf("stack=");
+		for (int i = 0; i < datasp; ++i)
+			printf(" %s", value_to_cstr(&datast[i]));
+		puts("");
+		printf("%04x: %s %d\n", cs->pc, opcode_str[op], arg);
 		++cs->pc;
 
 		if (op == OP_NOP) {
