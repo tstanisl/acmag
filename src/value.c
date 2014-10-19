@@ -85,7 +85,7 @@ struct str *value_to_str(const struct acs_value *val)
 
 void value_copy(struct acs_value *dst, struct acs_value *src)
 {
-	WARN_ON(src->id != VAL_NULL, "copying to non-NULL");
+	WARN_ON(dst->id != VAL_NULL, "copying to non-NULL");
 	if (src->id == VAL_STR)
 		str_get(src->u.sval);
 	if (src->id == VAL_OBJ)
