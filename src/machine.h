@@ -19,4 +19,11 @@ int acs_argc(void);
 struct str *acs_pop_str(void);
 float acs_pop_num(void);
 
+struct acs_user_function {
+	int (*call)(struct acs_user_function *);
+	void (*cleanup)(struct acs_user_function *);
+};
+
+int acs_register_user_function(struct acs_user_function *ufunc, char *name);
+
 #endif /* MACHINE_H */

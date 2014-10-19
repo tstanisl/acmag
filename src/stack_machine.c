@@ -49,11 +49,6 @@ struct acs_function {
 	struct list node;
 };
 
-struct acs_user_function {
-	int (*call)(struct acs_user_function *);
-	void (*cleanup)(struct acs_user_function *);
-};
-
 struct acs_finstance {
 	bool ufunc;
 	union {
@@ -330,6 +325,22 @@ float acs_pop_num(void)
 	float num = value_to_num(&ST(0));
 	--datasp;
 	return num;
+}
+
+int acs_register_user_function(struct acs_user_function *ufunc, char *name)
+{
+	struct acs_value *val = varmap_insert(&extern_vars, name);
+	if (ERR_ON(!val, "varmap_insert() failed"))
+		return -1;
+
+	/* remove previous content of extern variable */
+	value_clear(val);
+	struct acs_finstance *fi = ac_alloc(sizeof *fi);
+	fi->ufunc = true;
+	fi->u.ufunc = ufunc;
+	fi->refcnt = 1;
+
+	return 0;
 }
 
 void usage_embed(void)
