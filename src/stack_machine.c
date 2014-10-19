@@ -28,6 +28,22 @@ enum opcode {
 	OP_JZ
 };
 
+char *opcode_str[] = {
+	[OP_NOP] = "NOP",
+	[OP_PUSHC] = "PUSHC",
+	[OP_PUSHR] = "PUSHR",
+	[OP_PUSHI] = "PUSHI",
+	[OP_PUSHN] = "PUSHN",
+	[OP_POPN] = "POPN",
+	[OP_POPR] = "POPR",
+	[OP_BSCALL] = "BSCALL",
+	[OP_CALL] = "CALL",
+	[OP_RET] = "RET",
+	[OP_JMP] = "JMP",
+	[OP_JNZ] = "JNZ",
+	[OP_JZ] = "JZ",
+};
+
 struct inst {
 	enum opcode op;
 	int arg;
