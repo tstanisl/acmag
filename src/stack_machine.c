@@ -401,8 +401,9 @@ int usage_extend(struct acs_user_function *unused)
 
 static int print_call(struct acs_user_function *ufunc)
 {
+	printf("print(argc=%d)\n", acs_argc());
 	int argc = acs_argc();
-	for (int i = 1; i <= argc; ++i) {
+	for (int i = 1; i < argc; ++i) {
 		struct str *str = acs_argv_str(i);
 		printf("%s", str->str);
 		str_put(str);
@@ -416,16 +417,20 @@ static int do_machine_test(uint16_t *code)
 	struct acs_function func = { .consts = consts, .code = code };
 	struct acs_finstance fi = { .ufunc = false};
 	fi.u.func = &func;
-	return call_instance(&fi, 0, 0);
+	call_instance(&fi, 0, 0);
+	return execute();
 }
 
 static void machine_test(void)
 {
 #define CMD(op,arg) (((unsigned)(OP_ ## op) << 12) | (unsigned)(arg))
 	uint16_t code1[] = {
+		CMD(PUSHC, 0),
 		CMD(PUSHI, 1),
-		CMD(RET, 1),
+		CMD(CALL, 1 << 6),
+		CMD(RET, 0),
 	};
+	puts("test1");
 	do_machine_test(code1);
 }
 
