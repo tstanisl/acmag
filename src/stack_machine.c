@@ -20,7 +20,7 @@ enum opcode {
 	OP_PUSHN,
 	OP_POPN,
 	OP_POPS,
-	OP_BASE,
+	OP_BSCALL,
 	OP_CALL,
 	OP_RET,
 	OP_JMP,
@@ -52,7 +52,7 @@ struct acs_function {
 struct acs_stack;
 
 struct acs_user_function {
-	int (*call)(struct acs_user_function *, struct acs_stack *);
+	int (*call)(struct acs_user_function *);
 	void (*cleanup)(struct acs_user_function *);
 };
 
@@ -69,10 +69,10 @@ struct acs_finstance {
 
 struct callst {
 	uint16_t *code;
+	struct acs_value *consts;
 	int pc;
 	int sp;
-	int fp;
-	struct acs_value *consts;
+	int argp;
 	int argin;
 	int argout;
 };
@@ -83,7 +83,7 @@ struct callst {
 #define STMASK ((1 << STBITS) - 1)
 #define PC_OFFSET (1 << (STBITS - 1))
 
-#define CALLST_SIZE (1 << 8)
+#define CALLST_SIZE 256
 static struct callst callst[CALLST_SIZE];
 static int callsp = 0;
 
@@ -109,6 +109,9 @@ enum base {
 	BS_SET_GLOBAL,
 	BS_GET_FIELD,
 	BS_SET_FIELD,
+	BS_ARGC,
+	BS_ARG0,
+	BS_ARGN,
 };
 
 #define ST(n) datast[datasp - n]
@@ -165,7 +168,7 @@ int execute()
 			--datasp;
 			value_copy(&ST(arg), &ST(0)); 
 			value_clear(&ST(0));
-		} else if (op == OP_BASE) {
+		} else if (op == OP_BSCALL) {
 			execute_base(arg);
 		} else if (op == OP_CALL) {
 			/* TODO: nothing by now */
@@ -191,7 +194,7 @@ int execute()
 
 struct acs_varmap extern_vars;
 
-int acs_call(struct acs_value *val, struct acs_stack *st)
+int acs_call(struct acs_value *val, int argin, int argout)
 {
 	if (val->id != VAL_FUNC) {
 		ERR("calling non-function value");
@@ -199,79 +202,103 @@ int acs_call(struct acs_value *val, struct acs_stack *st)
 	}
 	struct acs_finstance *fi = val->u.fval;
 	if (fi->ufunc)
-		return fi->u.ufunc->call(fi->u.ufunc, st);
+		return fi->u.ufunc->call(fi->u.ufunc);
+	if (callsp >= ARRAY_SIZE(callst)) {
+		ERR("call stack exceeded");
+		return -1;
+	}
+
 	// TODO: construct closure values
-	struct acs_function *f = fi->u.func;
-	struct callst *cst = &callst[0];
-	cst->code = f->code;
+	struct acs_function *func = fi->u.func;
+	struct callst *cst = &callst[callsp];
+	cst->code = func->code;
 	cst->pc = 0;
 	cst->sp = datasp;
-	cst->fp = datasp;
-	cst->consts = f->consts;
+	cst->argp = datasp - argin;
+	cst->argin = argin;
+	cst->argout = argout;
+	cst->consts = func->consts;
+	/* move call stack pointer by 1 */
+	++callsp;
 	return execute();
 }
 
-int acs_call_by_name(char *fname, struct acs_stack *st)
+int acs_call_by_name(char *fname, int argin, int argout)
 {
 	struct acs_value *val = varmap_find(&extern_vars, fname);
 	if (ERR_ON(!val, "failed to find function %s", fname))
 		return -1;
 	if (ERR_ON(val->id != VAL_FUNC, "%s is not a function", fname))
 		return -1;
-	callsp = 0;
-	return acs_call(val, st);
+	return acs_call(val, argin, argout);
 }
 
-struct acs_stack {
-	int dummy;
-};
-
-void acs_stack_init(struct acs_stack *st)
-{
-	st->dummy = 0;
-}
-
-void acs_stack_deinit(struct acs_stack *st) { /* stub */ }
-
-int acs_push_num(struct acs_stack *st, float nval)
+void acs_push_num(float nval)
 {
 	ST(0).id = VAL_NUM;
 	ST(0).u.nval = nval;
 	++datasp;
-	return 0;
 }
 
-int acs_push_cstr(struct acs_stack *st, char *str)
+void acs_push_cstr(char *str)
 {
-	struct str *sval = str_create(str);
-	if (ERR_ON(!sval, "str_create() failed"))
-		return -1;
 	ST(0).id = VAL_STR;
-	ST(0).u.sval = sval;
+	ST(0).u.sval = str_create(str);
 	++datasp;
+}
+
+void acs_push_str(struct str *sval)
+{
+	ST(0).id = VAL_STR;
+	ST(0).u.sval = str_get(sval);
+	++datasp;
+}
+
+const struct acs_value *acs_argv(int arg)
+{
+	/* FIXME: add checks againts argc */
+	int base = callst[callsp].argp;
+	return &datast[base + arg];
+}
+
+#define acs_arg_num(arg) value_to_num(acs_argv(arg))
+#define acs_arg_str(arg) value_to_str(acs_argv(arg))
+
+int acs_argc(void)
+{
 	return 0;
 }
 
-float acs_pop_num(struct acs_stack *st)
+struct str *acs_pop_str(void)
 {
-	return 0.0;
+	struct str *str = value_to_str(&ST(0));
+	/* TODO: add check if datasp got below fp */
+	--datasp;
+	return str;
 }
 
-struct str *acs_pop_str(struct acs_stack *st)
+float acs_pop_num(void)
 {
-	return NULL;
+	float num = value_to_num(&ST(0));
+	--datasp;
+	return num;
 }
 
-void usage(void)
+void usage_embed(void)
 {
-	struct acs_stack st;
-	acs_stack_init(&st);
-	acs_push_num(&st, 5);
-	acs_push_cstr(&st, "hello");
-	acs_call_by_name("foo", &st);
-	float val = acs_pop_num(&st);
-	struct str *str = acs_pop_str(&st);
+	acs_push_num(5);
+	acs_push_cstr("hello");
+	acs_call_by_name("foo", 2, 2);
+	float val = acs_pop_num();
+	struct str *str = acs_pop_str();
 	printf("foo(%d, \"%s\") = %g, \"%s\"\n", 5, "hello", val, str->str);
-	acs_stack_deinit(&st);
+	str_put(str);
 }
 
+int usage_extend(struct acs_user_function *unused)
+{
+	float a = acs_arg_num(0);
+	float b = acs_arg_num(1);
+	acs_push_num(a + b);
+	return 0;
+}
