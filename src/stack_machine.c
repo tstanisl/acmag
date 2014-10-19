@@ -144,40 +144,6 @@ static int call_base(enum base cmd)
 	return 0;
 }
 
-static int new_call(struct acs_value *val, int argin, int argout)
-{
-	if (val->id != VAL_FUNC) {
-		ERR("calling non-function value");
-		return -1;
-	}
-	struct acs_finstance *fi = val->u.fval;
-	if (fi->ufunc)
-		return fi->u.ufunc->call(fi->u.ufunc);
-
-	if (callsp >= ARRAY_SIZE(callst)) {
-		ERR("call stack exceeded");
-		/* TODO; add acs_stackdump() */
-		return -1;
-	}
-
-	// TODO: construct closure values
-	struct acs_function *func = fi->u.func;
-	struct callst *cs = &callst[callsp];
-
-	cs->code = func->code;
-	cs->pc = 0;
-	cs->sp = datasp;
-	cs->fp = datasp;
-	cs->argin = argin;
-	cs->argout = argout;
-	cs->consts = func->consts;
-
-	/* move call stack pointer by 1 */
-	++callsp;
-
-	return 0;
-}
-
 static void do_return(int argout)
 {
 	int src = datasp - argout;
@@ -189,6 +155,55 @@ static void do_return(int argout)
 	while (datasp > dst)
 		pop();
 	--callsp;
+}
+
+static int push_call(int argin, int argout)
+{
+	if (callsp >= ARRAY_SIZE(callst)) {
+		ERR("call stack exceeded");
+		/* TODO; add acs_stackdump() */
+		return -1;
+	}
+	/* move call stack pointer by 1 */
+	++callsp;
+	struct callst *cs = current();
+
+	cs->sp = datasp;
+	cs->fp = datasp;
+	cs->argin = argin;
+	cs->argout = argout;
+
+	return 0;
+}
+
+static int call(struct acs_value *val, int argin, int argout)
+{
+	if (ERR_ON(val->id != VAL_FUNC, "calling non-function value"))
+		return -1;
+
+	struct acs_finstance *fi = val->u.fval;
+
+	if (push_call(argin, argout) != 0)
+		return -1;
+
+	struct callst *cs = current();
+
+	if (fi->ufunc) {
+		struct acs_user_function *ufunc = fi->u.ufunc;
+		int ret = ufunc->call(ufunc);
+		int real_argout = cs->sp - cs->fp;
+		do_return(real_argout);
+		return ret;
+	}
+
+	// TODO: construct closure values
+	struct acs_function *func = fi->u.func;
+
+	cs->code = func->code;
+	cs->pc = 0;
+	cs->consts = func->consts;
+
+	return 0;
 }
 
 int execute(void)
@@ -228,7 +243,7 @@ int execute(void)
 			int argin = arg & ARGMASK;
 			int argout = arg >> ARGBITS;
 			struct acs_value *val = &datast[cs->sp - argin];
-			if (new_call(val, argin, argout) == 0)
+			if (call(val, argin, argout) == 0)
 				continue;
 			/* FIXME: this cleanup is probably totally wrong */
 			while (datasp > start_datasp)
