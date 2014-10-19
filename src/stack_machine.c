@@ -96,6 +96,21 @@ static struct callst *current(void)
 	return &callst[callsp - 1];
 }
 
+static inline struct acs_value *top(void)
+{
+	return &datast[datasp - 1];
+}
+
+static inline void push(struct acs_value *val)
+{
+	value_copy(&datast[datasp++], val);
+}
+
+static inline void pop(void)
+{
+	value_clear(&datast[--datasp]);
+}
+
 /*
 static int new_callst(int arg)
 {
