@@ -127,7 +127,12 @@ static inline void pop(void)
 }
 
 enum base {
-	__BS_ARITH2,
+	__BS_ARITH1,
+	BS_NEG,
+	BS_NOT,
+	__BS_ARITH1_MAX,
+
+	__BS_ARITH2 = __BS_ARITH1_MAX,
 	BS_ADD = __BS_ARITH2,
 	BS_SUB,
 	BS_MUL,
@@ -183,8 +188,10 @@ static int call_base(enum base cmd)
 static void do_return(int argout)
 {
 	int src = datasp - argout;
-	int dst = current()->argp;
+	int dst = current()->argp - 1;
+	printf(" argout=%d src=%d dst=%d\n", argout, src, dst);
 	for (; argout--; ++src, ++dst) {
+		printf(" src=%d dst=%d\n", src, dst);
 		value_clear(&datast[dst]);
 		value_copy(&datast[dst], &datast[src]);
 	}
@@ -258,8 +265,11 @@ int execute(void)
 		int op = code >> STBITS;
 		int arg = code & STMASK;
 		printf("stack=");
-		for (int i = 0; i < datasp; ++i)
+		for (int i = 0; i < datasp + 5; ++i) {
+			if (i == datasp)
+				printf(" |");
 			printf(" %s", value_to_cstr(&datast[i]));
+		}
 		puts("");
 		printf("%04x: %s %d\n", cs->pc, opcode_str[op], arg);
 		++cs->pc;
@@ -282,6 +292,7 @@ int execute(void)
 			while (arg--)
 				pop();
 		} else if (op == OP_POPR) {
+			value_clear(&datast[cs->fp + arg]);
 			value_copy(&datast[cs->fp + arg], top());
 			pop();
 		} else if (op == OP_BSCALL) {
@@ -443,6 +454,7 @@ static int do_machine_test(uint16_t *code)
 	struct acs_function func = { .consts = consts, .code = code };
 	struct acs_finstance fi = { .ufunc = false};
 	fi.u.func = &func;
+	datasp = 1;
 	call_instance(&fi, 0, 0);
 	return execute();
 }
@@ -459,6 +471,35 @@ static void machine_test(void)
 	};
 	puts("test1");
 	do_machine_test(code1);
+
+	uint16_t code2[] = {
+		CMD(PUSHC, 0),
+		CMD(PUSHI, 1),
+		CMD(PUSHI, 2),
+		CMD(BSCALL, BS_ADD),
+		CMD(CALL, 1),
+		CMD(RET, 0),
+	};
+	puts("test2");
+	do_machine_test(code2);
+
+	uint16_t code3[] = {
+		CMD(PUSHI, 10),
+		CMD(PUSHC, 0),
+		CMD(PUSHR, 0),
+		CMD(CALL, 1),
+		CMD(PUSHR, 0),
+		CMD(PUSHI, 1),
+		CMD(BSCALL, BS_SUB),
+		CMD(POPR, 0),
+		CMD(PUSHR, 0),
+		CMD(PUSHI, 0),
+		CMD(BSCALL, BS_EQ),
+		CMD(JZ, PC_OFFSET - 11),
+		CMD(RET, 0),
+	};
+	puts("--- test3 ---");
+	do_machine_test(code3);
 }
 
 void acs_init(void)
