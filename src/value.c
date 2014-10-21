@@ -13,7 +13,7 @@ void value_clear(struct acs_value *val)
 	if (val->id == VAL_OBJ && val->u.oval)
 		object_put(val->u.oval);
 	/* FIXME: what about function instance */
-	memset(&val->u, 0, sizeof val->u);
+	memset(val, 0, sizeof *val);
 }
 
 float value_to_num(const struct acs_value *val)
