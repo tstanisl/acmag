@@ -148,9 +148,9 @@ enum base {
 static int call_base(enum base cmd)
 {
 	if (cmd >= __BS_ARITH2 && cmd < __BS_ARITH2_MAX) {
-		float a = value_to_num(top());
-		pop();
 		float b = value_to_num(top());
+		pop();
+		float a = value_to_num(top());
 		pop();
 		++datasp;
 		top()->id = VAL_NUM;
