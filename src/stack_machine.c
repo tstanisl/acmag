@@ -502,6 +502,7 @@ static void machine_test(void)
 	puts("--- test3 ---");
 	do_machine_test(code3);
 
+#if 0
 	uint16_t code4[] = {
 		CMD(PUSHI, 10),
 		CMD(PUSHC, 0),
@@ -516,6 +517,33 @@ static void machine_test(void)
 	};
 	puts("--- test4 ---");
 	do_machine_test(code4);
+#endif
+
+	uint16_t code5[] = {
+		CMD(PUSHI, 1),
+		CMD(PUSHI, 0),
+		CMD(PUSHI, 20), // x,x_,n = 1,0,20;
+		CMD(PUSHC, 0),
+		CMD(PUSHR, 0),
+		CMD(CALL, 1), // print(x);
+		CMD(PUSHR, 0),
+		CMD(PUSHR, 1),
+		CMD(BSCALL, BS_ADD),
+		CMD(PUSHR, 0),
+		CMD(PUSHR, 2),
+		CMD(PUSHI, 1),
+		CMD(BSCALL, BS_SUB),
+		CMD(POPR, 2),
+		CMD(POPR, 1),
+		CMD(POPR, 0), // x,x_,n = x+x_, x, n - 1;
+		CMD(PUSHI, 0),
+		CMD(PUSHR, 2),
+		CMD(BSCALL, BS_EQ),
+		CMD(JZ, PC_OFFSET - 17), // while (n != 0)
+		CMD(RET, 0),
+	};
+	puts("--- test5 ---");
+	do_machine_test(code5);
 }
 
 void acs_init(void)
