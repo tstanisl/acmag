@@ -189,9 +189,9 @@ static void do_return(int argout)
 {
 	int src = datasp - argout;
 	int dst = current()->argp - 1;
-	printf(" argout=%d src=%d dst=%d\n", argout, src, dst);
+	//printf(" argout=%d src=%d dst=%d\n", argout, src, dst);
 	for (; argout--; ++src, ++dst) {
-		printf(" src=%d dst=%d\n", src, dst);
+		//printf(" src=%d dst=%d\n", src, dst);
 		value_clear(&datast[dst]);
 		value_copy(&datast[dst], &datast[src]);
 	}
@@ -222,7 +222,7 @@ static int push_call(int argin, int argout)
 
 static int call_instance(struct acs_finstance *fi, int argin, int argout)
 {
-	printf("call_instance(argin=%d, argout=%d)\n", argin, argout);
+	//printf("call_instance(argin=%d, argout=%d)\n", argin, argout);
 	if (push_call(argin, argout) != 0)
 		return -1;
 
@@ -264,6 +264,7 @@ int execute(void)
 		int code = cs->code[cs->pc];
 		int op = code >> STBITS;
 		int arg = code & STMASK;
+		/*
 		printf("stack=");
 		for (int i = 0; i < datasp + 5; ++i) {
 			if (i == datasp)
@@ -272,6 +273,7 @@ int execute(void)
 		}
 		puts("");
 		printf("%04x: %s %d\n", cs->pc, opcode_str[op], arg);
+		*/
 		++cs->pc;
 		cs->sp = datasp;
 
@@ -301,8 +303,8 @@ int execute(void)
 			int argin = arg & ARGMASK;
 			int argout = arg >> ARGBITS;
 			struct acs_value *val = &datast[cs->sp - argin - 1];
-			printf("  sp=%d argin=%d argout=%d val=%s\n", cs->sp, argin, argout,
-				value_to_cstr(val));
+			/*printf("  sp=%d argin=%d argout=%d val=%s\n", cs->sp,
+				argin, argout, value_to_cstr(val));*/
 			if (call(val, argin, argout) == 0)
 				continue;
 			/* FIXME: this cleanup is probably totally wrong */
@@ -437,12 +439,11 @@ int usage_extend(struct acs_user_function *unused)
 
 static int print_call(struct acs_user_function *ufunc)
 {
-	printf("print(argc=%d)\n", acs_argc());
+	//printf("print(argc=%d)\n", acs_argc());
 	int argc = acs_argc();
 	for (int i = 0; i < argc; ++i) {
-		struct str *str = acs_argv_str(i);
-		printf("%s", str->str);
-		str_put(str);
+		char *str = value_to_cstr(acs_argv(i));
+		printf("%s", str);
 	}
 	puts("");
 	return 0;
@@ -500,6 +501,21 @@ static void machine_test(void)
 	};
 	puts("--- test3 ---");
 	do_machine_test(code3);
+
+	uint16_t code4[] = {
+		CMD(PUSHI, 10),
+		CMD(PUSHC, 0),
+		CMD(PUSHR, 0),
+		CMD(CALL, 1),
+		CMD(PUSHR, 0),
+		CMD(PUSHI, 1),
+		CMD(BSCALL, BS_ADD),
+		CMD(POPR, 0),
+		CMD(JMP, PC_OFFSET - 8),
+		CMD(RET, 0),
+	};
+	puts("--- test4 ---");
+	do_machine_test(code4);
 }
 
 void acs_init(void)
