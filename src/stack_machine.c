@@ -127,11 +127,13 @@ static inline void pop(void)
 }
 
 enum base {
-	BS_ADD2,
-	BS_SUB2,
-	BS_MUL2,
-	BS_DIV2,
-	BS_MOD2,
+	__BS_ARITH2,
+	BS_ADD = __BS_ARITH2,
+	BS_SUB,
+	BS_MUL,
+	BS_DIV,
+	BS_MOD,
+	__BS_ARITH2_MAX,
 	BS_GET_GLOBAL,
 	BS_SET_GLOBAL,
 	BS_GET_FIELD,
@@ -145,15 +147,22 @@ enum base {
 
 static int call_base(enum base cmd)
 {
-	switch (cmd) {
-	case BS_ADD2:
-		value_convert_num(&ST(1));
-		value_convert_num(&ST(2));
-		ST(2).u.nval += ST(1).u.nval;
-		value_clear(&ST(1));
-		--datasp;
-		break;
-	default:
+	if (cmd >= __BS_ARITH2 && cmd < __BS_ARITH2_MAX) {
+		float a = value_to_num(top());
+		pop();
+		float b = value_to_num(top());
+		pop();
+		++datasp;
+		top()->id = VAL_NUM;
+		switch (cmd) {
+		case BS_ADD: top()->u.nval = a + b; break;
+		case BS_SUB: top()->u.nval = a - b; break;
+		case BS_MUL: top()->u.nval = a / b; break;
+		case BS_DIV: top()->u.nval = a * b; break;
+		case BS_MOD: top()->u.nval = (int)a % (int)b; break;
+		default: return -1;
+		}
+	} else {
 		ERR("unsupported base operation %d", (int)cmd);
 		return -1;
 	}
