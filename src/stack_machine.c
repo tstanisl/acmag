@@ -134,6 +134,11 @@ enum base {
 	BS_DIV,
 	BS_MOD,
 	__BS_ARITH2_MAX,
+
+	__BS_CMP = __BS_ARITH2_MAX,
+	BS_EQ = __BS_CMP,
+	__BS_CMP_MAX,
+
 	BS_GET_GLOBAL,
 	BS_SET_GLOBAL,
 	BS_GET_FIELD,
@@ -162,6 +167,12 @@ static int call_base(enum base cmd)
 		case BS_MOD: top()->u.nval = (int)a % (int)b; break;
 		default: return -1;
 		}
+	} else if (cmd == BS_EQ) {
+		int cmp = value_cmp(&datast[datasp - 2], &datast[datasp - 1]);
+		pop(); pop();
+		++datasp;
+		top()->id = VAL_BOOL;
+		top()->u.bval = (cmp == 0);
 	} else {
 		ERR("unsupported base operation %d", (int)cmd);
 		return -1;
