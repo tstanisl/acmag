@@ -188,12 +188,14 @@ static int push_call(int argin, int argout)
 	cs->fp = datasp;
 	cs->argin = argin;
 	cs->argout = argout;
+	cs->argp = datasp - argin;
 
 	return 0;
 }
 
 static int call_instance(struct acs_finstance *fi, int argin, int argout)
 {
+	printf("call_instance(argin=%d, argout=%d)\n", argin, argout);
 	if (push_call(argin, argout) != 0)
 		return -1;
 
@@ -241,6 +243,7 @@ int execute(void)
 		puts("");
 		printf("%04x: %s %d\n", cs->pc, opcode_str[op], arg);
 		++cs->pc;
+		cs->sp = datasp;
 
 		if (op == OP_NOP) {
 			/* nothing to do */
@@ -266,7 +269,9 @@ int execute(void)
 		} else if (op == OP_CALL) {
 			int argin = arg & ARGMASK;
 			int argout = arg >> ARGBITS;
-			struct acs_value *val = &datast[cs->sp - argin];
+			struct acs_value *val = &datast[cs->sp - argin - 1];
+			printf("  sp=%d argin=%d argout=%d val=%s\n", cs->sp, argin, argout,
+				value_to_cstr(val));
 			if (call(val, argin, argout) == 0)
 				continue;
 			/* FIXME: this cleanup is probably totally wrong */
@@ -403,11 +408,12 @@ static int print_call(struct acs_user_function *ufunc)
 {
 	printf("print(argc=%d)\n", acs_argc());
 	int argc = acs_argc();
-	for (int i = 1; i < argc; ++i) {
+	for (int i = 0; i < argc; ++i) {
 		struct str *str = acs_argv_str(i);
 		printf("%s", str->str);
 		str_put(str);
 	}
+	puts("");
 	return 0;
 }
 
@@ -427,7 +433,8 @@ static void machine_test(void)
 	uint16_t code1[] = {
 		CMD(PUSHC, 0),
 		CMD(PUSHI, 1),
-		CMD(CALL, 1 << 6),
+		CMD(PUSHI, 4),
+		CMD(CALL, 2),
 		CMD(RET, 0),
 	};
 	puts("test1");
