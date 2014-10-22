@@ -106,11 +106,6 @@ static struct callst *current(void)
 	return &callst[callsp - 1];
 }
 
-static inline struct acs_value *ntop(void)
-{
-	return &datast[datasp];
-}
-
 #define TOP(n) (&datast[datasp - (n)])
 
 static inline void push(struct acs_value *val)
@@ -263,8 +258,8 @@ int execute(void)
 		} else if (op == OP_PUSHR) {
 			push(&datast[cs->fp + arg]);
 		} else if (op == OP_PUSHI) {
-			ntop()->id = VAL_NUM;
-			ntop()->u.nval = arg;
+			TOP(0)->id = VAL_NUM;
+			TOP(0)->u.nval = arg;
 			++datasp;
 		} else if (op == OP_POPN) {
 			/* consider freeing only during rewriting */
