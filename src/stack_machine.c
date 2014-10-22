@@ -352,14 +352,14 @@ struct str *acs_pop_str(void)
 {
 	struct str *str = value_to_str(TOP(1));
 	/* TODO: add check if datasp got below fp */
-	--datasp;
+	POP();
 	return str;
 }
 
 float acs_pop_num(void)
 {
 	float num = value_to_num(TOP(1));
-	--datasp;
+	POP();
 	return num;
 }
 
