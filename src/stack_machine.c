@@ -126,6 +126,11 @@ enum base {
 
 	__BS_CMP = __BS_ARITH2_MAX,
 	BS_EQ = __BS_CMP,
+	BS_LESS,
+	BS_GREAT,
+	BS_NEQ,
+	BS_LEQ,
+	BS_GREQ,
 	__BS_CMP_MAX,
 
 	BS_GET_GLOBAL,
@@ -137,34 +142,60 @@ enum base {
 	BS_ARGN,
 };
 
-static int bscall(enum base cmd)
+static void bscall_arith2(enum base cmd)
+{
+	float b = value_to_num(TOP(1));
+	POP();
+	float a = value_to_num(TOP(1));
+	POP();
+	++datasp;
+	TOP(1)->id = VAL_NUM;
+
+	if (cmd == BS_ADD)
+		TOP(1)->u.nval = a + b;
+	else if (cmd == BS_SUB)
+		TOP(1)->u.nval = a - b;
+	else if (cmd == BS_MUL)
+		TOP(1)->u.nval = a * b;
+	else if (cmd == BS_DIV)
+		TOP(1)->u.nval = a / b;
+	else if (cmd == BS_MOD)
+		TOP(1)->u.nval = (int)a % (int)b;
+	else
+		CRIT("not supported bscall = %d", (int)cmd);
+}
+
+static void bscall_cmp(enum base cmd)
+{
+	int cmp = value_cmp(&datast[datasp - 2], &datast[datasp - 1]);
+	/* compute sign() */
+	cmp = cmp > 0 ? 1 : (cmp < 0 ? -1 : 0);
+
+	POP(); POP();
+
+	static bool result[][3] = {
+		[BS_LESS - __BS_CMP] = {true, false, false},
+		[BS_GREAT - __BS_CMP] = {false, false, true},
+		[BS_EQ - __BS_CMP] = {false, true, false},
+		[BS_NEQ - __BS_CMP] = {true, false, true},
+		[BS_LEQ - __BS_CMP] = {true, true, false},
+		[BS_GREQ - __BS_CMP] = {false, true, true},
+	};
+
+	++datasp;
+	TOP(1)->id = VAL_BOOL;
+	TOP(1)->u.bval = result[cmd - __BS_CMP][cmp + 1];
+}
+
+static void bscall(enum base cmd)
 {
 	if (cmd >= __BS_ARITH2 && cmd < __BS_ARITH2_MAX) {
-		float b = value_to_num(TOP(1));
-		POP();
-		float a = value_to_num(TOP(1));
-		POP();
-		++datasp;
-		TOP(1)->id = VAL_NUM;
-		switch (cmd) {
-		case BS_ADD: TOP(1)->u.nval = a + b; break;
-		case BS_SUB: TOP(1)->u.nval = a - b; break;
-		case BS_MUL: TOP(1)->u.nval = a / b; break;
-		case BS_DIV: TOP(1)->u.nval = a * b; break;
-		case BS_MOD: TOP(1)->u.nval = (int)a % (int)b; break;
-		default: return -1;
-		}
+		bscall_arith2(cmd);
 	} else if (cmd == BS_EQ) {
-		int cmp = value_cmp(&datast[datasp - 2], &datast[datasp - 1]);
-		POP(); POP();
-		++datasp;
-		TOP(1)->id = VAL_BOOL;
-		TOP(1)->u.bval = (cmp == 0);
+		bscall_cmp(cmd);
 	} else {
-		ERR("unsupported base operation %d", (int)cmd);
-		return -1;
+		CRIT("not supported bscall %d", (int)cmd);
 	}
-	return 0;
 }
 
 static void do_return(int argout)
