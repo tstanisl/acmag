@@ -455,8 +455,10 @@ static int do_machine_test(uint16_t *code)
 	struct acs_function func = { .consts = consts, .code = code };
 	struct acs_finstance fi = { .ufunc = false};
 	fi.u.func = &func;
-	datasp = 1;
-	call_instance(&fi, 0, 0);
+	++datasp;
+	top()->id = VAL_FUNC;
+	top()->u.fval = &fi;
+	call(top(), 0, 0);
 	return execute();
 }
 
