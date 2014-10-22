@@ -376,7 +376,7 @@ const struct acs_value *acs_argv(int arg)
 {
 	static struct acs_value null = { .id = VAL_NULL };
 	struct callst *cs = current();
-	if (arg >= cs->argin)
+	if (arg < 0 || arg >= cs->argin)
 		return &null;
 	return &datast[cs->argp + arg];
 }
