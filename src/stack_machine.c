@@ -468,11 +468,12 @@ static int do_machine_test(uint16_t *code)
 {
 	struct acs_value *consts = varmap_find(&global_vars, "print");
 	struct acs_function func = { .consts = consts, .code = code };
-	struct acs_finstance fi = { .ufunc = false};
-	fi.u.func = &func;
+	struct acs_finstance *fi = ac_alloc(sizeof (*fi) + sizeof (fi->upvalues[0]));
+	fi->u.func = &func;
+	value_copy(&fi->upvalues[fi->n_upvalues++], &consts[0]);
 	++datasp;
 	TOP(1)->id = VAL_FUNC;
-	TOP(1)->u.fval = &fi;
+	TOP(1)->u.fval = fi;
 	acs_push_num(3);
 	acs_push_num(4);
 	call(TOP(3), 2, 0);
@@ -579,6 +580,15 @@ static void machine_test(void)
 	};
 	puts("--- test6 ---");
 	do_machine_test(code6);
+
+	uint16_t code7[] = {
+		CMD(PUSHU, 0),
+		CMD(PUSHI, 123),
+		CMD(CALL, 1),
+		CMD(RET, 0),
+	};
+	puts("--- test7 ---");
+	do_machine_test(code7);
 }
 
 static void machine_deinit(void)
