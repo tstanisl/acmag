@@ -18,8 +18,10 @@ enum opcode {
 	OP_PUSHR,
 	OP_PUSHI,
 	OP_PUSHN,
+	OP_PUSHU,
 	OP_POPN,
 	OP_POPR,
+	OP_POPU,
 	OP_BSCALL,
 	OP_CALL,
 	OP_RET,
@@ -34,8 +36,10 @@ char *opcode_str[] = {
 	[OP_PUSHR] = "PUSHR",
 	[OP_PUSHI] = "PUSHI",
 	[OP_PUSHN] = "PUSHN",
+	[OP_PUSHU] = "PUSHU",
 	[OP_POPN] = "POPN",
 	[OP_POPR] = "POPR",
+	[OP_POPU] = "POPU",
 	[OP_BSCALL] = "BSCALL",
 	[OP_CALL] = "CALL",
 	[OP_RET] = "RET",
@@ -72,13 +76,14 @@ struct acs_finstance {
 		struct acs_user_function *ufunc;
 	} u;
 	int refcnt;
-	int n_closures;
-	struct acs_value closures[];
+	int n_upvalues;
+	struct acs_value upvalues[];
 };
 
 struct callst {
 	uint16_t *code;
 	struct acs_value *consts;
+	struct acs_value *upvalues;
 	int pc;
 	int sp;
 	int fp;
@@ -256,6 +261,7 @@ static int call(struct acs_value *val, int argin, int argout)
 	cs->code = func->code;
 	cs->pc = 0;
 	cs->consts = func->consts;
+	cs->upvalues = fi->upvalues;
 
 	return 0;
 }
@@ -292,6 +298,8 @@ int execute(void)
 			TOP(0)->id = VAL_NUM;
 			TOP(0)->u.nval = arg;
 			++datasp;
+		} else if (op == OP_PUSHU) {
+			PUSH(&cs->upvalues[arg]);
 		} else if (op == OP_POPN) {
 			/* consider freeing only during rewriting */
 			while (arg--)
@@ -299,6 +307,10 @@ int execute(void)
 		} else if (op == OP_POPR) {
 			value_clear(&datast[cs->fp + arg]);
 			value_copy(&datast[cs->fp + arg], TOP(1));
+			POP();
+		} else if (op == OP_POPU) {
+			value_clear(&cs->upvalues[arg]);
+			value_copy(&cs->upvalues[arg], TOP(1));
 			POP();
 		} else if (op == OP_BSCALL) {
 			bscall(arg);
