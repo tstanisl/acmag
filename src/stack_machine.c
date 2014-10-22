@@ -138,8 +138,7 @@ enum bscall {
 	BS_GET_FIELD,
 	BS_SET_FIELD,
 	BS_ARGC,
-	BS_ARG0,
-	BS_ARGN,
+	BS_ARGV,
 };
 
 static void bscall_arith2(enum bscall cmd)
