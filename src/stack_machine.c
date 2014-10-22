@@ -110,7 +110,7 @@ static struct callst *current(void)
 #define PUSH(val) value_copy(&datast[datasp++], (val))
 #define POP() value_clear(&datast[--datasp])
 
-enum base {
+enum bscall {
 	__BS_ARITH1,
 	BS_NEG,
 	BS_NOT,
@@ -142,7 +142,7 @@ enum base {
 	BS_ARGN,
 };
 
-static void bscall_arith2(enum base cmd)
+static void bscall_arith2(enum bscall cmd)
 {
 	float b = value_to_num(TOP(1));
 	POP();
@@ -165,7 +165,7 @@ static void bscall_arith2(enum base cmd)
 		CRIT("not supported bscall = %d", (int)cmd);
 }
 
-static void bscall_cmp(enum base cmd)
+static void bscall_cmp(enum bscall cmd)
 {
 	int cmp = value_cmp(&datast[datasp - 2], &datast[datasp - 1]);
 	/* compute sign() */
@@ -187,7 +187,7 @@ static void bscall_cmp(enum base cmd)
 	TOP(1)->u.bval = result[cmd - __BS_CMP][cmp + 1];
 }
 
-static void bscall(enum base cmd)
+static void bscall(enum bscall cmd)
 {
 	if (cmd >= __BS_ARITH2 && cmd < __BS_ARITH2_MAX) {
 		bscall_arith2(cmd);
