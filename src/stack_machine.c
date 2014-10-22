@@ -315,22 +315,22 @@ int acs_call_by_name(char *fname, int argin, int argout)
 
 void acs_push_num(float nval)
 {
-	TOP(1)->id = VAL_NUM;
-	TOP(1)->u.nval = nval;
+	TOP(0)->id = VAL_NUM;
+	TOP(0)->u.nval = nval;
 	++datasp;
 }
 
 void acs_push_cstr(char *str)
 {
-	TOP(1)->id = VAL_STR;
-	TOP(1)->u.sval = str_create(str);
+	TOP(0)->id = VAL_STR;
+	TOP(0)->u.sval = str_create(str);
 	++datasp;
 }
 
 void acs_push_str(struct str *sval)
 {
-	TOP(1)->id = VAL_STR;
-	TOP(1)->u.sval = str_get(sval);
+	TOP(0)->id = VAL_STR;
+	TOP(0)->u.sval = str_get(sval);
 	++datasp;
 }
 
