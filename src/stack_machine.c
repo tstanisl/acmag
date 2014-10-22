@@ -107,16 +107,8 @@ static struct callst *current(void)
 }
 
 #define TOP(n) (&datast[datasp - (n)])
-
-static inline void push(struct acs_value *val)
-{
-	value_copy(&datast[datasp++], val);
-}
-
-static inline void pop(void)
-{
-	value_clear(&datast[--datasp]);
-}
+#define PUSH(val) value_copy(&datast[datasp++], (val))
+#define POP() value_clear(&datast[--datasp])
 
 enum base {
 	__BS_ARITH1,
@@ -149,9 +141,9 @@ static int call_base(enum base cmd)
 {
 	if (cmd >= __BS_ARITH2 && cmd < __BS_ARITH2_MAX) {
 		float b = value_to_num(TOP(1));
-		pop();
+		POP();
 		float a = value_to_num(TOP(1));
-		pop();
+		POP();
 		++datasp;
 		TOP(1)->id = VAL_NUM;
 		switch (cmd) {
@@ -164,7 +156,7 @@ static int call_base(enum base cmd)
 		}
 	} else if (cmd == BS_EQ) {
 		int cmp = value_cmp(&datast[datasp - 2], &datast[datasp - 1]);
-		pop(); pop();
+		POP(); POP();
 		++datasp;
 		TOP(1)->id = VAL_BOOL;
 		TOP(1)->u.bval = (cmp == 0);
@@ -186,7 +178,7 @@ static void do_return(int argout)
 		value_copy(&datast[dst], &datast[src]);
 	}
 	while (datasp > dst)
-		pop();
+		POP();
 	--callsp;
 }
 
@@ -252,11 +244,11 @@ int execute(void)
 		if (op == OP_NOP) {
 			/* nothing to do */
 		} else if (op == OP_PUSHC) {
-			push(&cs->consts[arg]);
+			PUSH(&cs->consts[arg]);
 		} else if (op == OP_PUSHN) {
 			datasp += arg;
 		} else if (op == OP_PUSHR) {
-			push(&datast[cs->fp + arg]);
+			PUSH(&datast[cs->fp + arg]);
 		} else if (op == OP_PUSHI) {
 			TOP(0)->id = VAL_NUM;
 			TOP(0)->u.nval = arg;
@@ -264,11 +256,11 @@ int execute(void)
 		} else if (op == OP_POPN) {
 			/* consider freeing only during rewriting */
 			while (arg--)
-				pop();
+				POP();
 		} else if (op == OP_POPR) {
 			value_clear(&datast[cs->fp + arg]);
 			value_copy(&datast[cs->fp + arg], TOP(1));
-			pop();
+			POP();
 		} else if (op == OP_BSCALL) {
 			call_base(arg);
 		} else if (op == OP_CALL) {
@@ -281,7 +273,7 @@ int execute(void)
 				continue;
 			/* FIXME: this cleanup is probably totally wrong */
 			while (datasp > start_datasp)
-				pop();
+				POP();
 			callsp = start_callsp;
 			return -1;
 		} else if (op == OP_RET) {
@@ -292,12 +284,12 @@ int execute(void)
 			cs->pc += arg - PC_OFFSET;
 		} else if (op == OP_JNZ) {
 			bool cond = value_to_bool(TOP(1));
-			pop();
+			POP();
 			if (cond)
 				cs->pc += arg - PC_OFFSET;
 		} else if (op == OP_JZ) {
 			bool cond = value_to_bool(TOP(1));
-			pop();
+			POP();
 			if (!cond)
 				cs->pc += arg - PC_OFFSET;
 		}
