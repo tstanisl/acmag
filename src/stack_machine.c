@@ -326,7 +326,7 @@ int execute(void)
 	}
 }
 
-struct acs_varmap extern_vars;
+struct acs_varmap global_vars;
 
 int acs_call(struct acs_value *val, int argin, int argout)
 {
@@ -335,7 +335,7 @@ int acs_call(struct acs_value *val, int argin, int argout)
 
 int acs_call_by_name(char *fname, int argin, int argout)
 {
-	struct acs_value *val = varmap_find(&extern_vars, fname);
+	struct acs_value *val = varmap_find(&global_vars, fname);
 	if (ERR_ON(!val, "failed to find function %s", fname))
 		return -1;
 	if (ERR_ON(val->id != VAL_FUNC, "%s is not a function", fname))
@@ -395,11 +395,11 @@ float acs_pop_num(void)
 
 int acs_register_user_function(struct acs_user_function *ufunc, char *name)
 {
-	struct acs_value *val = varmap_insert(&extern_vars, name);
+	struct acs_value *val = varmap_insert(&global_vars, name);
 	if (ERR_ON(!val, "varmap_insert() failed"))
 		return -1;
 
-	/* remove previous content of extern variable */
+	/* remove previous content of global variable */
 	value_clear(val);
 	struct acs_finstance *fi = ac_alloc(sizeof *fi);
 	fi->ufunc = true;
@@ -445,7 +445,7 @@ static int print_call(struct acs_user_function *ufunc)
 
 static int do_machine_test(uint16_t *code)
 {
-	struct acs_value *consts = varmap_find(&extern_vars, "print");
+	struct acs_value *consts = varmap_find(&global_vars, "print");
 	struct acs_function func = { .consts = consts, .code = code };
 	struct acs_finstance fi = { .ufunc = false};
 	fi.u.func = &func;
@@ -544,7 +544,7 @@ static void machine_test(void)
 
 static void machine_deinit(void)
 {
-	varmap_deinit(&extern_vars);
+	varmap_deinit(&global_vars);
 }
 
 void acs_init(void)
@@ -554,7 +554,7 @@ void acs_init(void)
 		return;
 	initialized = true;
 
-	varmap_init(&extern_vars);
+	varmap_init(&global_vars);
 
 	atexit(machine_deinit);
 
