@@ -192,6 +192,14 @@ static void bscall(enum bscall cmd)
 		bscall_arith2(cmd);
 	} else if (cmd >= __BS_CMP && cmd < __BS_CMP_MAX) {
 		bscall_cmp(cmd);
+	} else if (cmd == BS_ARGV) {
+		int arg = value_to_num(TOP(1));
+		POP();
+		PUSH(acs_argv(arg));
+	} else if (cmd == BS_ARGC) {
+		++datasp;
+		TOP(1)->id = VAL_NUM;
+		TOP(1)->u.nval = acs_argc();
 	} else {
 		CRIT("not supported bscall %d", (int)cmd);
 	}
