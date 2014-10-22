@@ -543,6 +543,11 @@ static void machine_test(void)
 	do_machine_test(code5);
 }
 
+static void machine_deinit(void)
+{
+	varmap_deinit(&extern_vars);
+}
+
 void acs_init(void)
 {
 	static bool initialized;
@@ -551,6 +556,8 @@ void acs_init(void)
 	initialized = true;
 
 	varmap_init(&extern_vars);
+
+	atexit(machine_deinit);
 
 	static struct acs_user_function print_ufunc = { .call = print_call };
 	acs_register_user_function(&print_ufunc, "print");
