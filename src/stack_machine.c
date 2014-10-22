@@ -111,10 +111,7 @@ static inline struct acs_value *ntop(void)
 	return &datast[datasp];
 }
 
-static inline struct acs_value *top(void)
-{
-	return &datast[datasp - 1];
-}
+#define TOP(n) (&datast[datasp - (n)])
 
 static inline void push(struct acs_value *val)
 {
@@ -153,31 +150,29 @@ enum base {
 	BS_ARGN,
 };
 
-#define ST(n) datast[datasp - n]
-
 static int call_base(enum base cmd)
 {
 	if (cmd >= __BS_ARITH2 && cmd < __BS_ARITH2_MAX) {
-		float b = value_to_num(top());
+		float b = value_to_num(TOP(1));
 		pop();
-		float a = value_to_num(top());
+		float a = value_to_num(TOP(1));
 		pop();
 		++datasp;
-		top()->id = VAL_NUM;
+		TOP(1)->id = VAL_NUM;
 		switch (cmd) {
-		case BS_ADD: top()->u.nval = a + b; break;
-		case BS_SUB: top()->u.nval = a - b; break;
-		case BS_MUL: top()->u.nval = a / b; break;
-		case BS_DIV: top()->u.nval = a * b; break;
-		case BS_MOD: top()->u.nval = (int)a % (int)b; break;
+		case BS_ADD: TOP(1)->u.nval = a + b; break;
+		case BS_SUB: TOP(1)->u.nval = a - b; break;
+		case BS_MUL: TOP(1)->u.nval = a / b; break;
+		case BS_DIV: TOP(1)->u.nval = a * b; break;
+		case BS_MOD: TOP(1)->u.nval = (int)a % (int)b; break;
 		default: return -1;
 		}
 	} else if (cmd == BS_EQ) {
 		int cmp = value_cmp(&datast[datasp - 2], &datast[datasp - 1]);
 		pop(); pop();
 		++datasp;
-		top()->id = VAL_BOOL;
-		top()->u.bval = (cmp == 0);
+		TOP(1)->id = VAL_BOOL;
+		TOP(1)->u.bval = (cmp == 0);
 	} else {
 		ERR("unsupported base operation %d", (int)cmd);
 		return -1;
@@ -277,7 +272,7 @@ int execute(void)
 				pop();
 		} else if (op == OP_POPR) {
 			value_clear(&datast[cs->fp + arg]);
-			value_copy(&datast[cs->fp + arg], top());
+			value_copy(&datast[cs->fp + arg], TOP(1));
 			pop();
 		} else if (op == OP_BSCALL) {
 			call_base(arg);
@@ -301,12 +296,12 @@ int execute(void)
 		} else if (op == OP_JMP) {
 			cs->pc += arg - PC_OFFSET;
 		} else if (op == OP_JNZ) {
-			bool cond = value_to_bool(top());
+			bool cond = value_to_bool(TOP(1));
 			pop();
 			if (cond)
 				cs->pc += arg - PC_OFFSET;
 		} else if (op == OP_JZ) {
-			bool cond = value_to_bool(top());
+			bool cond = value_to_bool(TOP(1));
 			pop();
 			if (!cond)
 				cs->pc += arg - PC_OFFSET;
@@ -333,22 +328,22 @@ int acs_call_by_name(char *fname, int argin, int argout)
 
 void acs_push_num(float nval)
 {
-	ST(0).id = VAL_NUM;
-	ST(0).u.nval = nval;
+	TOP(1)->id = VAL_NUM;
+	TOP(1)->u.nval = nval;
 	++datasp;
 }
 
 void acs_push_cstr(char *str)
 {
-	ST(0).id = VAL_STR;
-	ST(0).u.sval = str_create(str);
+	TOP(1)->id = VAL_STR;
+	TOP(1)->u.sval = str_create(str);
 	++datasp;
 }
 
 void acs_push_str(struct str *sval)
 {
-	ST(0).id = VAL_STR;
-	ST(0).u.sval = str_get(sval);
+	TOP(1)->id = VAL_STR;
+	TOP(1)->u.sval = str_get(sval);
 	++datasp;
 }
 
@@ -368,7 +363,7 @@ int acs_argc(void)
 
 struct str *acs_pop_str(void)
 {
-	struct str *str = value_to_str(&ST(0));
+	struct str *str = value_to_str(TOP(1));
 	/* TODO: add check if datasp got below fp */
 	--datasp;
 	return str;
@@ -376,7 +371,7 @@ struct str *acs_pop_str(void)
 
 float acs_pop_num(void)
 {
-	float num = value_to_num(&ST(0));
+	float num = value_to_num(TOP(1));
 	--datasp;
 	return num;
 }
@@ -438,9 +433,9 @@ static int do_machine_test(uint16_t *code)
 	struct acs_finstance fi = { .ufunc = false};
 	fi.u.func = &func;
 	++datasp;
-	top()->id = VAL_FUNC;
-	top()->u.fval = &fi;
-	call(top(), 0, 0);
+	TOP(1)->id = VAL_FUNC;
+	TOP(1)->u.fval = &fi;
+	call(TOP(1), 0, 0);
 	return execute();
 }
 
