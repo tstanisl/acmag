@@ -190,7 +190,7 @@ static void bscall(enum bscall cmd)
 {
 	if (cmd >= __BS_ARITH2 && cmd < __BS_ARITH2_MAX) {
 		bscall_arith2(cmd);
-	} else if (cmd == BS_EQ) {
+	} else if (cmd >= __BS_CMP && cmd < __BS_CMP_MAX) {
 		bscall_cmp(cmd);
 	} else {
 		CRIT("not supported bscall %d", (int)cmd);
