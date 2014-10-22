@@ -137,7 +137,7 @@ enum base {
 	BS_ARGN,
 };
 
-static int call_base(enum base cmd)
+static int bscall(enum base cmd)
 {
 	if (cmd >= __BS_ARITH2 && cmd < __BS_ARITH2_MAX) {
 		float b = value_to_num(TOP(1));
@@ -262,7 +262,7 @@ int execute(void)
 			value_copy(&datast[cs->fp + arg], TOP(1));
 			POP();
 		} else if (op == OP_BSCALL) {
-			call_base(arg);
+			bscall(arg);
 		} else if (op == OP_CALL) {
 			int argin = arg & ARGMASK;
 			int argout = arg >> ARGBITS;
