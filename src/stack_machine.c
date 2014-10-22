@@ -460,7 +460,9 @@ static int do_machine_test(uint16_t *code)
 	++datasp;
 	TOP(1)->id = VAL_FUNC;
 	TOP(1)->u.fval = &fi;
-	call(TOP(1), 0, 0);
+	acs_push_num(3);
+	acs_push_num(4);
+	call(TOP(3), 2, 0);
 	return execute();
 }
 
@@ -548,6 +550,22 @@ static void machine_test(void)
 	};
 	puts("--- test5 ---");
 	do_machine_test(code5);
+
+	uint16_t code6[] = {
+		CMD(PUSHC, 0),
+		CMD(BSCALL, BS_ARGC),
+		CMD(CALL, 1),
+		CMD(PUSHC, 0),
+		CMD(PUSHI, 0),
+		CMD(BSCALL, BS_ARGV),
+		CMD(PUSHI, 1),
+		CMD(BSCALL, BS_ARGV),
+		CMD(BSCALL, BS_ADD),
+		CMD(CALL, 1),
+		CMD(RET, 0),
+	};
+	puts("--- test6 ---");
+	do_machine_test(code6);
 }
 
 static void machine_deinit(void)
