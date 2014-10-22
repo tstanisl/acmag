@@ -137,6 +137,7 @@ enum bscall {
 	BS_SET_GLOBAL,
 	BS_GET_FIELD,
 	BS_SET_FIELD,
+	/* TODO: add BS_ARG0, BS_ARG1, ... BS_ARG63 */
 	BS_ARGC,
 	BS_ARGV,
 };
