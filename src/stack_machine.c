@@ -200,8 +200,11 @@ static void do_return(int argout)
 	--callsp;
 }
 
-static int push_call(int argin, int argout)
+static int call(struct acs_value *val, int argin, int argout)
 {
+	if (ERR_ON(val->id != VAL_FUNC, "calling non-function value"))
+		return -1;
+
 	if (callsp >= ARRAY_SIZE(callst)) {
 		ERR("call stack exceeded");
 		/* TODO; add acs_stackdump() */
@@ -217,17 +220,7 @@ static int push_call(int argin, int argout)
 	cs->argout = argout;
 	cs->argp = datasp - argin;
 
-	return 0;
-}
-
-static int call_instance(struct acs_finstance *fi, int argin, int argout)
-{
-	//printf("call_instance(argin=%d, argout=%d)\n", argin, argout);
-	if (push_call(argin, argout) != 0)
-		return -1;
-
-	struct callst *cs = current();
-
+	struct acs_finstance *fi = val->u.fval;
 	if (fi->ufunc) {
 		struct acs_user_function *ufunc = fi->u.ufunc;
 		int ret = ufunc->call(ufunc);
@@ -244,14 +237,6 @@ static int call_instance(struct acs_finstance *fi, int argin, int argout)
 	cs->consts = func->consts;
 
 	return 0;
-}
-
-static int call(struct acs_value *val, int argin, int argout)
-{
-	if (ERR_ON(val->id != VAL_FUNC, "calling non-function value"))
-		return -1;
-
-	return call_instance(val->u.fval, argin, argout);
 }
 
 int execute(void)
