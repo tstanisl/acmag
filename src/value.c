@@ -104,13 +104,11 @@ int value_cmp(struct acs_value *a, struct acs_value *b)
 	if (a->id == VAL_NULL)
 		return 0;
 	if (a->id == VAL_BOOL)
-		return !!a->u.bval - !!b->u.bval;
+		return !!a->u.bval - !!value_to_bool(b);
 	if (a->id == VAL_NUM)
-		return fsign(a->u.nval - b->u.nval);
+		return fsign(a->u.nval - value_to_num(b));
 	if (a->id == VAL_STR)
-		return strcmp(a->u.sval->str, b->u.sval->str);
-	if (a->id == VAL_OBJ)
-		return a->u.oval != b->u.oval;
-	return 0;
+		return strcmp(a->u.sval->str, value_to_cstr(b));
+	return memcmp(&a->u, &b->u, sizeof a->u);
 }
 
