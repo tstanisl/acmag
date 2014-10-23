@@ -1,5 +1,6 @@
 #include "acs.h"
 #include "debug.h"
+#include "function.h"
 #include "list.h"
 #include "lxr.h"
 #include "machine.h"
@@ -61,24 +62,6 @@ struct parser {
 	struct lxr *lxr;
 	enum token next;
 	struct list code;
-};
-
-struct acs_function {
-	struct acs_value *consts;
-	int n_args;
-	uint16_t *code;
-	struct list node;
-};
-
-struct acs_finstance {
-	bool ufunc;
-	union {
-		struct acs_function *func;
-		struct acs_user_function *ufunc;
-	} u;
-	int refcnt;
-	int n_upvalues;
-	struct acs_value upvalues[];
 };
 
 struct callst {
