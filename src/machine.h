@@ -4,8 +4,9 @@
 #include "cstr.h"
 #include "value.h"
 
-int acs_call(struct acs_value *val, int argin, int argout);
-int acs_call_by_name(char *fname, int argin, int argout);
+void acs_call_head(struct acs_value *val);
+int acs_call_head_by_name(char *fname);
+int acs_call_tail(int argout);
 
 void acs_push_num(float nval);
 void acs_push_cstr(char *str);

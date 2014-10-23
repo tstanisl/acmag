@@ -349,19 +349,24 @@ int execute(void)
 
 struct acs_varmap global_vars;
 
-int acs_call(struct acs_value *val, int argin, int argout)
+void acs_call_head(struct acs_value *val)
 {
-	return -1;
+	WARN_ON(val->id != VAL_FUNC, "value is not a function");
+	PUSH(val);
 }
 
-int acs_call_by_name(char *fname, int argin, int argout)
+int acs_call_tail(int argout)
+{
+	return execute();
+}
+
+int acs_call_head_by_name(char *fname)
 {
 	struct acs_value *val = varmap_find(&global_vars, fname);
 	if (ERR_ON(!val, "failed to find function %s", fname))
 		return -1;
-	if (ERR_ON(val->id != VAL_FUNC, "%s is not a function", fname))
-		return -1;
-	return acs_call(val, argin, argout);
+	acs_call_head(val);
+	return 0;
 }
 
 void acs_push_num(float nval)
@@ -435,9 +440,10 @@ int acs_register_user_function(struct acs_user_function *ufunc, char *name)
 
 void usage_embed(void)
 {
+	acs_call_head_by_name("foo");
 	acs_push_num(5);
 	acs_push_cstr("hello");
-	acs_call_by_name("foo", 2, 2);
+	acs_call_tail(2);
 	float val = acs_pop_num();
 	struct str *str = acs_pop_str();
 	printf("foo(%d, \"%s\") = %g, \"%s\"\n", 5, "hello", val, str->str);
