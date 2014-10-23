@@ -20,6 +20,8 @@ int acs_argc(void);
 struct str *acs_pop_str(void);
 float acs_pop_num(void);
 
+struct acs_value *acs_global(char *name);
+
 struct acs_user_function {
 	int (*call)(struct acs_user_function *);
 	void (*cleanup)(struct acs_user_function *);
