@@ -353,26 +353,6 @@ int acs_register_user_function(struct acs_user_function *ufunc, char *name)
 	return 0;
 }
 
-void usage_embed(void)
-{
-	acs_call_head_by_name("foo");
-	acs_push_num(5);
-	acs_push_cstr("hello");
-	acs_call_tail(2, 2);
-	float val = acs_pop_num();
-	struct str *str = acs_pop_str();
-	printf("foo(%d, \"%s\") = %g, \"%s\"\n", 5, "hello", val, str->str);
-	str_put(str);
-}
-
-int usage_extend(struct acs_user_function *unused)
-{
-	float a = acs_argv_num(0);
-	float b = acs_argv_num(1);
-	acs_push_num(a + b);
-	return 0;
-}
-
 static int print_call(struct acs_user_function *ufunc)
 {
 	int argc = acs_argc();
