@@ -32,20 +32,6 @@ char *opcode_str[] = {
 	[OP_JZ] = "JZ",
 };
 
-struct inst {
-	enum opcode op;
-	int arg;
-	int addr;
-	struct list node;
-};
-
-struct parser {
-	char *path;
-	struct lxr *lxr;
-	enum token next;
-	struct list code;
-};
-
 struct callst {
 	uint16_t *code;
 	struct acs_value *consts;
@@ -149,9 +135,7 @@ static void do_return(int argout)
 {
 	int src = datasp - argout;
 	int dst = current()->argp - 1;
-	//printf(" argout=%d src=%d dst=%d\n", argout, src, dst);
 	for (; argout--; ++src, ++dst) {
-		//printf(" src=%d dst=%d\n", src, dst);
 		value_clear(&datast[dst]);
 		value_copy(&datast[dst], &datast[src]);
 	}
@@ -189,7 +173,6 @@ static int call(struct acs_value *val, int argin, int argout)
 		return ret;
 	}
 
-	// TODO: construct closure values
 	struct acs_function *func = fi->u.func;
 
 	cs->code = func->code;
@@ -252,8 +235,6 @@ int execute(void)
 			int argin = arg & ARGMASK;
 			int argout = arg >> ARGBITS;
 			struct acs_value *val = &datast[cs->sp - argin - 1];
-			/*printf("  sp=%d argin=%d argout=%d val=%s\n", cs->sp,
-				argin, argout, value_to_cstr(val));*/
 			if (call(val, argin, argout) == 0)
 				continue;
 			/* FIXME: this cleanup is probably totally wrong */
@@ -394,7 +375,6 @@ int usage_extend(struct acs_user_function *unused)
 
 static int print_call(struct acs_user_function *ufunc)
 {
-	//printf("print(argc=%d)\n", acs_argc());
 	int argc = acs_argc();
 	for (int i = 0; i < argc; ++i) {
 		char *str = value_to_cstr(acs_argv(i));
