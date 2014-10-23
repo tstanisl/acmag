@@ -331,7 +331,7 @@ float acs_pop_num(void)
 
 struct acs_value *acs_global(char *name)
 {
-	return varmap_find(&global_vars, name);
+	return varmap_insert(&global_vars, name);
 }
 
 int acs_register_user_function(struct acs_user_function *ufunc, char *name)
