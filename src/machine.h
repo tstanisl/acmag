@@ -53,4 +53,10 @@ enum bscall {
 	BS_ARGV,
 };
 
+#define ARGBITS 6
+#define ARGMASK ((1 << ARGBITS) - 1)
+#define STBITS 12
+#define STMASK ((1 << STBITS) - 1)
+#define PC_OFFSET (1 << (STBITS - 1))
+
 #endif /* MACHINE_H */

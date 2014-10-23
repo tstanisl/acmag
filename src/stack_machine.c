@@ -44,12 +44,6 @@ struct callst {
 	int argout;
 };
 
-#define ARGBITS 6
-#define ARGMASK ((1 << ARGBITS) - 1)
-#define STBITS 12
-#define STMASK ((1 << STBITS) - 1)
-#define PC_OFFSET (1 << (STBITS - 1))
-
 #define CALLST_SIZE 256
 static struct callst callst[CALLST_SIZE];
 static int callsp = 0;
