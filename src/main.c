@@ -8,6 +8,8 @@
 int main()
 {
 	acs_init();
+	extern void machine_test(void);
+	machine_test();
 #if 0
 	struct acs_script *s = parse_script(stdin, "stdin");
 
