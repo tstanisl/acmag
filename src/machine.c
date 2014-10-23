@@ -1,863 +1,367 @@
+#include "acs.h"
+#include "debug.h"
+#include "function.h"
+#include "list.h"
+#include "lxr.h"
 #include "machine.h"
 #include "vec.h"
-#include "debug.h"
 #include "cstr.h"
+#include "value.h"
+#include "varmap.h"
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>
+#include <stdint.h>
 
-struct acs_var {
-	/* FIXME: consider using val.next instead */
-	struct acs_var *next;
-	struct acs_value val;
-	char name[];
+char *opcode_str[] = {
+	[OP_NOP] = "NOP",
+	[OP_PUSHC] = "PUSHC",
+	[OP_PUSHR] = "PUSHR",
+	[OP_PUSHI] = "PUSHI",
+	[OP_PUSHN] = "PUSHN",
+	[OP_PUSHU] = "PUSHU",
+	[OP_POPN] = "POPN",
+	[OP_POPR] = "POPR",
+	[OP_POPU] = "POPU",
+	[OP_BSCALL] = "BSCALL",
+	[OP_CALL] = "CALL",
+	[OP_RET] = "RET",
+	[OP_JMP] = "JMP",
+	[OP_JNZ] = "JNZ",
+	[OP_JZ] = "JZ",
 };
 
-struct acs_field {
-	struct acs_value key;
-	struct acs_value val;
-	struct acs_field *next;
+struct callst {
+	uint16_t *code;
+	struct acs_value *consts;
+	struct acs_value *upvalues;
+	int pc;
+	int sp;
+	int fp;
+	int argp;
+	int argin;
+	int argout;
 };
 
-#define to_field(node) \
-	container_of(node, struct acs_field, node)
+#define CALLST_SIZE 256
+static struct callst callst[CALLST_SIZE];
+static int callsp = 0;
 
-/*
- * kocham Tomeczka STanislawskiego bARDZO,
- * TO MOJ MAZ, BARDZO GO KOCHAM,
- * I CHCIalabym by mi dal buzi,
- */
+#define DATAST_SIZE (64 * CALLST_SIZE)
+static struct acs_value datast[DATAST_SIZE];
+static int datasp = 0;
 
-struct acs_context {
-	struct acs_varmap local;
-	struct acs_script *script;
-};
-
-enum acs_flow {
-	FL_NEXT,
-	FL_RETURN,
-	FL_BREAK,
-	FL_CONTINUE,
-};
-
-#define to_block(inst) \
-	container_of(inst, struct acs_block, id)
-#define to_literal(inst) \
-	container_of(inst, struct acs_literal, id)
-#define to_return(inst) \
-	container_of(inst, struct acs_return, id)
-#define to_expr(inst) \
-	container_of(inst, struct acs_expr, id)
-#define to_if(inst) \
-	container_of(inst, struct acs_if, id)
-#define to_while(inst) \
-	container_of(inst, struct acs_while, id)
-
-#define value_to_var(value) \
-	container_of(value, struct acs_var, val)
-
-int varmap_init(struct acs_varmap *vmap)
+static struct callst *current(void)
 {
-	vmap->head = NULL;
-	return 0;
+	return &callst[callsp - 1];
 }
 
-static void clear_value(struct acs_value *val);
+#define TOP(n) (&datast[datasp - (n)])
+#define PUSH(val) value_copy(&datast[datasp++], (val))
+#define POP() value_clear(&datast[--datasp])
 
-void varmap_deinit(struct acs_varmap *vmap)
+static void bscall_arith2(enum bscall cmd)
 {
-	for (struct acs_var *var = vmap->head, *next; var; var = next) {
-		next = var->next;
-		clear_value(&var->val);
-		free(var);
-	}
+	float b = value_to_num(TOP(1));
+	POP();
+	float a = value_to_num(TOP(1));
+	POP();
+	++datasp;
+	TOP(1)->id = VAL_NUM;
+
+	if (cmd == BS_ADD)
+		TOP(1)->u.nval = a + b;
+	else if (cmd == BS_SUB)
+		TOP(1)->u.nval = a - b;
+	else if (cmd == BS_MUL)
+		TOP(1)->u.nval = a * b;
+	else if (cmd == BS_DIV)
+		TOP(1)->u.nval = a / b;
+	else if (cmd == BS_MOD)
+		TOP(1)->u.nval = (int)a % (int)b;
+	else
+		CRIT("not supported bscall = %d", (int)cmd);
 }
 
-struct acs_value *varmap_find(struct acs_varmap *vmap, char *name)
+static void bscall_cmp(enum bscall cmd)
 {
-	for (struct acs_var *var = vmap->head; var; var = var->next)
-		if (strcmp(var->name, name) == 0)
-			return &var->val;
-	return NULL;
-}
+	int cmp = value_cmp(&datast[datasp - 2], &datast[datasp - 1]);
+	/* compute sign() */
+	cmp = cmp > 0 ? 1 : (cmp < 0 ? -1 : 0);
 
-struct acs_value *varmap_insert(struct acs_varmap *vmap, char *name)
-{
-	struct acs_value *val = varmap_find(vmap, name);
-	if (val)
-		return val;
-
-	struct acs_var *var = calloc(1, sizeof (*var) + strlen(name) + 1);
-	if (ERR_ON(!var, "malloc() failed"))
-		return NULL;
-
-	strcpy(var->name, name);
-	memset(&var->val, 0, sizeof var->val);
-	var->val.id = VAL_NULL;
-
-	var->next = vmap->head;
-	vmap->head = var;
-
-	return &var->val;
-}
-
-int varmap_delete(struct acs_varmap *vmap, char *name)
-{
-	return -1;
-}
-
-static int cmp_value(struct acs_value *a, struct acs_value *b);
-static void clear_value(struct acs_value *val);
-static void copy_value(struct acs_value *val,
-	struct acs_value *old);
-
-int object_init(struct acs_object *obj, acs_object_dtor_cb dtor)
-{
-	obj->fields = NULL;
-	obj->dtor = dtor;
-	obj->refcnt = 1;
-	return 0;
-}
-
-struct acs_object *object_get(struct acs_object *obj)
-{
-	++obj->refcnt;
-	return obj;
-}
-
-void object_put(struct acs_object *obj)
-{
-	if (--obj->refcnt)
-		return;
-	struct acs_field *fields = obj->fields;
-	if (obj->dtor)
-		obj->dtor(obj);
-	for (struct acs_field *f = fields, *f_; f; f = f_) {
-		f_ = f->next;
-		clear_value(&f->key);
-		clear_value(&f->val);
-		free(f);
-	}
-}
-
-struct acs_value *object_get_field(struct acs_object *obj,
-	struct acs_value *key)
-{
-	for (struct acs_field *f = obj->fields; f; f = f->next)
-		if (cmp_value(&f->key, key) == 0)
-			return &f->val;
-	struct acs_field *f = calloc(1, sizeof *f);
-	if (ERR_ON(!f, "calloc() failed"))
-		return NULL;
-	copy_value(&f->key, key);
-	f->next = obj->fields;
-	obj->fields = f;
-	return &f->val;
-}
-
-struct acs_value *object_try_field(struct acs_object *obj,
-	struct acs_value *key)
-{
-	for (struct acs_field *f = obj->fields; f; f = f->next)
-		if (cmp_value(&f->key, key) == 0)
-			return &f->val;
-	return NULL;
-}
-
-static struct acs_varmap global_vars;
-
-static struct acs_value *var_find(struct acs_context *ctx, char *name)
-{
-	struct acs_value *val = varmap_find(&ctx->local, name);
-	if (val)
-		return val;
-	return varmap_find(&global_vars, name);
-}
-
-static struct acs_function *script_find(struct acs_script *s, char *fname)
-{
-	list_foreach(l, &s->functions) {
-		struct acs_function *f = list_entry(l, struct acs_function, node);
-		if (strcmp(f->name, fname) == 0)
-			return f;
-	}
-	return NULL;
-}
-
-static struct acs_value *make_value(enum acs_type type)
-{
-	/* TODO: optimize unisg memory pool and freelist */
-	if (ERR_ON(!type >= __VAL_MAX, "invalid type %d", (int)type))
-		return NULL;
-	
-	struct acs_value *val = calloc(1, sizeof *val);
-	if (ERR_ON(!val, "calloc() failed"))
-		return NULL;
-
-	val->id = type;
-	return val;
-}
-
-static void dump_value(struct acs_value *val)
-{
-	bool first = true;
-	while (val) {
-		if (!first)
-			printf(", ");
-
-		if (val->id == VAL_NULL)
-			printf("null");
-		else if (val->id == VAL_STR)
-			printf("str:%s", val->u.sval->str);
-		else if (val->id == VAL_NUM)
-			printf("int:%d", val->u.ival);
-		else if (val->id == VAL_BOOL)
-			printf("bool:%s", val->u.bval ? "true" : "false");
-		else if (val->id == VAL_OBJ)
-			printf("object:%p", (void*)val->u.oval);
-		else
-			CRIT("unknown acs_value type %d", (int)val->id);
-
-		first = false;
-		val = val->next;
-	}
-}
-static void destroy_value(struct acs_value *val)
-{
-	while (val) {
-		struct acs_value *next = val->next;
-		if (val->id == VAL_STR && val->u.sval)
-			str_put(val->u.sval);
-		if (val->id == VAL_OBJ && val->u.oval)
-			object_put(val->u.oval);
-		free(val);
-		val = next;
-	}
-}
-
-static void clear_value(struct acs_value *val)
-{
-	if (val->id == VAL_STR && val->u.sval)
-		str_put(val->u.sval);
-	if (val->id == VAL_OBJ && val->u.oval)
-		object_put(val->u.oval);
-	memset(&val->u, 0, sizeof val->u);
-}
-
-static void copy_value(struct acs_value *val,
-	struct acs_value *old)
-{
-	if (old->id == VAL_STR)
-		str_get(old->u.sval);
-	if (old->id == VAL_OBJ)
-		object_get(old->u.oval);
-	val->u = old->u;
-	val->id = old->id;
-}
-
-static int cmp_value(struct acs_value *a, struct acs_value *b)
-{
-	if (a->id == VAL_NULL)
-		return 0;
-	if (a->id == VAL_BOOL)
-		return !!a->u.bval - !!b->u.bval;
-	if (a->id == VAL_NUM)
-		return a->u.ival - b->u.bval;
-	if (a->id == VAL_STR)
-		return strcmp(a->u.sval->str, b->u.sval->str);
-	if (a->id == VAL_OBJ)
-		return a->u.oval != b->u.oval;
-	return 0;
-}
-
-static bool value_to_bool(struct acs_value *val)
-{
-	if (!val)
-		return false;
-	if (val->id == VAL_NULL)
-		return false;
-	if (val->id == VAL_BOOL)
-		return val->u.bval;
-	return true;
-}
-
-static void convert_value_to_bool(struct acs_value *val)
-{
-	bool bval = value_to_bool(val);
-	clear_value(val);
-	val->id = VAL_BOOL;
-	val->u.bval = bval;
-}
-
-static void convert_value_to_num(struct acs_value *val)
-{
-	int ival = 0;
-	if (val->id == VAL_NUM)
-		ival = val->u.ival;
-	else if (val->id == VAL_BOOL)
-		ival = (val->u.bval ? 1 : 0);
-	else if (val->id == VAL_STR)
-		ival = atoi(val->u.sval->str);
-	clear_value(val);
-	val->id = VAL_NUM;
-	val->u.ival = ival;
-}
-
-static char *value_to_str(struct acs_value *val)
-{
-	static char buf[32];
-
-	if (val->id == VAL_STR) {
-		return val->u.sval->str; /* nothing to do */
-	} else if (val->id == VAL_NULL) {
-		strcpy(buf, "null");
-	} else if (val->id == VAL_NUM) {
-		sprintf(buf, "%d", val->u.ival);
-	} else if (val->id == VAL_BOOL) {
-		strcpy(buf, val->u.bval ? "true" : "false");
-	} else if (val->id == VAL_FUNC) {
-		sprintf(buf, "(func):%s", val->u.fval->name);
-	} else if (val->id == VAL_USER) {
-		sprintf(buf, "(user):%p", (void*)val->u.uval);
-	} else if (val->id == VAL_OBJ) {
-		sprintf(buf, "(obj):%p", (void*)val->u.oval);
-	} else {
-		ERR("value type not supported id=%d", (int)val->id);
-		buf[0] = 0;
-	}
-	return buf;
-}
-
-static struct acs_value *make_bool_value(bool bval)
-{
-	struct acs_value *val = make_value(VAL_BOOL);
-	if (ERR_ON(!val, "make_value() failed"))
-		return NULL;
-	val->u.bval = bval;
-	return val;
-}
-
-static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id);
-static struct acs_value *eval(struct acs_context *ctx,
-	enum acs_id *id, enum acs_flow *flow);
-
-static struct acs_value *do_assign(struct acs_context *ctx,
-	enum acs_id *id, struct acs_value *rhs)
-{
-	if (!rhs) {
-		rhs = make_value(VAL_NULL);
-		if (ERR_ON(!rhs, "make_value() failed"))
-			return NULL;
-	}
-
-	struct acs_expr *e = to_expr(id);
-	if (*id == ACS_COMMA) {
-		/* FIXME: what about rhs = NULL? */
-		struct acs_value *head = rhs, *tail = rhs->next;
-		head->next = NULL;
-
-		head = do_assign(ctx, e->arg0, head);
-		if (ERR_ON(!head, "do_assign() failed"))
-			return destroy_value(tail), NULL;
-
-		CRIT_ON(!e->arg1, "list with no right child");
-		tail = do_assign(ctx, e->arg1, tail);
-		if (ERR_ON(!tail, "do_assign() failed"))
-			return destroy_value(head), NULL;
-
-		head->next = tail;
-
-		return head;
-	} else if (*id == ACS_ID) {
-		struct acs_literal *l = to_literal(id);
-		struct acs_value *vval = varmap_insert(&ctx->local, l->payload);
-		if (ERR_ON(!vval, "varmap_insert() failed"))
-			return NULL;
-		clear_value(vval);
-		copy_value(vval, rhs);
-		destroy_value(rhs->next);
-		rhs->next = NULL;
-		return rhs;
-	} else if (*id == ACS_DEREF) {
-		struct acs_value *lhs = eval_expr(ctx, e->arg0);
-		if (ERR_ON(!lhs, "eval_expr() failed"))
-			return destroy_value(rhs), NULL;
-		if (lhs->id != VAL_OBJ) {
-			WARN("accessing field in non-object");
-			destroy_value(lhs);
-			clear_value(rhs);
-			return rhs;
-		}
-		struct acs_value *idx = eval_expr(ctx, e->arg1);
-		if (ERR_ON(!idx, "eval_expr() failed"))
-			return destroy_value(rhs), destroy_value(lhs), NULL;
-
-		struct acs_object *obj = lhs->u.oval;
-		struct acs_value *val = object_get_field(obj, idx);
-		/* sucess or not, idx is no longer needed */
-		destroy_value(idx);
-		if (ERR_ON(!val, "object_get_field() failed"))
-			return destroy_value(lhs), destroy_value(rhs), NULL;
-
-		clear_value(val);
-		copy_value(val, rhs);
-		destroy_value(rhs->next);
-		rhs->next = NULL;
-		destroy_value(lhs);
-		return rhs;
-	} else {
-		ERR("unexpected acs_id = %d\n", (int)*id);
-		destroy_value(rhs);
-		return NULL;
-	}
-}
-
-static struct acs_value *eval_assign(struct acs_context *ctx, enum acs_id *id)
-{
-	struct acs_expr *e = to_expr(id);
-
-	struct acs_value *rhs = eval_expr(ctx, e->arg1);
-	if (ERR_ON(!rhs, "eval_expr() for RHS failed"))
-		return NULL;
-
-	rhs = do_assign(ctx, e->arg0, rhs);
-	if (ERR_ON(!rhs, "do_assign() failed"))
-		return NULL;
-
-	return rhs;
-}
-
-static struct acs_value *eval_bool(struct acs_context *ctx, enum acs_id *id, bool is_or)
-{
-	struct acs_expr *e = to_expr(id);
-
-	struct acs_value *lhs = eval_expr(ctx, e->arg0);
-	if (ERR_ON(!lhs, "eval_expr() for LHS failed"))
-		return NULL;
-
-	bool cond = value_to_bool(lhs);
-	destroy_value(lhs);
-
-	if (cond == is_or)
-		return make_bool_value(is_or);
-
-	struct acs_value *rhs = eval_expr(ctx, e->arg1);
-	if (ERR_ON(!rhs, "eval_expr() for RHS failed"))
-		return destroy_value(lhs), NULL;
-
-	cond = value_to_bool(rhs);
-	destroy_value(rhs);
-	return make_bool_value(cond);
-}
-
-static struct acs_value *eval_cmp(enum acs_id *id,
-	struct acs_value *lhs, struct acs_value *rhs)
-{
-	if (lhs->id != rhs->id) {
-		WARN("comparing not compatible types");
-		destroy_value(lhs);
-		destroy_value(rhs);
-		return make_bool_value(false);
-	}
-	int cmp = cmp_value(lhs, rhs);
-	cmp = cmp > 0 ? 1 : cmp;
-	cmp = cmp < -1 ? -1 : cmp;
-
-	destroy_value(lhs);
-	destroy_value(rhs);
+	POP(); POP();
 
 	static bool result[][3] = {
-		[ACS_LESS - __ACS_CMP] = {true, false, false},
-		[ACS_GREAT - __ACS_CMP] = {false, false, true},
-		[ACS_EQ - __ACS_CMP] = {false, true, false},
-		[ACS_NEQ - __ACS_CMP] = {true, false, true},
-		[ACS_LEQ - __ACS_CMP] = {true, true, false},
-		[ACS_GREQ - __ACS_CMP] = {false, true, true},
+		[BS_LESS - __BS_CMP] = {true, false, false},
+		[BS_GREAT - __BS_CMP] = {false, false, true},
+		[BS_EQ - __BS_CMP] = {false, true, false},
+		[BS_NEQ - __BS_CMP] = {true, false, true},
+		[BS_LEQ - __BS_CMP] = {true, true, false},
+		[BS_GREQ - __BS_CMP] = {false, true, true},
 	};
 
-	return make_bool_value(result[*id - __ACS_CMP][cmp + 1]);
+	++datasp;
+	TOP(1)->id = VAL_BOOL;
+	TOP(1)->u.bval = result[cmd - __BS_CMP][cmp + 1];
 }
 
-static struct acs_value *eval_call(enum acs_id *id,
-	struct acs_value *lhs, struct acs_value *rhs)
+static void bscall(enum bscall cmd)
 {
-	if (lhs->id == VAL_USER) {
-		struct acs_user_function *ufunc = lhs->u.uval;
-		struct acs_value *ret = ufunc->call(ufunc, rhs);
-		destroy_value(lhs);
-		destroy_value(rhs);
+	if (cmd >= __BS_ARITH2 && cmd < __BS_ARITH2_MAX) {
+		bscall_arith2(cmd);
+	} else if (cmd >= __BS_CMP && cmd < __BS_CMP_MAX) {
+		bscall_cmp(cmd);
+	} else if (cmd == BS_ARGV) {
+		int arg = value_to_num(TOP(1));
+		POP();
+		PUSH(acs_argv(arg));
+	} else if (cmd == BS_ARGC) {
+		++datasp;
+		TOP(1)->id = VAL_NUM;
+		TOP(1)->u.nval = acs_argc();
+	} else {
+		CRIT("not supported bscall %d", (int)cmd);
+	}
+}
+
+static void do_return(int argout)
+{
+	int src = datasp - argout;
+	int dst = current()->argp - 1;
+	for (; argout--; ++src, ++dst) {
+		value_clear(&datast[dst]);
+		value_copy(&datast[dst], &datast[src]);
+	}
+	while (datasp > dst)
+		POP();
+	--callsp;
+}
+
+static int call(struct acs_value *val, int argin, int argout)
+{
+	if (ERR_ON(val->id != VAL_FUNC, "calling non-function value"))
+		return -1;
+
+	if (callsp >= ARRAY_SIZE(callst)) {
+		ERR("call stack exceeded");
+		/* TODO; add acs_stackdump() */
+		return -1;
+	}
+	/* move call stack pointer by 1 */
+	++callsp;
+	struct callst *cs = current();
+
+	cs->sp = datasp;
+	cs->fp = datasp;
+	cs->argin = argin;
+	cs->argout = argout;
+	cs->argp = datasp - argin;
+
+	struct acs_finstance *fi = val->u.fval;
+	if (fi->ufunc) {
+		struct acs_user_function *ufunc = fi->u.ufunc;
+		int ret = ufunc->call(ufunc);
+		int real_argout = cs->sp - cs->fp;
+		do_return(real_argout);
 		return ret;
 	}
 
-	if (lhs->id != VAL_FUNC) {
-		ERR("non-function used in call statement");
-		destroy_value(lhs);
-		destroy_value(rhs);
-		return NULL;
-	}
-	struct acs_function *f = lhs->u.fval;
-	struct acs_context ctx = { .script = f->script };
-	varmap_init(&ctx.local);
+	struct acs_function *func = fi->u.func;
 
-	struct acs_value *value = NULL;
-	struct acs_value *n = rhs;
-	for (int i = 0; i < vec_size(f->args); ++i) {
-		struct acs_value *val = varmap_insert(&ctx.local, f->args[i]);
-		if (ERR_ON(!val, "varmap_insert() failed"))
-			goto done;
-		if (n) {
-			copy_value(val, n);
-			n = n->next;
-		} // val is VAL_NULL by default
-	}
+	cs->code = func->code;
+	cs->pc = 0;
+	cs->consts = func->consts;
+	cs->upvalues = fi->upvalues;
 
-	/*printf("calling %s with args:", f->name);
-	for (struct acs_var *v = ctx.vars; v; v = v->next)
-		printf(" %s", v->name);
-	puts("");*/
-
-	enum acs_flow flow;
-	value = eval(&ctx, &f->block->id, &flow);
-	if (ERR_ON(!value, "calling %s failed", f->name))
-		goto done;
-
-	/*printf("return = ");
-	dump_value(value);
-	puts("");*/
-	/* deref value to prevent to fix invalid adress after return a; */
-	/*printf("return = ");
-	dump_value(value);
-	puts("");*/
-
-done:
-	varmap_deinit(&ctx.local);
-	destroy_value(lhs);
-	destroy_value(rhs);
-	return value;
+	return 0;
 }
 
-static struct acs_value *eval_arith(enum acs_id *id,
-	struct acs_value *lhs, struct acs_value *rhs)
+int execute(void)
 {
-	struct acs_value *val = NULL;
-	if (ERR_ON(lhs->id != VAL_NUM, "left arg is not int"))
-		goto done;
-	if (ERR_ON(rhs->id != VAL_NUM, "right arg is not int"))
-		goto done;
+	int start_datasp = datasp;
+	int start_callsp = callsp;
+	for (;;) {
+		struct callst *cs = current();
 
-	int ival = 0;
-	if (*id == ACS_ADD)
-		ival = lhs->u.ival + rhs->u.ival;
-	else if (*id == ACS_SUB)
-		ival = lhs->u.ival - rhs->u.ival;
-	else if (*id == ACS_MUL)
-		ival = lhs->u.ival * rhs->u.ival;
-	else if (*id == ACS_DIV)
-		ival = lhs->u.ival / rhs->u.ival;
-	else if (*id == ACS_MOD)
-		ival = lhs->u.ival % rhs->u.ival;
-	else
-		CRIT("unexpected acs_id = %d\n", (int)*id);
+		int code = cs->code[cs->pc];
+		int op = code >> STBITS;
+		int arg = code & STMASK;
+#if 0
+		printf("stack=");
+		for (int i = 0; i < datasp; ++i)
+			printf(" %s", value_to_cstr(&datast[i]));
+		puts("");
+		printf("%04x: %s %d\n", cs->pc, opcode_str[op], arg);
+#endif
+		++cs->pc;
+		cs->sp = datasp;
 
-	val = make_value(VAL_NUM);
-	if (ERR_ON(!val, "make_value() failed"))
-		goto done;
-
-	val->u.ival = ival;
-done:
-	destroy_value(lhs);
-	destroy_value(rhs);
-	return val;
-}
-
-static struct acs_value *eval_deref(enum acs_id *id,
-	struct acs_value *lhs, struct acs_value *rhs)
-{
-	if (lhs->id != VAL_OBJ) {
-		WARN("accessing field in non-object");
-		destroy_value(lhs);
-		clear_value(rhs);
-		return rhs;
-	}
-	struct acs_object *obj = lhs->u.oval;
-	struct acs_value *val = object_try_field(obj, rhs);
-	if (!val) {
-		destroy_value(lhs);
-		destroy_value(rhs);
-		return make_value(VAL_NULL);
-	}
-	clear_value(rhs);
-	copy_value(rhs, val);
-	destroy_value(lhs);
-	return rhs;
-}
-
-static struct acs_value *eval_arg2_expr(struct acs_context *ctx, enum acs_id *id)
-{
-	struct acs_expr *e = to_expr(id);
-
-	if (*id == ACS_ASSIGN)
-		return eval_assign(ctx, id);
-	if (*id == ACS_OR)
-		return eval_bool(ctx, id, true);
-	if (*id == ACS_AND)
-		return eval_bool(ctx, id, false);
-
-	struct acs_value *lhs = eval_expr(ctx, e->arg0);
-	if (ERR_ON(!lhs, "eval_expr() for LHS failed"))
-		return NULL;
-
-	struct acs_value *rhs = eval_expr(ctx, e->arg1);
-	if (ERR_ON(!rhs, "eval_expr() for RHS failed"))
-		return destroy_value(lhs), NULL;
-
-	destroy_value(lhs->next);
-	if (*id == ACS_COMMA) {
-		lhs->next = rhs;
-		return lhs;
-	}
-
-	/* TODO: insert f-call here */
-	if (*id == ACS_CALL)
-		return eval_call(id, lhs, rhs);
-
-	/* should not happen */
-	WARN_ON(!!rhs->next, "RHS has tail!!!");
-	/* TODO: drop all tail values, to be removed */
-	destroy_value(rhs->next);
-	rhs->next = NULL;
-
-	if (*id == ACS_DEREF)
-		return eval_deref(id, lhs, rhs);
-
-	if (*id >= __ACS_CMP && *id < __ACS_CMP_MAX)
-		return eval_cmp(id, lhs, rhs);
-
-	if (*id >= __ACS_ARITH && *id < __ACS_ARITH_MAX)
-		return eval_arith(id, lhs, rhs);
-
-	destroy_value(lhs);
-	destroy_value(rhs);
-
-	ERR("acs_id = %d is not supported by evaluator", id ? (int)*id : -1);
-
-	return NULL;
-}
-
-static struct acs_value *eval_arg1_expr(struct acs_context *ctx, enum acs_id *id)
-{
-	struct acs_expr *e = to_expr(id);
-	struct acs_value *arg = eval_expr(ctx, e->arg0);
-	if (ERR_ON(!arg, "eval_expr() failed"))
-		return NULL;
-
-	if (*id == ACS_NOT) {
-		convert_value_to_bool(arg);
-		arg->u.bval = !arg->u.bval;
-		return arg;
-	}
-
-	convert_value_to_num(arg);
-
-	if (*id == ACS_PLUS)
-		;
-	else if (*id == ACS_MINUS)
-		arg->u.ival = -arg->u.ival;
-	else
-		CRIT("unexpected acs_id = %d\n", (int)*id);
-	return arg;
-}
-
-static struct acs_value *eval_expr(struct acs_context *ctx, enum acs_id *id)
-{
-	struct acs_value *val;
-	//printf("processing id=%d\n", id ? *id : -1);
-	if (!id || *id == ACS_NULL || *id == ACS_NOP) {
-		val = make_value(VAL_NULL);
-		if (ERR_ON(!val, "make_value() failed"))
-			return NULL;
-		return val;
-	} else if (*id == ACS_TRUE || *id == ACS_FALSE) {
-		val = make_value(VAL_BOOL);
-		if (ERR_ON(!val, "make_value() failed"))
-			return NULL;
-		val->u.bval = (*id == ACS_TRUE);
-		return val;
-	} else if (*id == ACS_NUM) {
-		val = make_value(VAL_NUM);
-		if (ERR_ON(!val, "make_value() failed"))
-			return NULL;
-		val->u.ival = atoi(to_literal(id)->payload);
-		return val;
-	} else if (*id == ACS_STR) {
-		val = make_value(VAL_STR);
-		if (ERR_ON(!val, "make_value() failed"))
-			return NULL;
-		val->u.sval = str_create(to_literal(id)->payload);
-		if (ERR_ON(!val->u.sval, "str_create() failed"))
-			return destroy_value(val), NULL;
-		return val;
-	} else if (*id == ACS_ID) {
-		struct acs_literal *l = to_literal(id);
-		struct acs_value *rval = var_find(ctx, l->payload);
-		if (rval) {
-			struct acs_value *val = make_value(VAL_NULL);
-			if (ERR_ON(!val, "make_value() failed"))
-				return NULL;
-			copy_value(val, rval);
-			return val;
-		}
-
-		struct acs_function *func = script_find(ctx->script, l->payload);
-		if (func) {
-			struct acs_value *val = make_value(VAL_FUNC);
-			if (ERR_ON(!val, "make_value() failed"))
-				return NULL;
-			val->u.fval = func;
-			return val;
-		}
-
-		ERR("undefined identifier %s", l->payload);
-		return NULL;
-	} else if (*id >= __ACS_ARG2) {
-		return eval_arg2_expr(ctx, id);
-	} else if (*id >= __ACS_ARG1) {
-		return eval_arg1_expr(ctx, id);
-	} else {
-		ERR("acs_id = %d is not supported", id ? (int)*id : -1);
-		return NULL;
-	}
-}
-
-static struct acs_value *eval(struct acs_context *ctx,
-	enum acs_id *id, enum acs_flow *flow)
-{
-	struct acs_value *val;
-
-	if (!id || *id == ACS_NOP) {
-		*flow = FL_NEXT;
-		return make_value(VAL_NULL);
-	} else if (*id == ACS_BLOCK) {
-		struct acs_block *b = to_block(id);
-		*flow = FL_NEXT;
-		for (int i = 0; i < vec_size(b->inst); ++i) {
-			val = eval(ctx, b->inst[i], flow);
-			if (*flow != FL_NEXT)
-				return val;
-			//dump_value(val); puts("");
-			destroy_value(val);
-		}
-		return make_value(VAL_NULL);
-	} else if (*id == ACS_IF) {
-		struct acs_if *i = to_if(id);
-		val = eval_expr(ctx, i->expr);
-		bool cond = value_to_bool(val);
-
-		destroy_value(val);
-		val = eval(ctx, cond ? i->true_inst : i->false_inst, flow);
-		if (*flow == FL_RETURN)
-			return val;
-		destroy_value(val);
-		return make_value(VAL_NULL);
-	} else if (*id == ACS_WHILE) {
-		struct acs_while *w = to_while(id);
-		for (;;) {
-			val = eval_expr(ctx, w->expr);
-			bool cond = value_to_bool(val);
-			destroy_value(val);
-			if (!cond)
-				break;
-
-			val = eval(ctx, w->inst, flow);
-			if (*flow == FL_RETURN)
-				return val;
-
-			destroy_value(val);
-
-			if (*flow == FL_CONTINUE)
+		if (op == OP_NOP) {
+			/* nothing to do */
+		} else if (op == OP_PUSHC) {
+			PUSH(&cs->consts[arg]);
+		} else if (op == OP_PUSHN) {
+			datasp += arg;
+		} else if (op == OP_PUSHR) {
+			PUSH(&datast[cs->fp + arg]);
+		} else if (op == OP_PUSHI) {
+			TOP(0)->id = VAL_NUM;
+			TOP(0)->u.nval = arg;
+			++datasp;
+		} else if (op == OP_PUSHU) {
+			PUSH(&cs->upvalues[arg]);
+		} else if (op == OP_POPN) {
+			/* consider freeing only during rewriting */
+			while (arg--)
+				POP();
+		} else if (op == OP_POPR) {
+			value_clear(&datast[cs->fp + arg]);
+			value_copy(&datast[cs->fp + arg], TOP(1));
+			POP();
+		} else if (op == OP_POPU) {
+			value_clear(&cs->upvalues[arg]);
+			value_copy(&cs->upvalues[arg], TOP(1));
+			POP();
+		} else if (op == OP_BSCALL) {
+			bscall(arg);
+		} else if (op == OP_CALL) {
+			int argin = arg & ARGMASK;
+			int argout = arg >> ARGBITS;
+			struct acs_value *val = &datast[cs->sp - argin - 1];
+			if (call(val, argin, argout) == 0)
 				continue;
-			if (*flow == FL_BREAK)
-				break;
+			/* FIXME: this cleanup is probably totally wrong */
+			while (datasp > start_datasp)
+				POP();
+			callsp = start_callsp;
+			return -1;
+		} else if (op == OP_RET) {
+			do_return(arg);
+			if (callsp < start_callsp)
+				return 0;
+		} else if (op == OP_JMP) {
+			cs->pc += arg - PC_OFFSET;
+		} else if (op == OP_JNZ) {
+			bool cond = value_to_bool(TOP(1));
+			POP();
+			if (cond)
+				cs->pc += arg - PC_OFFSET;
+		} else if (op == OP_JZ) {
+			bool cond = value_to_bool(TOP(1));
+			POP();
+			if (!cond)
+				cs->pc += arg - PC_OFFSET;
 		}
-		*flow = FL_NEXT;
-		return make_value(VAL_NULL);
-	} else if (*id == ACS_BREAK) {
-		*flow = FL_BREAK;
-		return make_value(VAL_NULL);
-	} else if (*id == ACS_CONTINUE) {
-		*flow = FL_CONTINUE;
-		return make_value(VAL_NULL);
-	} else if (*id == ACS_RETURN) {
-		struct acs_return *r = to_return(id);
-		*flow = FL_RETURN;
-		return eval_expr(ctx, r->expr);
-	} else if (*id >= __ACS_EXPR) {
-		*flow = FL_NEXT;
-		return eval_expr(ctx, id);
-	} else {
-		ERR("id=%d is not supported yet", (int)*id);
 	}
-
-	return NULL;
 }
 
-static struct acs_value *call_str(struct acs_user_function *ufunc,
-	struct acs_value *args)
+struct acs_varmap global_vars;
+
+void acs_call_head(struct acs_value *val)
 {
-	int size = 1;
-	for (struct acs_value *val = args; val; val = val->next) {
-		char *sval = value_to_str(val);
-		if (ERR_ON(!sval, "value_to_str() failed"))
-			return NULL;
-		size += strlen(sval);
-	}
-
-	struct str *s = str_reserve(size);
-	if (ERR_ON(!s, "str_reserve(%d) failed", size))
-		return NULL;
-
-	int pos = 0;
-
-	for (struct acs_value *val = args; val; val = val->next) {
-		char *sval = value_to_str(val);
-		if (ERR_ON(!sval, "value_to_str() failed"))
-			return NULL;
-		strcpy(s->str + pos, sval);
-		pos += strlen(sval);
-	}
-
-	struct acs_value *val = make_value(VAL_STR);
-	if (ERR_ON(!val, "make_value() failed"))
-		return str_put(s), NULL;
-
-	str_update(s);
-	val->u.sval = s;
-	return val;
+	WARN_ON(val->id != VAL_FUNC, "value is not a function");
+	PUSH(val);
 }
 
-static struct acs_value *call_print(struct acs_user_function *ufunc,
-	struct acs_value *args)
+int acs_call_tail(int argin, int argout)
 {
-	for (struct acs_value *val = args; val; val = val->next)
-		printf("%s", value_to_str(val));
-	return make_value(VAL_NULL);
+	call(TOP(argin + 1), argin, argout);
+	return execute();
 }
 
-static struct acs_value *call_obj(struct acs_user_function *ufunc,
-	struct acs_value *args)
+int acs_call_head_by_name(char *fname)
 {
-	struct acs_object *obj = calloc(1, sizeof *obj);
-	if (ERR_ON(!obj, "malloc() failed"))
-		return NULL;
-	object_init(obj, (acs_object_dtor_cb)free);
+	struct acs_value *val = varmap_find(&global_vars, fname);
+	if (ERR_ON(!val, "failed to find function %s", fname))
+		return -1;
+	acs_call_head(val);
+	return 0;
+}
 
-	struct acs_value *ret = make_value(VAL_OBJ);
-	if (ERR_ON(!obj, "malloc() failed"))
-		return object_put(obj), NULL;
+void acs_push_num(float nval)
+{
+	TOP(0)->id = VAL_NUM;
+	TOP(0)->u.nval = nval;
+	++datasp;
+}
 
-	ret->u.oval = obj;
-	return ret;
+void acs_push_cstr(char *str)
+{
+	TOP(0)->id = VAL_STR;
+	TOP(0)->u.sval = str_create(str);
+	++datasp;
+}
+
+void acs_push_str(struct str *sval)
+{
+	TOP(0)->id = VAL_STR;
+	TOP(0)->u.sval = str_get(sval);
+	++datasp;
+}
+
+const struct acs_value *acs_argv(int arg)
+{
+	static struct acs_value null = { .id = VAL_NULL };
+	struct callst *cs = current();
+	if (arg < 0 || arg >= cs->argin)
+		return &null;
+	return &datast[cs->argp + arg];
+}
+
+int acs_argc(void)
+{
+	return current()->argin;
+}
+
+struct str *acs_pop_str(void)
+{
+	struct str *str = value_to_str(TOP(1));
+	/* TODO: add check if datasp got below fp */
+	POP();
+	return str;
+}
+
+float acs_pop_num(void)
+{
+	float num = value_to_num(TOP(1));
+	POP();
+	return num;
+}
+
+struct acs_value *acs_global(char *name)
+{
+	return varmap_find(&global_vars, name);
+}
+
+int acs_register_user_function(struct acs_user_function *ufunc, char *name)
+{
+	struct acs_value *val = varmap_insert(&global_vars, name);
+	if (ERR_ON(!val, "varmap_insert() failed"))
+		return -1;
+
+	/* remove previous content of global variable */
+	value_clear(val);
+	struct acs_finstance *fi = ac_alloc(sizeof *fi);
+	fi->ufunc = true;
+	fi->u.ufunc = ufunc;
+	fi->refcnt = 1;
+
+	val->id = VAL_FUNC;
+	val->u.fval = fi;
+
+	return 0;
+}
+
+static int print_call(struct acs_user_function *ufunc)
+{
+	int argc = acs_argc();
+	for (int i = 0; i < argc; ++i) {
+		char *str = value_to_cstr(acs_argv(i));
+		printf("%s", str);
+	}
+	puts("");
+	return 0;
 }
 
 static void machine_deinit(void)
@@ -865,61 +369,17 @@ static void machine_deinit(void)
 	varmap_deinit(&global_vars);
 }
 
-static void machine_init(void)
+void acs_init(void)
 {
-	static bool initialized = false;
+	static bool initialized;
 	if (initialized)
 		return;
-	varmap_init(&global_vars);
 	initialized = true;
+
+	varmap_init(&global_vars);
 
 	atexit(machine_deinit);
 
-	static struct acs_user_function print = { .call = call_print };
-	register_user_function(&print, "print");
-	static struct acs_user_function obj = { .call = call_obj };
-	register_user_function(&obj, "obj");
-	static struct acs_user_function str = { .call = call_str };
-	register_user_function(&str, "str");
-}
-
-int machine_call(struct acs_script *s, char *fname, struct acs_stack *st)
-{
-	machine_init();
-	// - find function object
-	struct acs_function *f = script_find(s, fname);
-	if (ERR_ON(!f, "failed to find function %s", fname))
-		return -1;
-
-	// - copy stack to hash array by adding names
-	// - execute function block 
-	/* TODO: head should be arguments */
-	struct acs_context ctx = { .script = s };
-	varmap_init(&ctx.local);
-
-	enum acs_flow flow;
-	struct acs_value *value = eval(&ctx, &f->block->id, &flow);
-	if (ERR_ON(!value, "calling %s failed", fname))
-		return -1;
-
-	dump_value(value);
-	puts("");
-	destroy_value(value);
-
-	varmap_deinit(&ctx.local);
-
-	// - clear stack
-	// - push results on stack
-	return 0;
-}
-
-int register_user_function(struct acs_user_function *ufunc, char *name)
-{
-	struct acs_value *val = varmap_insert(&global_vars, name);
-	if (ERR_ON(!val, "varmap_insert() failed"))
-		return -1;
-	clear_value(val);
-	val->id = VAL_USER;
-	val->u.uval = ufunc;
-	return 0;
+	static struct acs_user_function print_ufunc = { .call = print_call };
+	acs_register_user_function(&print_ufunc, "print");
 }
