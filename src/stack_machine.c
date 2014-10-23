@@ -264,8 +264,9 @@ void acs_call_head(struct acs_value *val)
 	PUSH(val);
 }
 
-int acs_call_tail(int argout)
+int acs_call_tail(int argin, int argout)
 {
+	call(TOP(argin + 1), argin, argout);
 	return execute();
 }
 
@@ -352,7 +353,7 @@ void usage_embed(void)
 	acs_call_head_by_name("foo");
 	acs_push_num(5);
 	acs_push_cstr("hello");
-	acs_call_tail(2);
+	acs_call_tail(2, 2);
 	float val = acs_pop_num();
 	struct str *str = acs_pop_str();
 	printf("foo(%d, \"%s\") = %g, \"%s\"\n", 5, "hello", val, str->str);
