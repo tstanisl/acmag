@@ -35,7 +35,7 @@ char *opcode_str[] = {
 struct callst {
 	uint16_t *code;
 	struct acs_value *consts;
-	struct acs_value *upvalues;
+	struct acs_upvalue **upvalues;
 	int pc;
 	int sp;
 	int fp;
@@ -210,7 +210,7 @@ int execute(void)
 			TOP(0)->u.nval = arg;
 			++datasp;
 		} else if (op == OP_PUSHU) {
-			PUSH(&cs->upvalues[arg]);
+			PUSH(&cs->upvalues[arg]->val);
 		} else if (op == OP_POPN) {
 			/* consider freeing only during rewriting */
 			while (arg--)
@@ -220,8 +220,8 @@ int execute(void)
 			value_copy(&datast[cs->fp + arg], TOP(1));
 			POP();
 		} else if (op == OP_POPU) {
-			value_clear(&cs->upvalues[arg]);
-			value_copy(&cs->upvalues[arg], TOP(1));
+			value_clear(&cs->upvalues[arg]->val);
+			value_copy(&cs->upvalues[arg]->val, TOP(1));
 			POP();
 		} else if (op == OP_BSCALL) {
 			bscall(arg);

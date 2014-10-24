@@ -11,7 +11,9 @@ static int do_machine_test(uint16_t *code)
 	struct acs_function func = { .consts = consts, .code = code };
 	struct acs_finstance *fi = ac_alloc(sizeof (*fi) + sizeof (fi->upvalues[0]));
 	fi->u.func = &func;
-	value_copy(&fi->upvalues[fi->n_upvalues++], &consts[0]);
+	fi->n_upvalues = 1;
+	struct acs_upvalue upvalue = { .refcnt = 1, .val = consts[0] };
+	fi->upvalues[0] = &upvalue;
 	struct acs_value fval = { .id = VAL_FUNC, .u.fval = fi };
 	acs_call_head(&fval);
 	acs_push_num(3);

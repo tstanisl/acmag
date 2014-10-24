@@ -12,6 +12,11 @@ struct acs_function {
 	uint16_t *code;
 };
 
+struct acs_upvalue {
+	int refcnt;
+	struct acs_value val;
+};
+
 struct acs_finstance {
 	bool ufunc;
 	union {
@@ -20,7 +25,7 @@ struct acs_finstance {
 	} u;
 	int refcnt;
 	int n_upvalues;
-	struct acs_value upvalues[];
+	struct acs_upvalue *upvalues[];
 };
 
 #endif /* FUNCTION_H */
