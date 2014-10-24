@@ -61,6 +61,7 @@ static int compile_top(struct compiler *c)
 		emit(c, OP_BSCALL, BS_FALSE);
 	else
 		return ERR("unexpected token %s", token_str[c->next]), -1;
+	consume(c);
 	return 0;
 }
 
