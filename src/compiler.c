@@ -76,7 +76,13 @@ static int compile_inst(struct compiler *c)
 {
 	if (c->next == TOK_LBRA)
 		return compile_block(c);
-	return compile_expr(c);
+	int ret = compile_expr(c);
+	if (ERR_ON(ret, "compile_expr() failed"))
+		return -1;
+	if (c->next != TOK_SCOLON)
+		return ERR("missing ; after expression"), -1;
+	consume(c);
+	return 0;
 }
 
 struct acs_finstance *acs_compile_file(FILE *file, char *path)
