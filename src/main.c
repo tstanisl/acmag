@@ -8,14 +8,15 @@
 int main()
 {
 	acs_init();
-	extern void machine_test(void);
-	machine_test();
-#if 0
-	struct acs_script *s = parse_script(stdin, "stdin");
+	/*extern void machine_test(void);
+	machine_test();*/
 
-	if (ERR_ON(!s, "parse_script() failed"))
+	struct acs_finstance *fi = acs_compile_file(stdin, "stdin");
+
+	if (ERR_ON(!fi, "acs_compile_file() failed"))
 		return -1;
 
+#if 0
 	dump_script(s);
 	for (int i = 0, ok = 1; ok; ++i) {
 		char buf[32];
@@ -26,7 +27,6 @@ int main()
 			break;
 	}
 	destroy_script(s);
-
-	return 0;
 #endif
+	return 0;
 }
