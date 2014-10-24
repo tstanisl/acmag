@@ -4,6 +4,8 @@
 #include "cstr.h"
 #include "value.h"
 
+#include <stdio.h>
+
 void acs_call_head(struct acs_value *val);
 int acs_call_head_by_name(char *fname);
 int acs_call_tail(int argin, int argout);
@@ -29,5 +31,7 @@ struct acs_user_function {
 
 int acs_register_user_function(struct acs_user_function *ufunc, char *name);
 void acs_init(void);
+
+struct acs_finstance *acs_compile_file(FILE *file, char *path);
 
 #endif
