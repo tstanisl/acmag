@@ -22,10 +22,25 @@ struct inst {
 	int arg;
 };
 
+static int perr(struct compiler *c, char *fmt, ...)
+{
+	va_list va;
+
+	va_start(va, fmt);
+	printf("%s:%d: error: ", c->path, lxr_line(c->lxr));
+	vprintf(fmt, va);
+	puts("");
+	va_end(va);
+
+	return -1;
+}
+
 static void consume(struct compiler *c)
 {
 	c->next = lxr_get(c->lxr);
 	printf("next = %s\n", token_str[c->next]);
+	if (c->next == TOK_ERR)
+		perr(c, "%s", lxr_buffer(c->lxr));
 }
 
 static void emit(struct compiler *c, enum opcode op, int arg)
@@ -60,7 +75,7 @@ static int compile_top(struct compiler *c)
 	else if (c->next == TOK_FALSE)
 		emit(c, OP_BSCALL, BS_FALSE);
 	else
-		return ERR("unexpected token %s", token_str[c->next]), -1;
+		return perr(c, "unexpected token %s", token_str[c->next]);
 	consume(c);
 	return 0;
 }
@@ -80,7 +95,7 @@ static int compile_inst(struct compiler *c)
 	if (ERR_ON(ret, "compile_expr() failed"))
 		return -1;
 	if (c->next != TOK_SCOLON)
-		return ERR("missing ; after expression"), -1;
+		return perr(c, "missing ; after expression");
 	consume(c);
 	return 0;
 }
