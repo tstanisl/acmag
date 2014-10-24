@@ -120,6 +120,10 @@ static void bscall(enum bscall cmd)
 		++datasp;
 		TOP(1)->id = VAL_NUM;
 		TOP(1)->u.nval = acs_argc();
+	} else if (cmd == BS_TRUE || cmd == BS_FALSE) {
+		++datasp;
+		TOP(1)->id = VAL_BOOL;
+		TOP(1)->u.bval = (cmd == BS_TRUE);
 	} else {
 		CRIT("not supported bscall %d", (int)cmd);
 	}

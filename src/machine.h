@@ -44,6 +44,8 @@ enum bscall {
 	BS_GREQ,
 	__BS_CMP_MAX,
 
+	BS_TRUE,
+	BS_FALSE,
 	BS_GET_GLOBAL,
 	BS_SET_GLOBAL,
 	BS_GET_FIELD,
