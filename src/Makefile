@@ -1,6 +1,7 @@
 TARGET  := ../acmag
 SRCS    := \
 	common.c \
+	compiler.c \
 	cstr.c \
 	lxr.c \
 	main.c \
