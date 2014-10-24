@@ -81,6 +81,7 @@ static int compile_inst(struct compiler *c)
 struct acs_finstance *acs_compile_file(FILE *file, char *path)
 {
 	struct compiler c = { .path = path };
+	list_init(&c.inst);
 
 	c.lxr = lxr_create(file, 256);
 	if (ERR_ON(!c.lxr, "lxr_create() failed"))
