@@ -102,8 +102,10 @@ struct acs_finstance *acs_compile_file(FILE *file, char *path)
 	}
 
 	/* TODO: solve names, generate closure code etc */
+	static struct acs_finstance phony;
+	memset(&phony, 0, sizeof phony);
+	return &phony;
 
-	return 0;
 fail_lxr:
 	lxr_destroy(c.lxr);
 fail:
