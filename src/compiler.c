@@ -35,11 +35,21 @@ static int compile_block(struct compiler *c)
 	return 0;
 }
 
+static int compile_top(struct compiler *c)
+{
+	return -1;
+}
+
+static int compile_expr(struct compiler *c)
+{
+	return compile_top(c);
+}
+
 static int compile_inst(struct compiler *c)
 {
 	if (c->next == TOK_LBRA)
 		return compile_block(c);
-	return -1;
+	return compile_expr(c);
 }
 
 struct acs_finstance *acs_compile_file(FILE *file, char *path)
