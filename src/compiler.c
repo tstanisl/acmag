@@ -20,8 +20,25 @@ static void consume(struct compiler *c)
 	printf("next = %s\n", token_str[c->next]);
 }
 
+static int compile_inst(struct compiler *c);
+
+static int compile_block(struct compiler *c)
+{
+	CRIT_ON(c->next != TOK_LBRA, "unexpected token %s", token_str[c->next]);
+	consume(c);
+	while (c->next != TOK_RBRA) {
+		int ret = compile_inst(c);
+		if (ERR_ON(ret < 0, "compile_inst() failed"))
+			return -1;
+	}
+	consume(c);
+	return 0;
+}
+
 static int compile_inst(struct compiler *c)
 {
+	if (c->next == TOK_LBRA)
+		return compile_block(c);
 	return -1;
 }
 
