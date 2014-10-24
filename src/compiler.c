@@ -2,6 +2,7 @@
 #include "function.h"
 #include "lxr.h"
 #include "list.h"
+#include "machine.h"
 #include "value.h"
 
 #include <stdio.h>
@@ -12,12 +13,27 @@ struct compiler {
 	struct lxr *lxr;
 	enum token next;
 	struct list inst;
+	int stsize;
+};
+
+struct inst {
+	struct list node;
+	enum opcode op;
+	int arg;
 };
 
 static void consume(struct compiler *c)
 {
 	c->next = lxr_get(c->lxr);
 	printf("next = %s\n", token_str[c->next]);
+}
+
+static void emit(struct compiler *c, enum opcode op, int arg)
+{
+	struct inst *inst = ac_alloc(sizeof *inst);
+	inst->op = op;
+	inst->arg = arg;
+	list_add_tail(&inst->node, &c->inst);
 }
 
 static int compile_inst(struct compiler *c);
@@ -37,12 +53,22 @@ static int compile_block(struct compiler *c)
 
 static int compile_top(struct compiler *c)
 {
-	return -1;
+	if (c->next == TOK_NULL)
+		emit(c, OP_PUSHN, 1);
+	else if (c->next == TOK_TRUE)
+		emit(c, OP_BSCALL, BS_TRUE);
+	else if (c->next == TOK_FALSE)
+		emit(c, OP_BSCALL, BS_FALSE);
+	else
+		return ERR("unexpected token %s", token_str[c->next]), -1;
+	return 0;
 }
 
 static int compile_expr(struct compiler *c)
 {
-	return compile_top(c);
+	c->stsize = 0;
+	int ret = compile_top(c);
+	return ret;
 }
 
 static int compile_inst(struct compiler *c)
