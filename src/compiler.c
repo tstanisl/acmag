@@ -1,3 +1,4 @@
+#include "cstr.h"
 #include "debug.h"
 #include "function.h"
 #include "lxr.h"
@@ -73,6 +74,23 @@ static int new_const_num(struct compiler *c, float nval)
 	return idx;
 }
 
+static int new_const_str(struct compiler *c, char *str)
+{
+	int idx = 0;
+	list_foreach(l, &c->consts) {
+		struct constant *cval = list_entry(l, struct constant, node);
+		if (cval->val.id == VAL_STR &&
+		    strcmp(cval->val.u.sval->str, str) == 0)
+			return idx;
+		++idx;
+	}
+	struct constant *cval = ac_alloc(sizeof *cval);
+	cval->val.id = VAL_STR;
+	cval->val.u.sval = str_create(str);
+	list_add_tail(&cval->node, &c->consts);
+	return idx;
+}
+
 static int compile_inst(struct compiler *c);
 
 static int compile_block(struct compiler *c)
@@ -96,6 +114,11 @@ static int compile_top(struct compiler *c)
 		emit(c, OP_BSCALL, BS_TRUE);
 	} else if (c->next == TOK_FALSE) {
 		emit(c, OP_BSCALL, BS_FALSE);
+	} else if (c->next == TOK_STR) {
+		int idx = new_const_str(c, lxr_buffer(c->lxr));
+		if (idx < 0)
+			return -1;
+		emit(c, OP_PUSHC, idx);
 	} else if (c->next == TOK_NUM) {
 		float nval = atof(lxr_buffer(c->lxr));
 		int ival = (int)nval;
