@@ -14,12 +14,18 @@ struct compiler {
 	enum token next;
 	struct list inst;
 	int stsize;
+	struct list consts;
 };
 
 struct inst {
 	struct list node;
 	enum opcode op;
 	int arg;
+};
+
+struct constant {
+	struct acs_value val;
+	struct list node;
 };
 
 static int perr(struct compiler *c, char *fmt, ...)
@@ -49,6 +55,22 @@ static void emit(struct compiler *c, enum opcode op, int arg)
 	inst->op = op;
 	inst->arg = arg;
 	list_add_tail(&inst->node, &c->inst);
+}
+
+static int new_const_num(struct compiler *c, float nval)
+{
+	int idx = 0;
+	list_foreach(l, &c->consts) {
+		struct constant *cval = list_entry(l, struct constant, node);
+		if (cval->val.id == VAL_NUM && cval->val.u.nval == nval)
+			return idx;
+		++idx;
+	}
+	struct constant *cval = ac_alloc(sizeof *cval);
+	cval->val.id = VAL_NUM;
+	cval->val.u.nval = nval;
+	list_add_tail(&cval->node, &c->consts);
+	return idx;
 }
 
 static int compile_inst(struct compiler *c);
@@ -104,6 +126,7 @@ struct acs_finstance *acs_compile_file(FILE *file, char *path)
 {
 	struct compiler c = { .path = path };
 	list_init(&c.inst);
+	list_init(&c.consts);
 
 	c.lxr = lxr_create(file, 256);
 	if (ERR_ON(!c.lxr, "lxr_create() failed"))
