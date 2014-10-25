@@ -90,14 +90,26 @@ static int compile_block(struct compiler *c)
 
 static int compile_top(struct compiler *c)
 {
-	if (c->next == TOK_NULL)
+	if (c->next == TOK_NULL) {
 		emit(c, OP_PUSHN, 1);
-	else if (c->next == TOK_TRUE)
+	} else if (c->next == TOK_TRUE) {
 		emit(c, OP_BSCALL, BS_TRUE);
-	else if (c->next == TOK_FALSE)
+	} else if (c->next == TOK_FALSE) {
 		emit(c, OP_BSCALL, BS_FALSE);
-	else
+	} else if (c->next == TOK_NUM) {
+		float nval = atof(lxr_buffer(c->lxr));
+		int ival = (int)nval;
+		if (nval == ival && ival >= 0 && ival < ARGMAX) {
+			emit(c, OP_PUSHI, ival);
+		} else {
+			int idx = new_const_num(c, nval);
+			if (idx < 0)
+				return -1;
+			emit(c, OP_PUSHC, idx);
+		}
+	} else {
 		return perr(c, "unexpected token %s", token_str[c->next]);
+	}
 	consume(c);
 	return 0;
 }
