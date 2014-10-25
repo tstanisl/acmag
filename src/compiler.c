@@ -134,6 +134,16 @@ static int compile_inst(struct compiler *c)
 	return 0;
 }
 
+static void dump_code(struct compiler *c)
+{
+	int pc = 0;
+	list_foreach(l, &c->inst) {
+		struct inst *inst = list_entry(l, struct inst, node);
+		printf("%02d: %s %d\n", pc, opcode_str[inst->op], inst->arg);
+		++pc;
+	}
+}
+
 struct acs_finstance *acs_compile_file(FILE *file, char *path)
 {
 	struct compiler c = { .path = path };
@@ -150,6 +160,8 @@ struct acs_finstance *acs_compile_file(FILE *file, char *path)
 		if (ERR_ON(ret < 0, "compile_inst() failed"))
 			goto fail_lxr;
 	}
+
+	dump_code(&c);
 
 	/* TODO: solve names, generate closure code etc */
 	static struct acs_finstance phony;
