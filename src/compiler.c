@@ -94,7 +94,7 @@ static int new_const_num(struct compiler *c, float nval)
 	return idx;
 }
 
-static int new_const_str(struct compiler *c, char *str)
+static int new_const_cstr(struct compiler *c, char *str)
 {
 	int idx = 0;
 	list_foreach(l, &c->consts) {
@@ -165,7 +165,7 @@ static struct entry *compile_top(struct compiler *c, bool need_value, struct ent
 	} else if (c->next == TOK_FALSE) {
 		emit(c, OP_BSCALL, BS_FALSE);
 	} else if (c->next == TOK_STR) {
-		int idx = new_const_str(c, lxr_buffer(c->lxr));
+		int idx = new_const_cstr(c, lxr_buffer(c->lxr));
 		emit(c, OP_PUSHC, idx);
 	} else if (c->next == TOK_NUM) {
 		float nval = atof(lxr_buffer(c->lxr));
