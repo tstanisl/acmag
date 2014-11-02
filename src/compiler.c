@@ -29,6 +29,21 @@ struct constant {
 	struct list node;
 };
 
+enum entry_type {
+	ET_ARG, // n/a
+	ET_LOCAL, // n/a
+	ET_UPVALUE, // n/a
+	ET_GLOBAL, // name on stack
+	ET_FIELD, // object + field on stack
+	ET_STACK, // n/a
+};
+
+struct entry {
+	struct entry *prev;
+	enum entry_type type;
+	int arg;
+};
+
 static int perr(struct compiler *c, char *fmt, ...)
 {
 	va_list va;
@@ -91,6 +106,24 @@ static int new_const_str(struct compiler *c, char *str)
 	return idx;
 }
 
+static struct entry *entry_create(enum entry_type type, int arg, struct entry *prev)
+{
+	struct entry *entry = ac_alloc(sizeof *entry);
+	entry->type = type;
+	entry->arg = arg;
+	entry->prev = prev;
+	return entry;
+}
+
+static void entry_destroy(struct entry *e)
+{
+	while (e) {
+		struct entry *to_free = e;
+		e = e->prev;
+		free(to_free);
+	}
+}
+
 static int compile_inst(struct compiler *c);
 
 static int compile_block(struct compiler *c)
@@ -106,8 +139,11 @@ static int compile_block(struct compiler *c)
 	return 0;
 }
 
-static int compile_top(struct compiler *c)
+static struct entry *compile_top(struct compiler *c, bool need_value, struct entry *prev)
 {
+	if (!need_value) // TODO: add warning here
+		return prev;
+
 	if (c->next == TOK_NULL) {
 		emit(c, OP_PUSHN, 1);
 	} else if (c->next == TOK_TRUE) {
@@ -116,8 +152,6 @@ static int compile_top(struct compiler *c)
 		emit(c, OP_BSCALL, BS_FALSE);
 	} else if (c->next == TOK_STR) {
 		int idx = new_const_str(c, lxr_buffer(c->lxr));
-		if (idx < 0)
-			return -1;
 		emit(c, OP_PUSHC, idx);
 	} else if (c->next == TOK_NUM) {
 		float nval = atof(lxr_buffer(c->lxr));
@@ -126,30 +160,27 @@ static int compile_top(struct compiler *c)
 			emit(c, OP_PUSHI, ival);
 		} else {
 			int idx = new_const_num(c, nval);
-			if (idx < 0)
-				return -1;
 			emit(c, OP_PUSHC, idx);
 		}
 	} else {
-		return perr(c, "unexpected token %s", token_str[c->next]);
+		return perr(c, "unexpected token %s", token_str[c->next]), NULL;
 	}
 	consume(c);
-	return 0;
+	return entry_create(ET_STACK, 0, prev);
 }
 
-static int compile_expr(struct compiler *c)
+static struct entry *compile_expr(struct compiler *c)
 {
-	c->stsize = 0;
-	int ret = compile_top(c);
-	return ret;
+	return compile_top(c, true, NULL);
 }
 
 static int compile_inst(struct compiler *c)
 {
 	if (c->next == TOK_LBRA)
 		return compile_block(c);
-	int ret = compile_expr(c);
-	if (ERR_ON(ret, "compile_expr() failed"))
+	struct entry *entry = compile_expr(c);
+	entry_destroy(entry);
+	if (ERR_ON(!entry, "compile_expr() failed"))
 		return -1;
 	if (c->next != TOK_SCOLON)
 		return perr(c, "missing ; after expression");
