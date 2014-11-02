@@ -9,13 +9,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+struct scope {
+	struct scope *prev;
+	struct list vars;
+	struct list inst;
+};
+
 struct compiler {
 	char *path;
 	struct lxr *lxr;
 	enum token next;
-	struct list inst;
-	int stsize;
 	struct list consts;
+	struct scope *scope;
 };
 
 struct inst {
@@ -70,7 +75,7 @@ static void emit(struct compiler *c, enum opcode op, int arg)
 	struct inst *inst = ac_alloc(sizeof *inst);
 	inst->op = op;
 	inst->arg = arg;
-	list_add_tail(&inst->node, &c->inst);
+	list_add_tail(&inst->node, &c->scope->inst);
 }
 
 static int new_const_num(struct compiler *c, float nval)
@@ -122,6 +127,15 @@ static void entry_destroy(struct entry *e)
 		e = e->prev;
 		free(to_free);
 	}
+}
+
+static void start_scope(struct compiler *c)
+{
+	struct scope *s = ac_alloc(sizeof *s);
+	s->prev = c->scope;
+	list_init(&s->vars);
+	list_init(&s->inst);
+	c->scope = s;
 }
 
 static int compile_inst(struct compiler *c);
@@ -191,7 +205,7 @@ static int compile_inst(struct compiler *c)
 static void dump_code(struct compiler *c)
 {
 	int pc = 0;
-	list_foreach(l, &c->inst) {
+	list_foreach(l, &c->scope->inst) {
 		struct inst *inst = list_entry(l, struct inst, node);
 		printf("%02d: %s %d\n", pc, opcode_str[inst->op], inst->arg);
 		++pc;
@@ -201,7 +215,7 @@ static void dump_code(struct compiler *c)
 struct acs_finstance *acs_compile_file(FILE *file, char *path)
 {
 	struct compiler c = { .path = path };
-	list_init(&c.inst);
+	start_scope(&c);
 	list_init(&c.consts);
 
 	c.lxr = lxr_create(file, 256);
