@@ -5,10 +5,12 @@ enum ast_id {
 	AST_NOP = 0,
 	AST_FUNC,
 	AST_IF,
+	AST_IF_TAIL,
 	AST_WHILE,
 	AST_RETURN,
 	AST_BREAK,
 	AST_CONTINUE,
+	ACS_SEQ,
 
 	__AST_EXPR,
 	AST_TRUE = __AST_EXPR,
@@ -59,7 +61,7 @@ struct ast {
 	union {
 		struct str *sval;
 		float nval;
-		enum ast_id *arg[2];
+		struct ast *arg[2];
 	} u;
 };
 

@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "common.h"
 #include "debug.h"
 #include "lxr.h"
 
@@ -32,12 +33,31 @@ static void consume(struct parser *p)
 		perr(p, "%s", lxr_buffer(p->lxr));
 }
 
-enum ast_id *parse_sequence(struct parser *p)
+struct ast *parse_inst(struct parser *p)
 {
 	return NULL;
 }
 
-enum ast_id *parse_file(FILE *file, char *path)
+struct ast *parse_sequence(struct parser *p)
+{
+	struct ast *top = NULL;
+	for (;;) {
+		struct ast *inst = parse_inst(p);
+		if (!inst)
+			return top;
+		if (!top) {
+			top = inst;
+		} else  {
+			struct ast *ntop = ac_alloc(sizeof *ntop);
+			ntop->id = ACS_SEQ;
+			ntop->u.arg[0] = top;
+			ntop->u.arg[1] = inst;
+			top = ntop;
+		}
+	}
+}
+
+struct ast *parse_file(FILE *file, char *path)
 {
 	struct parser p = { .path = path };
 
@@ -47,7 +67,7 @@ enum ast_id *parse_file(FILE *file, char *path)
 
 	consume(&p);
 
-	enum ast_id *ret = parse_sequence(&p);
+	struct ast *ret = parse_sequence(&p);
 	lxr_destroy(p.lxr);
 	if (ERR_ON(!ret, "parse_sequence() failed"))
 		return NULL;
