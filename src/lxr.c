@@ -69,7 +69,7 @@ static enum token lxr_get_id(struct lxr *lxr)
 		TOK_RETURN, TOK_IF, TOK_ELSE,
 		TOK_WHILE, TOK_FOR, TOK_BREAK,
 		TOK_CONTINUE, TOK_EXPORT, TOK_IMPORT,
-		TOK_FUNCTION,
+		TOK_FUNCTION, TOK_VAR,
 	};
 
 	for (int i = 0; i < ARRAY_SIZE(keywords); ++i)
@@ -279,4 +279,5 @@ char *token_str[] = {
 	[TOK_CONTINUE] = "continue",
 	[TOK_EXPORT] = "export",
 	[TOK_IMPORT] = "import",
+	[TOK_VAR] = "var",
 };

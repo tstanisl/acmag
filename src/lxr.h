@@ -51,6 +51,7 @@ enum token {
 	TOK_CONTINUE, /* continue */
 	TOK_EXPORT,
 	TOK_IMPORT,
+	TOK_VAR,
 };
 
 struct lxr;
