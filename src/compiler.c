@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define ACS_MAX_ENTRY 16
+
 struct scope {
 	struct scope *prev;
 	struct list vars;
@@ -64,7 +66,7 @@ enum entry_type {
 };
 
 struct entry {
-	struct entry *prev;
+	bool needed;
 	enum entry_type type;
 	int arg;
 };
@@ -131,24 +133,6 @@ static int new_const_cstr(struct compiler *c, char *str)
 	return idx;
 }
 
-static struct entry *entry_create(enum entry_type type, int arg, struct entry *prev)
-{
-	struct entry *entry = ac_alloc(sizeof *entry);
-	entry->type = type;
-	entry->arg = arg;
-	entry->prev = prev;
-	return entry;
-}
-
-static void entry_destroy(struct entry *e)
-{
-	while (e) {
-		struct entry *to_free = e;
-		e = e->prev;
-		free(to_free);
-	}
-}
-
 static void start_scope(struct compiler *c)
 {
 	struct scope *s = ac_alloc(sizeof *s);
@@ -205,19 +189,23 @@ static enum entry_type var_to_entry(enum var_type vt)
 	CRIT("invalid var_type");
 }
 
-static struct entry *compile_top(struct compiler *c, bool need_value, struct entry *prev)
+static int compile_top(struct compiler *c, struct entry *dst)
 {
-	if (!need_value) {
+	if (!dst->needed) {
 		// TODO: add warning here
 		/* FIXME: possible undetected syntax errors */
-		if (c->next != TOK_ID)
-			return prev;
+		if (c->next != TOK_ID) {
+			consume(c);
+			return 0;
+		}
 		char *name = lxr_buffer(c->lxr);
 		struct var *v = find_var(c, lxr_buffer(c->lxr));
 		if (!v)
-			return perr(c, "undefined identifier %s", name), NULL;
+			return perr(c, "undefined identifier %s", name);
 		consume(c);
-		return entry_create(var_to_entry(v->type), v->index, prev);
+		dst->type = var_to_entry(v->type);
+		dst->arg = v->index;
+		return 0;
 	}
 
 	if (c->next == TOK_NULL) {
@@ -242,44 +230,46 @@ static struct entry *compile_top(struct compiler *c, bool need_value, struct ent
 		char *name = lxr_buffer(c->lxr);
 		struct var *v = find_var(c, name);
 		if (!v)
-			return perr(c, "undefined identifier %s", name), NULL;
+			return perr(c, "undefined identifier %s", name);
 		emit(c, OP_PUSHR, v->index);
+		dst->type = var_to_entry(v->type);
+		dst->arg = v->index;
 		consume(c);
-		return entry_create(var_to_entry(v->type), v->index, prev);
+		return 0;
 	} else {
-		return perr(c, "unexpected token %s", token_str[c->next]), NULL;
+		return perr(c, "unexpected token %s", token_str[c->next]);
 	}
 	consume(c);
-	return entry_create(ET_STACK, 0, prev);
+	dst->type = ET_STACK;
+	dst->arg = 0;
+	return 0;
 }
 
-static struct entry *compile_list(struct compiler *c, bool need_value)
+static int compile_list(struct compiler *c, struct entry entry[ACS_MAX_ENTRY])
 {
-	struct entry *e = compile_top(c, need_value, NULL);
-	while (c->next == TOK_SEP) {
+	int ret = compile_top(c, &entry[0]);
+	int i;
+	for (i = 1; !ret && c->next == TOK_SEP; ++i) {
 		consume(c);
-		struct entry *next = compile_top(c, need_value, e);
-		if (!next) {
-			entry_destroy(e);
-			return NULL;
-		}
-		e = next;
+		static struct entry unused;
+		ret = compile_top(c, i < ACS_MAX_ENTRY ? &entry[i] : &unused);
 	}
-	return e;
+	return ret ? ret : i;
 }
 
-static struct entry *compile_expr(struct compiler *c)
+static int compile_expr(struct compiler *c)
 {
-	return compile_list(c, true);
+	struct entry entry[ACS_MAX_ENTRY];
+	memset(entry, 0, sizeof entry);
+	return compile_list(c, entry);
 }
 
 static int compile_inst(struct compiler *c)
 {
 	if (c->next == TOK_LBRA)
 		return compile_block(c);
-	struct entry *entry = compile_expr(c);
-	entry_destroy(entry);
-	if (ERR_ON(!entry, "compile_expr() failed"))
+	int ret = compile_expr(c);
+	if (ERR_ON(ret < 0, "compile_expr() failed"))
 		return -1;
 	if (c->next != TOK_SCOLON)
 		return perr(c, "missing ; after expression");
