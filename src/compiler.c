@@ -253,9 +253,24 @@ static struct entry *compile_top(struct compiler *c, bool need_value, struct ent
 	return entry_create(ET_STACK, 0, prev);
 }
 
+static struct entry *compile_list(struct compiler *c, bool need_value)
+{
+	struct entry *e = compile_top(c, need_value, NULL);
+	while (c->next == TOK_SEP) {
+		consume(c);
+		struct entry *next = compile_top(c, need_value, e);
+		if (!next) {
+			entry_destroy(e);
+			return NULL;
+		}
+		e = next;
+	}
+	return e;
+}
+
 static struct entry *compile_expr(struct compiler *c)
 {
-	return compile_top(c, true, NULL);
+	return compile_list(c, true);
 }
 
 static int compile_inst(struct compiler *c)
