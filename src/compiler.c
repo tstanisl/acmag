@@ -21,12 +21,32 @@ struct compiler {
 	enum token next;
 	struct list consts;
 	struct scope *scope;
+	struct list vars;
+	int n_index;
 };
 
 struct inst {
 	struct list node;
 	enum opcode op;
 	int arg;
+};
+
+enum var_type {
+	VAR_ARG,
+	VAR_LOCAL,
+	VAR_UPVALUE,
+	VAR_GLOBAL,
+	/* special */
+};
+
+struct var {
+	struct scope *scope;
+	enum var_type type;
+	struct var *prev;
+	struct list scope_node;
+	struct list map_node;
+	int index;
+	struct str *name;
 };
 
 struct constant {
@@ -138,6 +158,27 @@ static void start_scope(struct compiler *c)
 	c->scope = s;
 }
 
+static struct var *find_var(struct compiler *c, char *name)
+{
+	list_foreach(l, &c->vars) {
+		struct var *v = list_entry(l, struct var, map_node);
+		if (strcmp(v->name->str, name) == 0) {
+			if (v->scope != c->scope && v->type == VAR_LOCAL)
+				v->type = VAR_UPVALUE;
+			return v;
+		}
+	}
+	struct var *v = ac_alloc(sizeof *v);
+	v->name = str_create(name);
+	v->type = VAR_LOCAL;
+	v->scope = c->scope;
+	v->index = c->n_index;
+	++c->n_index;
+	list_add(&v->scope_node, &c->scope->vars);
+	list_add(&v->map_node, &c->vars);
+	return v;
+}
+
 static int compile_inst(struct compiler *c);
 
 static int compile_block(struct compiler *c)
@@ -153,10 +194,31 @@ static int compile_block(struct compiler *c)
 	return 0;
 }
 
+static enum entry_type var_to_entry(enum var_type vt)
+{
+	switch (vt) {
+	case VAR_ARG: return ET_ARG;
+	case VAR_LOCAL: return ET_LOCAL;
+	case VAR_UPVALUE: return ET_UPVALUE;
+	case VAR_GLOBAL: return ET_GLOBAL;
+	}
+	CRIT("invalid var_type");
+}
+
 static struct entry *compile_top(struct compiler *c, bool need_value, struct entry *prev)
 {
-	if (!need_value) // TODO: add warning here
-		return prev;
+	if (!need_value) {
+		// TODO: add warning here
+		/* FIXME: possible undetected syntax errors */
+		if (c->next != TOK_ID)
+			return prev;
+		char *name = lxr_buffer(c->lxr);
+		struct var *v = find_var(c, lxr_buffer(c->lxr));
+		if (!v)
+			return perr(c, "undefined identifier %s", name), NULL;
+		consume(c);
+		return entry_create(var_to_entry(v->type), v->index, prev);
+	}
 
 	if (c->next == TOK_NULL) {
 		emit(c, OP_PUSHN, 1);
@@ -176,6 +238,14 @@ static struct entry *compile_top(struct compiler *c, bool need_value, struct ent
 			int idx = new_const_num(c, nval);
 			emit(c, OP_PUSHC, idx);
 		}
+	} else if (c->next == TOK_ID) {
+		char *name = lxr_buffer(c->lxr);
+		struct var *v = find_var(c, name);
+		if (!v)
+			return perr(c, "undefined identifier %s", name), NULL;
+		emit(c, OP_PUSHR, v->index);
+		consume(c);
+		return entry_create(var_to_entry(v->type), v->index, prev);
 	} else {
 		return perr(c, "unexpected token %s", token_str[c->next]), NULL;
 	}
@@ -217,6 +287,7 @@ struct acs_finstance *acs_compile_file(FILE *file, char *path)
 	struct compiler c = { .path = path };
 	start_scope(&c);
 	list_init(&c.consts);
+	list_init(&c.vars);
 
 	c.lxr = lxr_create(file, 256);
 	if (ERR_ON(!c.lxr, "lxr_create() failed"))
