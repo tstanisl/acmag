@@ -1,6 +1,7 @@
 #ifndef DEBUG_H
 #define DEBUG_H __FILE__
 
+#include "common.h"
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -32,7 +33,7 @@ static inline int __info(int cond, const char *prefix, char *f_name, int line,
 	__info((cond), "Info", __FILE__, __LINE__, __VA_ARGS__)
 #define INFO(...) INFO_ON(1, __VA_ARGS__)
 #define CRIT_ON(cond, ...) \
-	((cond) ? __info(1, "Critical", __FILE__, __LINE__, __VA_ARGS__), abort(), 1 : 0)
+	((cond) ? __info(1, "Critical", __FILE__, __LINE__, __VA_ARGS__), stackdump(), abort(), 1 : 0)
 #define CRIT(...) CRIT_ON(1, __VA_ARGS__)
 
 #define ERRSTR strerror(errno)
