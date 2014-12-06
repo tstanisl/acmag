@@ -49,7 +49,7 @@ struct ast *parse_sequence(struct parser *p)
 			top = inst;
 		} else  {
 			struct ast *ntop = ac_alloc(sizeof *ntop);
-			ntop->id = ACS_SEQ;
+			ntop->id = TOK_SCOLON;
 			ntop->u.arg[0] = top;
 			ntop->u.arg[1] = inst;
 			top = ntop;
