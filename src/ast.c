@@ -77,12 +77,13 @@ static void consume(struct parser *p)
 		perr(p, "%s", lxr_buffer(p->lxr));
 }
 
+static struct ast ast_null = { .id = TOK_NULL };
+
 static struct ast *parse_top(struct parser *p)
 {
 	if (p->next == TOK_NULL) {
-		static struct ast null = { .id = TOK_NULL };
 		consume(p);
-		return &null;
+		return &ast_null;
 	} else if (p->next == TOK_TRUE) {
 		static struct ast atrue = { .id = TOK_TRUE };
 		consume(p);
@@ -143,17 +144,16 @@ struct ast *parse_sequence(struct parser *p);
 
 struct ast *parse_inst(struct parser *p)
 {
-	static struct ast null = { .id = TOK_NULL };
 	if (p->next == TOK_SCOLON) {
 		consume(p);
-		return &null;
+		return &ast_null;
 	} else if (p->next == TOK_LBRA) {
 		consume(p);
 		struct ast *ast = parse_sequence(p);
 		if (p->next != TOK_RBRA)
 			return ast_free(ast), perr(p, "unmatched {"), NULL;
 		consume(p);
-		return ast ? ast : &null;
+		return ast ? ast : &ast_null;
 	} else {
 		struct ast *ast = parse_expr(p);
 		if (!ast)
