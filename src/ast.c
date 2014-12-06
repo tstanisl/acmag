@@ -106,9 +106,23 @@ static struct ast *parse_top(struct parser *p)
 	}
 }
 
-static struct ast *parse_assign(struct parser *p)
+static struct ast *parse_list(struct parser *p)
 {
 	struct ast *val = parse_top(p);
+	if (!val || p->next != TOK_SEP)
+		return val;
+	consume(p);
+	struct ast *ast = ast_new(TOK_SEP);
+	ast->u.arg[0] = val;
+	ast->u.arg[1] = parse_list(p);
+	if (!ast->u.arg[1])
+		return ast_free(ast), NULL;
+	return ast;
+}
+
+static struct ast *parse_assign(struct parser *p)
+{
+	struct ast *val = parse_list(p);
 	if (!val || p->next != TOK_ASSIGN)
 		return val;
 	consume(p);
