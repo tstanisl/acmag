@@ -15,7 +15,7 @@ static struct ast *ast_new(enum token id)
 	return t;
 }
 
-static void ast_free(struct ast *t)
+void ast_free(struct ast *t)
 {
 	if (!t) {
 		return;

@@ -13,5 +13,6 @@ struct ast {
 };
 
 struct ast *ast_from_file(FILE *file, char *path);
+void ast_free(struct ast *t);
 
 #endif /* AST_H */ 
