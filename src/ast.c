@@ -30,6 +30,28 @@ void ast_free(struct ast *t)
 	free(t);
 }
 
+static void do_ast_dump(struct ast *t, int level)
+{
+	if (!t) {
+		return;
+	} else if (t->id == TOK_STR || t->id == TOK_ID) {
+		printf("%*s%s:%s\n", 2 * level, "",
+			token_str[t->id], t->u.sval->str);
+	} else if (t->id == TOK_NUM) {
+		printf("%*s%s:%f\n", 2 * level, "",
+			token_str[t->id], t->u.nval);
+	} else {
+		do_ast_dump(t->u.arg[1], level + 1);
+		printf("%*s%s\n", 2 * level, "", token_str[t->id]);
+		do_ast_dump(t->u.arg[0], level + 1);
+	}
+}
+
+void ast_dump(struct ast *t)
+{
+	do_ast_dump(t, 0);
+}
+
 struct parser {
 	char *path;
 	struct lxr *lxr;
