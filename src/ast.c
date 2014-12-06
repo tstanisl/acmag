@@ -67,10 +67,12 @@ static void perr(struct parser *p, char *fmt, ...)
 	vprintf(fmt, va);
 	puts("");
 	va_end(va);
+	p->next = TOK_ERR;
 }
 
 static void consume(struct parser *p)
 {
+	CRIT_ON(p->next == TOK_ERR, "consuming error");
 	p->next = lxr_get(p->lxr);
 	//printf("next = %s\n", token_str[p->next]);
 	if (p->next == TOK_ERR)
@@ -103,6 +105,7 @@ static struct ast *parse_top(struct parser *p)
 		consume(p);
 		return t;
 	} else {
+		perr(p, "unexpected token %s", token_str[p->next]);
 		return NULL;
 	}
 }
@@ -186,7 +189,7 @@ struct ast *parse_sequence(struct parser *p)
 
 struct ast *ast_from_file(FILE *file, char *path)
 {
-	struct parser p = { .path = path };
+	struct parser p = { .path = path, .next = TOK_EOF };
 
 	p.lxr = lxr_create(file, 256);
 	if (ERR_ON(!p.lxr, "lxr_create() failed"))
@@ -195,9 +198,10 @@ struct ast *ast_from_file(FILE *file, char *path)
 	consume(&p);
 
 	struct ast *ret = parse_sequence(&p);
+	int ok = (p.next != TOK_ERR);
 	lxr_destroy(p.lxr);
-	if (ERR_ON(!ret, "parse_sequence() failed"))
+	if (ERR_ON(!ok, "parse_sequence() failed"))
 		return NULL;
 
-	return ret;
+	return ret ? ret : &ast_null;
 }
