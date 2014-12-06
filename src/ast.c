@@ -173,12 +173,15 @@ struct ast *parse_inst(struct parser *p)
 
 struct ast *parse_sequence(struct parser *p)
 {
-	struct ast *t = ast_new(TOK_SCOLON);
-	t->u.arg[0] = parse_inst(p);
-	if (!t->u.arg[0])
-		return ast_free(t), NULL;
-	t->u.arg[1] = parse_sequence(p);
-	return t;
+	struct ast *t = parse_inst(p);
+	if (!t || p->next == TOK_RBRA || p->next == TOK_EOF)
+		return t;
+	struct ast *ast = ast_new(TOK_SCOLON);
+	ast->u.arg[0] = t;
+	ast->u.arg[1] = parse_sequence(p);
+	if (!ast->u.arg[1])
+		return ast_free(ast), NULL;
+	return ast;
 }
 
 struct ast *ast_from_file(FILE *file, char *path)
