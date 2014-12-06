@@ -2,9 +2,33 @@
 #include "common.h"
 #include "debug.h"
 #include "lxr.h"
+#include "cstr.h"
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+static struct ast *ast_new(enum token id)
+{
+	struct ast *t = ac_alloc(sizeof *t);
+	t->id = id;
+	return t;
+}
+
+static void ast_free(struct ast *t)
+{
+	if (!t) {
+		return;
+	} else if (t->id == TOK_STR || t->id == TOK_ID) {
+		str_put(t->u.sval);
+	} else if (t->id == TOK_NUM) {
+		;
+	} else {
+		ast_free(t->u.arg[0]);
+		ast_free(t->u.arg[1]);
+	}
+	free(t);
+}
 
 struct parser {
 	char *path;
