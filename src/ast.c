@@ -110,9 +110,27 @@ static struct ast *parse_top(struct parser *p)
 	}
 }
 
+static struct ast *parse_sum(struct parser *p)
+{
+	struct ast *top = parse_top(p);
+	if (!top || p->next != TOK_PLUS)
+		return top;
+	while (p->next == TOK_PLUS) {
+		consume(p);
+		struct ast *val = parse_top(p);
+		if (!val)
+			return ast_free(top), NULL;
+		struct ast *newtop = ast_new(TOK_PLUS);
+		newtop->u.arg[0] = top;
+		newtop->u.arg[1] = val;
+		top = newtop;
+	}
+	return top;
+}
+
 static struct ast *parse_list(struct parser *p)
 {
-	struct ast *val = parse_top(p);
+	struct ast *val = parse_sum(p);
 	if (!val || p->next != TOK_SEP)
 		return val;
 	consume(p);
