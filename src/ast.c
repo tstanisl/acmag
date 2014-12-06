@@ -58,7 +58,7 @@ struct parser {
 	enum token next;
 };
 
-static int perr(struct parser *p, char *fmt, ...)
+static void perr(struct parser *p, char *fmt, ...)
 {
 	va_list va;
 
@@ -67,8 +67,6 @@ static int perr(struct parser *p, char *fmt, ...)
 	vprintf(fmt, va);
 	puts("");
 	va_end(va);
-
-	return -1;
 }
 
 static void consume(struct parser *p)
