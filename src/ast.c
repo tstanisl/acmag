@@ -17,7 +17,7 @@ static struct ast *ast_new(enum token id)
 
 void ast_free(struct ast *t)
 {
-	if (!t) {
+	if (!t || t->id == TOK_NULL) {
 		return;
 	} else if (t->id == TOK_STR || t->id == TOK_ID) {
 		str_put(t->u.sval);
