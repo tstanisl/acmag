@@ -64,21 +64,12 @@ struct ast *parse_inst(struct parser *p)
 
 struct ast *parse_sequence(struct parser *p)
 {
-	struct ast *top = NULL;
-	for (;;) {
-		struct ast *inst = parse_inst(p);
-		if (!inst)
-			return top;
-		if (!top) {
-			top = inst;
-		} else  {
-			struct ast *ntop = ac_alloc(sizeof *ntop);
-			ntop->id = TOK_SCOLON;
-			ntop->u.arg[0] = top;
-			ntop->u.arg[1] = inst;
-			top = ntop;
-		}
-	}
+	struct ast *t = ast_new(TOK_SCOLON);
+	t->u.arg[0] = parse_inst(p);
+	if (!t->u.arg[0])
+		return ast_free(t), NULL;
+	t->u.arg[1] = parse_sequence(p);
+	return t;
 }
 
 struct ast *parse_file(FILE *file, char *path)
