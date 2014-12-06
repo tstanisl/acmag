@@ -1,4 +1,5 @@
 #include "acs.h"
+#include "ast.h"
 #include "lxr.h"
 #include "debug.h"
 #include "list.h"
@@ -11,9 +12,9 @@ int main()
 	/*extern void machine_test(void);
 	machine_test();*/
 
-	struct acs_finstance *fi = acs_compile_file(stdin, "stdin");
+	struct ast *ast = ast_from_file(stdin, "stdin");
 
-	if (ERR_ON(!fi, "acs_compile_file() failed"))
+	if (ERR_ON(!ast, "ast_from_file() failed"))
 		return -1;
 
 #if 0
