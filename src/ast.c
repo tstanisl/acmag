@@ -110,14 +110,69 @@ static struct ast *parse_top(struct parser *p)
 	}
 }
 
-static struct ast *parse_sum(struct parser *p)
+static struct ast *parse_expr(struct parser *p);
+
+static struct ast *parse_deref(struct parser *p)
 {
 	struct ast *top = parse_top(p);
+	if (!top)
+		return top;
+	for (;;) {
+		struct ast *val = NULL;
+		enum token id = TOK_ERR;
+		if (p->next == TOK_DOT) {
+			consume(p);
+			if (p->next != TOK_ID) {
+				perr(p, "expected id after .");
+				ast_free(top);
+				return NULL;
+			}
+			val = ast_new(TOK_STR);
+			val->u.sval = str_create(lxr_buffer(p->lxr));
+			id = TOK_DOT;
+		} else if (p->next == TOK_LPAR) {
+			consume(p);
+			if (p->next != TOK_RPAR) {
+				val = parse_expr(p);
+				if (!val)
+					return ast_free(top), NULL;
+			}
+			if (p->next != TOK_RPAR) {
+				perr(p, "unmatched (");
+				ast_free(top);
+				return NULL;
+			}
+			id = TOK_LPAR;
+		} else if (p->next == TOK_LSQR) {
+			consume(p);
+			val = parse_expr(p);
+			if (!val)
+				return ast_free(top), NULL;
+			if (p->next != TOK_RSQR) {
+				perr(p, "unmatched ]");
+				ast_free(top);
+				return NULL;
+			}
+			id = TOK_DOT;
+		} else {
+			return top;
+		}
+		consume(p);
+		struct ast *ntop = ast_new(id);
+		ntop->u.arg[0] = top;
+		ntop->u.arg[1] = val;
+		top = ntop;
+	}
+}
+
+static struct ast *parse_sum(struct parser *p)
+{
+	struct ast *top = parse_deref(p);
 	if (!top || p->next != TOK_PLUS)
 		return top;
 	while (p->next == TOK_PLUS) {
 		consume(p);
-		struct ast *val = parse_top(p);
+		struct ast *val = parse_deref(p);
 		if (!val)
 			return ast_free(top), NULL;
 		struct ast *newtop = ast_new(TOK_PLUS);
