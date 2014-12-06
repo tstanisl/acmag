@@ -17,6 +17,8 @@ int main()
 	if (ERR_ON(!ast, "ast_from_file() failed"))
 		return -1;
 
+	ast_dump(ast);
+
 #if 0
 	dump_script(s);
 	for (int i = 0, ok = 1; ok; ++i) {
