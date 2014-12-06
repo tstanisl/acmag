@@ -59,6 +59,11 @@ static void consume(struct parser *p)
 
 struct ast *parse_inst(struct parser *p)
 {
+	if (p->next == TOK_SCOLON) {
+		consume(p);
+		static struct ast null = { .id = TOK_NULL };
+		return &null;
+	}
 	return NULL;
 }
 
