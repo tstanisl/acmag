@@ -72,7 +72,7 @@ static void perr(struct parser *p, char *fmt, ...)
 static void consume(struct parser *p)
 {
 	p->next = lxr_get(p->lxr);
-	printf("next = %s\n", token_str[p->next]);
+	//printf("next = %s\n", token_str[p->next]);
 	if (p->next == TOK_ERR)
 		perr(p, "%s", lxr_buffer(p->lxr));
 }
