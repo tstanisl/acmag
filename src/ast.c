@@ -157,6 +157,8 @@ struct ast *parse_inst(struct parser *p)
 			return ast_free(ast), perr(p, "unmatched {"), NULL;
 		consume(p);
 		return ast ? ast : &ast_null;
+	} else if (p->next == TOK_RBRA) {
+		return NULL;
 	} else {
 		struct ast *ast = parse_expr(p);
 		if (!ast)
