@@ -72,7 +72,7 @@ struct ast *parse_sequence(struct parser *p)
 	return t;
 }
 
-struct ast *parse_file(FILE *file, char *path)
+struct ast *ast_from_file(FILE *file, char *path)
 {
 	struct parser p = { .path = path };
 

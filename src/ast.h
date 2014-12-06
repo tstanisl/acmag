@@ -12,4 +12,6 @@ struct ast {
 	} u;
 };
 
+struct ast *ast_from_file(FILE *file, char *path);
+
 #endif /* AST_H */ 
