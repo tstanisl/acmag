@@ -3,8 +3,6 @@ Syntax:
 S -> { INST }
 
 INST -> ';'
-INST -> 'export' ID_LIST ';'
-INST -> 'import' ID_LIST ';'
 INST -> EXPR ';'
 INST -> 'return' [ EXPR ] ';'
 INST -> 'if' '(' EXPR ')' INST ['else' INST]
@@ -15,15 +13,8 @@ INST -> 'break'
 INST -> 'continue'
 
 BLOCK -> '{' { INST } '}'
-ID_LIST -> ID {',' ID}
-
-EXPR -> LST_EXPR { '='  LST_EXPR }
-LST_EXPR -> BAS_EXPR { ',' BAS_EXPR }
-
-BAS_EXPR -> FUN_EXPR
-BAS_EXPR -> ORR_EXPR
-FUN_EXPR -> 'function' '(' [ID_LIST] ')' BLOCK
-
+EXPR -> LST_EXPR '='  EXPR
+LST_EXPR -> ORR_EXPR { ',' ORR_EXPR }
 ORR_EXPR -> AND_EXPR { '||' AND_EXPR }
 AND_EXPR -> CMP_EXPR { '&&' CMP_EXPR }
 CMP_EXPR -> SUM_EXPR { '<'  SUM_EXPR }
@@ -43,51 +34,73 @@ SNG_EXPR -> '!' SNG_EXPR
 SNG_EXPR -> REF_EXPR
 
 REF_EXPR -> TOP_EXPR { REF_TAIL }
-REF_TAIL -> '(' LIST_EXPR ')'
-REF_TAIL -> '[' ORR_EXPR ']'
+REF_TAIL -> '(' EXPR ')'
+REF_TAIL -> '[' EXPR ']'
 REF_TAIL -> '.' ID
 
 TOP_EXPR -> '(' EXPR ')'
 TOP_EXPR -> ID
+TOP_EXPR -> ':' ID
+TOP_EXPR -> '.'
+TOP_EXPR -> '.' ID
 TOP_EXPR -> NUM
 TOP_EXPR -> STR
+TOP_EXPR -> 'this'
 TOP_EXPR -> 'true'
 TOP_EXPR -> 'false'
 TOP_EXPR -> 'null'
+TOP_EXPR -> FUN_EXPR
+TOP_EXPR -> OBJ_EXPR
 
+FUN_EXPR -> 'def' [ OBJ_EXPR ] '(' [ ARG_LIST ] ')' INST
+OBJ_EXPR -> '[' FLD_LST ']'
+
+ARG_LIST -> ID { ',' ID }
+
+FLD_LIST -> [ FLD { ',' FLD } ]
+FLD -> '[' EXPR ']' '=' EXPR
+FLD -> '.' ID '=' EXPR
+FLD -> '.' [ '=' EXPR ]
 
 Example:
 
-sword = function () {
+sword = def () {
 	s = weapon();
 	s.name = "sword";
 	s.damage = "1d10";
 	return s;
 };
 
-granade = function () {
-	g = item();
-	g.name = "granade";
-	g.activated = false;
-	g.granade_boom = function (. = g) {
-		a = explosion_area(.position, 5);
-		// TODO: add owner here
-		d = damage_effect("3d6", "fire");
-		add_area_effect(d, a);
-		remove(.);
-	};
-	g.on_use = function (. = g) {
+def :granade() {
+	. = item();
+	.name = "granade";
+	.activated = false;
+	def .granade_boom() {
+		a = :explosion_area(.position, 5);
+		d = :damage_effect("3d6", "fire");
+		:add_area_effect(d, a);
+		:remove(.);
+	}
+	def .on_use() {
 		if (.activated) {
-			info("Granade is already activated.");
+			:info("Granade is already activated.");
 			return;
 		}
 		.activated  = 1;
 		// schedule boom in 10 seconds
-		add_event(., .granade_boom, 10);
+		:add_event(., .granade_boom, 10);
 	};
 
 	return g;
-};
+}
+
+def twice(f)
+	return def [.f = f] (x)
+		return .f(.f(x));
+
+def derivative(f, dx)
+	return def [.f = f, .dx = dx] (x)
+		return (.f(x + dx) + .f(x)) / dx;
 
 export sword, granade;
 
