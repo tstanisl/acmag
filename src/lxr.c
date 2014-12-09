@@ -68,8 +68,7 @@ static enum token lxr_get_id(struct lxr *lxr)
 		TOK_TRUE, TOK_FALSE, TOK_NULL,
 		TOK_RETURN, TOK_IF, TOK_ELSE,
 		TOK_WHILE, TOK_FOR, TOK_BREAK,
-		TOK_CONTINUE, TOK_EXPORT, TOK_IMPORT,
-		TOK_FUNCTION, TOK_VAR,
+		TOK_CONTINUE, TOK_FUNCTION, TOK_THIS,
 	};
 
 	for (int i = 0; i < ARRAY_SIZE(keywords); ++i)
@@ -146,6 +145,7 @@ enum token lxr_get(struct lxr *lxr)
 
 		switch (c) {
 			case EOF: return TOK_EOF;
+			case '$': return TOK_DOLAR;
 			case '(': return TOK_LPAR;
 			case ')': return TOK_RPAR;
 			case '{': return TOK_LBRA;
@@ -244,6 +244,7 @@ char *token_str[] = {
 	[TOK_TRUE] = "true",
 	[TOK_FALSE] = "false",
 	[TOK_NULL] = "null",
+	[TOK_DOLAR] = "$",
 	[TOK_LPAR] = "(",
 	[TOK_RPAR] = ")",
 	[TOK_LBRA] = "{",
@@ -277,7 +278,5 @@ char *token_str[] = {
 	[TOK_FOR] = "for",
 	[TOK_BREAK] = "break",
 	[TOK_CONTINUE] = "continue",
-	[TOK_EXPORT] = "export",
-	[TOK_IMPORT] = "import",
-	[TOK_VAR] = "var",
+	[TOK_THIS] = "this",
 };

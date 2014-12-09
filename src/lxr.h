@@ -13,6 +13,7 @@ enum token {
 	TOK_FALSE,
 	TOK_NULL,
 
+	TOK_DOLAR, /* $ */
 	TOK_LPAR, /* ( */
 	TOK_RPAR, /* ) */
 	TOK_LBRA, /* { */
@@ -49,9 +50,7 @@ enum token {
 	TOK_FOR, /* for */
 	TOK_BREAK, /* break */
 	TOK_CONTINUE, /* continue */
-	TOK_EXPORT,
-	TOK_IMPORT,
-	TOK_VAR,
+	TOK_THIS,
 };
 
 struct lxr;
