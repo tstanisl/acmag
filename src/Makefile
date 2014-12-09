@@ -7,7 +7,6 @@ SRCS    := \
 	lxr.c \
 	main.c \
 	object.c \
-	parser.c \
 	machine.c \
 	machine_test.c \
 	value.c \
