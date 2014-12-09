@@ -65,29 +65,27 @@ sword = function () {
 	return s;
 };
 
-granade_boom = function (g) {
-	a = explosion_area(g.position, 5);
-	// TODO: add owner here
-	d = damage_effect("3d6", "fire");
-	add_area_effect(d, a);
-	delete(g);
-};
-
-granade_start = function (g) {
-	if (a.activated) {
-		info("Granade is already activated.");
-		return;
-	}
-	a.activated  = 1;
-	// schedule boom in 10 seconds
-	add_event(g, granade_boom, 10);
-};
-
 granade = function () {
 	g = item();
 	g.name = "granade";
-	g.activated = 0;
-	g.on_use = granade_start;
+	g.activated = false;
+	g.granade_boom = function (. = g) {
+		a = explosion_area(.position, 5);
+		// TODO: add owner here
+		d = damage_effect("3d6", "fire");
+		add_area_effect(d, a);
+		remove(.);
+	};
+	g.on_use = function (. = g) {
+		if (.activated) {
+			info("Granade is already activated.");
+			return;
+		}
+		.activated  = 1;
+		// schedule boom in 10 seconds
+		add_event(., .granade_boom, 10);
+	};
+
 	return g;
 };
 
