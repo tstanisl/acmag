@@ -13,7 +13,7 @@ enum token {
 	TOK_FALSE,
 	TOK_NULL,
 
-	TOK_DOLAR, /* $ */
+	TOK_COLON, /* : */
 	TOK_LPAR, /* ( */
 	TOK_RPAR, /* ) */
 	TOK_LBRA, /* { */
@@ -42,7 +42,7 @@ enum token {
 	TOK_LEQ, /* <= */
 	TOK_GREQ, /* >= */
 
-	TOK_FUNCTION, /* function */
+	TOK_DEF, /* def */
 	TOK_RETURN, /* return */
 	TOK_IF, /* if */
 	TOK_ELSE, /* else */
