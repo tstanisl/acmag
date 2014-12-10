@@ -39,10 +39,7 @@ REF_TAIL -> '[' EXPR ']'
 REF_TAIL -> '.' ID
 
 TOP_EXPR -> '(' EXPR ')'
-TOP_EXPR -> ID
-TOP_EXPR -> ':' ID
-TOP_EXPR -> '.'
-TOP_EXPR -> '.' ID
+TOP_EXPR -> VAR
 TOP_EXPR -> NUM
 TOP_EXPR -> STR
 TOP_EXPR -> 'this'
@@ -52,8 +49,10 @@ TOP_EXPR -> 'null'
 TOP_EXPR -> FUN_EXPR
 TOP_EXPR -> OBJ_EXPR
 
-FUN_EXPR -> 'def' [ OBJ_EXPR ] '(' [ ARG_LIST ] ')' INST
-OBJ_EXPR -> '[' FLD_LST ']'
+VAR -> '.' | '.' ID | ID | ':' ID
+
+FUN_EXPR -> 'def' [ OBJ_EXPR ] [ VAR ] '(' [ ARG_LIST ] ')' INST
+OBJ_EXPR -> '[' FLD_LIST ']'
 
 ARG_LIST -> ID { ',' ID }
 
