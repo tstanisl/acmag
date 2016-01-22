@@ -194,17 +194,26 @@ static struct ast *parse_expr(void)
 
 struct ast *parse_sequence(void);
 
+struct ast *parse_block(void)
+{
+	if (!accept(TOK_LBRA)) {
+		perr("expected {");
+		return &ast_err;
+	}
+	if (accept(TOK_RBRA))
+		return &ast_null;
+	struct ast *ast = parse_sequence();
+	if (!accept(TOK_RBRA))
+		perr("unmatched {");
+	return ast;
+}
+
 struct ast *parse_inst(void)
 {
 	if (accept(TOK_SCOLON)) {
 		return &ast_null;
-	} else if (accept(TOK_LBRA)) {
-		if (accept(TOK_RBRA))
-			return &ast_null;
-		struct ast *ast = parse_sequence();
-		if (!accept(TOK_RBRA))
-			perr("unmatched {");
-		return ast;
+	} else if (cur.next == TOK_LBRA) {
+		return parse_block();
 	} else {
 		struct ast *ast = parse_expr();
 		if (!accept(TOK_SCOLON))
