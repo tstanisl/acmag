@@ -90,7 +90,8 @@ char *lxr_buffer(struct lxr *lxr);
  * lxr_line() - returns a current line in source stream
  * @lxr - pointer to LXR object
  *
- * The pointer is valid until lxr_destroy() is called
+ * The pointer is valid until next lxr_get() or
+ * lxr_destroy() is called
  * Return: current line starting from 1
  */
 int lxr_line(struct lxr *lxr);
