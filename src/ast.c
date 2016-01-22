@@ -92,17 +92,17 @@ static int accept(enum token tok)
 }
 
 static struct ast ast_null = { .id = TOK_NULL };
+static struct ast ast_true = { .id = TOK_TRUE };
+static struct ast ast_false = { .id = TOK_FALSE };
 
 static struct ast *parse_top(void)
 {
 	if (accept(TOK_NULL)) {
 		return &ast_null;
 	} else if (accept(TOK_TRUE)) {
-		static struct ast atrue = { .id = TOK_TRUE };
-		return &atrue;
+		return &ast_true;
 	} else if (accept(TOK_FALSE)) {
-		static struct ast afalse = { .id = TOK_FALSE };
-		return &afalse;
+		return &ast_false;
 	} else if (cur.next == TOK_STR || cur.next == TOK_ID) {
 		struct ast *t = ast_new(cur.next, NULL, NULL);
 		t->u.sval = str_create(lxr_buffer(cur.lxr));
