@@ -6,10 +6,10 @@ INST -> ';'
 INST -> EXPR ';'
 INST -> 'return' [ EXPR ] ';'
 INST -> 'if' '(' EXPR ')' INST ['else' INST]
-INST -> 'for' '(' ID [ ',' ID] ';' EXPR ')' INST
-INST -> 'while' '(' EXPR ')' INST
+INST -> 'for' '(' ID [ ',' ID] ';' EXPR ')' INST [ 'else' INST ]
+INST -> 'while' '(' EXPR ')' INST [ 'else' INST ]
 INST -> BLOCK
-INST -> 'break'
+INST -> 'break' [ EXPR ]
 INST -> 'continue'
 
 BLOCK -> '{' { INST } '}'
@@ -51,7 +51,7 @@ TOP_EXPR -> OBJ_EXPR
 
 VAR -> '.' | '.' ID | ID | ':' ID
 
-FUN_EXPR -> 'def' [ OBJ_EXPR ] [ VAR ] '(' [ ARG_LIST ] ')' INST
+FUN_EXPR -> 'def' '(' [ ARG_LIST ] ')' [ '=' EXPR ] INST
 OBJ_EXPR -> '[' FLD_LIST ']'
 
 ARG_LIST -> ID { ',' ID }
@@ -63,45 +63,42 @@ FLD -> '.' [ '=' EXPR ]
 
 Example:
 
-sword = def () {
-	s = weapon();
+:sword = def () {
+	s = :weapon();
 	s.name = "sword";
 	s.damage = "1d10";
 	return s;
 };
 
-def :granade() {
+:granade = def () [
 	. = item();
 	.name = "granade";
 	.activated = false;
-	def .granade_boom() {
+	.granade_boom = def () = . {
 		a = :explosion_area(.position, 5);
 		d = :damage_effect("3d6", "fire");
 		:add_area_effect(d, a);
 		:remove(.);
-	}
-	def .on_use() {
+	};
+	.on_use = def () = . {
 		if (.activated) {
 			:info("Granade is already activated.");
 			return;
 		}
-		.activated  = 1;
+		.activated  = true;
 		// schedule boom in 10 seconds
 		:add_event(., .granade_boom, 10);
 	};
-
-	return g;
-}
+]
 
 def twice(f)
-	return def [.f = f] (x)
+	return def (x) = [.f = f]
 		return .f(.f(x));
 
 def derivative(f, dx)
-	return def [.f = f, .dx = dx] (x)
-		return (.f(x + dx) + .f(x)) / dx;
+	return def (x) [.f = f, .dx = dx]
+		return (.f(x + .dx) + .f(x)) / .dx;
 
-export sword, granade;
 
 ====== Machine ========
 Support for commands:
