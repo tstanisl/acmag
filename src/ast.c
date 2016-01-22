@@ -8,10 +8,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static struct ast *ast_new(enum token id)
+static struct ast *ast_new(enum token id, struct ast *arg0, struct ast *arg1)
 {
 	struct ast *t = ac_alloc(sizeof *t);
 	t->id = id;
+	t->u.arg[0] = arg0;
+	t->u.arg[1] = arg1;
 	return t;
 }
 
@@ -102,12 +104,12 @@ static struct ast *parse_top(void)
 		static struct ast afalse = { .id = TOK_FALSE };
 		return &afalse;
 	} else if (cur.next == TOK_STR || cur.next == TOK_ID) {
-		struct ast *t = ast_new(cur.next);
+		struct ast *t = ast_new(cur.next, NULL, NULL);
 		t->u.sval = str_create(lxr_buffer(cur.lxr));
 		consume();
 		return t;
 	} else if (cur.next == TOK_NUM) {
-		struct ast *t = ast_new(TOK_NUM);
+		struct ast *t = ast_new(TOK_NUM, NULL, NULL);
 		t->u.nval = atof(lxr_buffer(cur.lxr));
 		consume();
 		return t;
@@ -133,7 +135,7 @@ static struct ast *parse_deref(void)
 				ast_free(top);
 				return NULL;
 			}
-			val = ast_new(TOK_STR);
+			val = ast_new(TOK_STR, NULL, NULL);
 			val->u.sval = str_create(lxr_buffer(cur.lxr));
 			id = TOK_DOT;
 		} else if (accept(TOK_LPAR)) {
@@ -162,10 +164,7 @@ static struct ast *parse_deref(void)
 			return top;
 		}
 		consume();
-		struct ast *ntop = ast_new(id);
-		ntop->u.arg[0] = top;
-		ntop->u.arg[1] = val;
-		top = ntop;
+		top = ast_new(id, top, val);
 	}
 }
 
@@ -179,10 +178,7 @@ static struct ast *parse_sum(void)
 		struct ast *val = parse_deref();
 		if (!val)
 			return ast_free(top), NULL;
-		struct ast *newtop = ast_new(TOK_PLUS);
-		newtop->u.arg[0] = top;
-		newtop->u.arg[1] = val;
-		top = newtop;
+		top = ast_new(TOK_PLUS, top, val);
 	}
 	return top;
 }
@@ -192,12 +188,10 @@ static struct ast *parse_list(void)
 	struct ast *val = parse_sum();
 	if (!val || !accept(TOK_SEP))
 		return val;
-	struct ast *ast = ast_new(TOK_SEP);
-	ast->u.arg[0] = val;
-	ast->u.arg[1] = parse_list();
-	if (!ast->u.arg[1])
-		return ast_free(ast), NULL;
-	return ast;
+	struct ast *arg1 = parse_list();
+	if (!arg1)
+		return NULL;
+	return ast_new(TOK_SEP, val, arg1);
 }
 
 static struct ast *parse_assign(void)
@@ -205,12 +199,10 @@ static struct ast *parse_assign(void)
 	struct ast *val = parse_list();
 	if (!val || !accept(TOK_ASSIGN))
 		return val;
-	struct ast *ast = ast_new(TOK_ASSIGN);
-	ast->u.arg[0] = val;
-	ast->u.arg[1] = parse_assign();
-	if (!ast->u.arg[1])
-		return ast_free(ast), NULL;
-	return ast;
+	struct ast *arg1 = parse_assign();
+	if (!arg1)
+		return NULL;
+	return ast_new(TOK_ASSIGN, val, arg1);
 }
 
 static struct ast *parse_expr(void)
@@ -254,12 +246,10 @@ struct ast *parse_sequence(void)
 	struct ast *t = parse_inst();
 	if (!t || cur.next == TOK_RBRA || cur.next == TOK_EOF)
 		return t;
-	struct ast *ast = ast_new(TOK_SCOLON);
-	ast->u.arg[0] = t;
-	ast->u.arg[1] = parse_sequence();
-	if (!ast->u.arg[1])
-		return ast_free(ast), NULL;
-	return ast;
+	struct ast *arg1 = parse_sequence();
+	if (!arg1)
+		return NULL;
+	return ast_new(TOK_SCOLON, t, arg1);
 }
 
 struct ast *ast_from_file(FILE *file, char *path)
