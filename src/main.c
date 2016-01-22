@@ -18,6 +18,7 @@ int main()
 		return -1;
 
 	ast_dump(ast);
+	ast_free(ast);
 
 #if 0
 	dump_script(s);
