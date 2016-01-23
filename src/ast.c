@@ -97,6 +97,54 @@ static int accept(enum token tok)
 	return 1;
 }
 
+static struct ast *parse_strid(void)
+{
+	enum token id = cur.next;
+	if (id != TOK_STR && id != TOK_ID) {
+		perr("expected id or string");
+		return &ast_err;
+	}
+	struct ast *ast = ast_new(id, NULL, NULL);
+	ast->u.sval = str_create(lxr_buffer(cur.lxr));
+	consume();
+	return ast;
+}
+
+static struct ast *parse_argtail(void)
+{
+	if (!accept(TOK_SEP))
+		return NULL;
+	struct ast *arg = parse_strid();
+	struct ast *tail = parse_argtail();
+	return ast_new(TOK_SEP, arg, tail);
+}
+
+static struct ast *parse_arglist(void)
+{
+	if (cur.next != TOK_ID)
+		return NULL;
+	struct ast *arg = parse_strid();
+	struct ast *tail = parse_argtail();
+	return ast_new(TOK_SEP, arg, tail);
+}
+
+static struct ast *parse_block(void);
+
+static struct ast *parse_def(void)
+{
+	CRIT_ON(!accept(TOK_DEF), "expected 'def'");
+	if (!accept(TOK_LPAR)) {
+		perr("expected ( after 'def'");
+		return &ast_err;
+	}
+	struct ast *args = parse_arglist();
+	if (!accept(TOK_RPAR)) {
+		perr("expected ')'");
+		return args;
+	}
+	return ast_new(TOK_DEF, args, parse_block());
+}
+
 static struct ast *parse_top(void)
 {
 	if (accept(TOK_NULL)) {
@@ -115,6 +163,8 @@ static struct ast *parse_top(void)
 		t->u.nval = atof(lxr_buffer(cur.lxr));
 		consume();
 		return t;
+	} else if (cur.next == TOK_DEF) {
+		return parse_def();
 	} else {
 		perr("unexpected token %s", token_str[cur.next]);
 		return &ast_err;
@@ -194,7 +244,7 @@ static struct ast *parse_expr(void)
 
 struct ast *parse_sequence(void);
 
-struct ast *parse_block(void)
+static struct ast *parse_block(void)
 {
 	if (!accept(TOK_LBRA)) {
 		perr("expected {");
