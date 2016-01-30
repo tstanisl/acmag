@@ -3,6 +3,7 @@ SRCS    := \
 	common.c \
 	str.c \
 	lxr.c \
+	parser.c \
 	main.c
 
 
