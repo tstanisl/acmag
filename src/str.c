@@ -1,5 +1,5 @@
 #include "common.h"
-#include "cstr.h"
+#include "str.h"
 #include "debug.h"
 
 #include <string.h>
