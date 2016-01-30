@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 static inline int __info(int cond, const char *prefix, char *f_name, int line,
 	const char *fmt, ...)
