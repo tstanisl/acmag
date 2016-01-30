@@ -27,6 +27,18 @@ static void consume(void)
 
 #define accept(c) ((c == cur) ? consume(), 1 : 0)
 
+/*
+ * eq = list [ '=' list ]
+ * list = expr [ ',' list ]
+ * expr = sum
+ * sum = ref sum_tail
+ * sum_tail = '+' ref sum_tail ) | '-' ref sum_tail | e
+ * ref = top ref_tail
+ * ref_tail = e | '[' expr ']' | '(' args ')'
+ * top = id | str | num | 'true' | 'false' | 'null'
+ * args = e | expr [ ',' args ]
+ */
+
 void parse_test(void)
 {
 }
