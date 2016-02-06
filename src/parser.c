@@ -18,7 +18,7 @@ static int var_get(char *s)
 {
 	for (int i = 0; i < n_vars; ++i)
 		if (strcmp(s, vars[i]->str) == 0)
-			return str_get(vars[i]), i;
+			return i;
 	vars[n_vars++] = str_create(s);
 	return n_vars - 1;
 }
@@ -27,7 +27,7 @@ static int const_str_get(char *s)
 {
 	for (int i = 0; i < n_const_str; ++i)
 		if (strcmp(s, const_str[i]->str) == 0)
-			return str_get(const_str[i]), i;
+			return i;
 	const_str[n_const_str++] = str_create(s);
 	return n_const_str - 1;
 }
