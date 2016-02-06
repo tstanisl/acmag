@@ -1,6 +1,8 @@
 #include "debug.h"
 #include "lxr.h"
+#include "list.h"
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 
 static enum token cur;
@@ -38,6 +40,35 @@ static void consume(void)
  * top = id | str | num | 'true' | 'false' | 'null'
  * args = e | expr [ ',' args ]
  */
+
+typedef uint16_t opcode_t;
+
+struct inst {
+	struct list node;
+	opcode_t opcode;
+};
+
+static struct inst *inst_new(opcode_t opcode)
+{
+	struct inst *inst = malloc(sizeof *inst);
+	inst->opcode = opcode;
+	return inst;
+}
+
+enum result_id {
+	RI_NULL,
+	RI_STACK,
+	RI_FRAME,
+	RI_GLOBAL,
+	RI_FIELD,
+};
+
+struct result {
+	enum result_id id;
+	int arg;
+	struct list code;
+	struct result *next;
+};
 
 void parse_test(void)
 {
