@@ -143,7 +143,7 @@ static void parse_top(struct result *res)
 		//printf("name=%s\n", name);
 		res->arg = var_get(name);
 		//printf("name=%s id=%d\n", name, res->arg);
-		emit(res, "pushf #%d", res->arg);
+		//emit(res, "pushf #%d", res->arg);
 	} else if (cur == TOK_NUM) {
 		res->id = RI_STACK;
 		char *value = lxr_buffer(lxr);
