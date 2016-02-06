@@ -97,6 +97,7 @@ enum result_id {
 	RI_STACK,
 	RI_FRAME,
 	RI_GLOBAL,
+	RI_CONST,
 	RI_FIELD,
 };
 
