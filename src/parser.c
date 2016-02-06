@@ -121,6 +121,17 @@ static void emit(struct result *res, char *fmt, ...)
 	//printf("added '%s'\n", inst->str);
 }
 
+static void push(struct result *res)
+{
+	if (res->id == RI_FRAME) {
+		emit(res, "pushf #%d", res->arg);
+	} else if (res->id == RI_GLOBAL) {
+		emit(res, "call @getglobal");
+	} else if (res->id == RI_FIELD) {
+		emit(res, "call @getfield");
+	}
+}
+
 static void parse_top(struct result *res)
 {
 	if (cur == TOK_NULL) {
