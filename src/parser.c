@@ -23,7 +23,7 @@ static int perr(char *fmt, ...)
 
 static void consume(void)
 {
-	CRIT_ON(cur == TOK_ERR, "consuming error");
+	WARN_ON(cur == TOK_ERR, "consuming error");
 	cur = lxr_get(lxr);
 }
 
