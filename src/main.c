@@ -3,6 +3,8 @@
 #include "list.h"
 #include "common.h"
 
+void parse_test(void);
+
 static void dump_tokens(void)
 {
 	struct lxr *lxr = lxr_create(stdin, 256);
@@ -22,6 +24,6 @@ static void dump_tokens(void)
 
 int main()
 {
-	dump_tokens();
+	parse_test();
 	return 0;
 }
