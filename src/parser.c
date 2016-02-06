@@ -82,15 +82,8 @@ typedef uint16_t opcode_t;
 
 struct inst {
 	struct list node;
-	opcode_t opcode;
+	char str[];
 };
-
-static struct inst *inst_new(opcode_t opcode)
-{
-	struct inst *inst = malloc(sizeof *inst);
-	inst->opcode = opcode;
-	return inst;
-}
 
 enum result_id {
 	RI_NULL,
@@ -107,6 +100,20 @@ struct result {
 	struct list code;
 	struct result *next;
 };
+
+static void emit(struct result *res, char *fmt, ...)
+{
+	va_list va;
+
+	va_start(va, fmt);
+
+	size_t size = vsnprintf(NULL, 0, fmt, va);
+	struct inst *inst = malloc(size + 1 + sizeof *inst);
+	vsnprintf(inst->str, size + 1, fmt, va);
+
+	va_end(va);
+	list_add_tail(&inst->node, &res->code);
+}
 
 void parse_test(void)
 {
