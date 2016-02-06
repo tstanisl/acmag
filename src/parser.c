@@ -72,4 +72,7 @@ struct result {
 
 void parse_test(void)
 {
+	lxr = lxr_create(stdin, 256);
+	CRIT_ON(!lxr, "lxr_create() failed");
+	consume();
 }
