@@ -73,7 +73,8 @@ static void consume(void)
  * sum_tail = '+' sfx sum_tail ) | '-' sfx sum_tail | e
  * sfx = top sfx_tail
  * sfx_tail = e | '[' expr ']' | '(' args ')'
- * top = id | str | num | 'true' | 'false' | 'null'
+ * top = var | str | num | 'true' | 'false' | 'null'
+ * var = [ '$' | '.' ] id
  * args = e | expr [ ',' args ]
  */
 
