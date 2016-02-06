@@ -146,7 +146,9 @@ void parse_test(void)
 	consume();
 	struct result res;
 	list_init(&res.code);
-	parse_top(&res);
+	while (cur != TOK_EOF)
+		parse_top(&res);
+
 	list_foreach(l, &res.code) {
 		struct inst *inst = list_entry(l, struct inst, node);
 		printf("%s\n", inst->str);
