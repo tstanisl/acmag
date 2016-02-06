@@ -160,7 +160,24 @@ static void parse_top(struct result *res)
 	consume();
 }
 
-staticc void parse_sfx(struct result 
+static void parse_sfx_tail(struct result *res)
+{
+	if (accept(TOK_DOT)) {
+		push(res);
+		CRIT_ON(cur != TOK_ID, "ID expected after '.'");
+		char *value = lxr_buffer(lxr);
+		emit(res, "pushs \"%s\"", value);
+		consume();
+		res->id = RI_FIELD;
+		parse_sfx_tail(res);
+	}
+}
+
+static void parse_sfx(struct result *res)
+{
+	parse_top(res);
+	parse_sfx_tail(res);
+}
 
 void parse_test(void)
 {
@@ -170,7 +187,7 @@ void parse_test(void)
 	struct result res;
 	list_init(&res.code);
 	while (cur != TOK_EOF)
-		parse_top(&res);
+		parse_sfx(&res);
 
 	list_foreach(l, &res.code) {
 		struct inst *inst = list_entry(l, struct inst, node);
