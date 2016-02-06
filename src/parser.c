@@ -108,11 +108,17 @@ static void emit(struct result *res, char *fmt, ...)
 	va_start(va, fmt);
 
 	size_t size = vsnprintf(NULL, 0, fmt, va);
-	struct inst *inst = malloc(size + 1 + sizeof *inst);
-	vsnprintf(inst->str, size + 1, fmt, va);
-
 	va_end(va);
+
+	struct inst *inst = malloc(size + 1 + sizeof *inst);
+	CRIT_ON(!inst, "OOM!");
+
+	va_start(va, fmt);
+	vsnprintf(inst->str, size + 1, fmt, va);
+	va_end(va);
+
 	list_add_tail(&inst->node, &res->code);
+	//printf("added '%s'\n", inst->str);
 }
 
 static void parse_top(struct result *res)
