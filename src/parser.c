@@ -123,7 +123,7 @@ static void emit(struct result *res, char *fmt, ...)
 
 static void parse_top(struct result *res)
 {
-	if (accept(TOK_NULL)) {
+	if (cur == TOK_NULL) {
 		res->id = RI_NULL;
 		emit(res, "pushn #1");
 	} else if (cur == TOK_ID) {
