@@ -86,11 +86,11 @@ struct inst {
 };
 
 enum result_id {
-	RI_NULL,
+	//RI_NULL,
 	RI_STACK,
 	RI_FRAME,
 	RI_GLOBAL,
-	RI_CONST,
+	//RI_CONST,
 	RI_FIELD,
 };
 
@@ -124,7 +124,7 @@ static void emit(struct result *res, char *fmt, ...)
 static void parse_top(struct result *res)
 {
 	if (cur == TOK_NULL) {
-		res->id = RI_NULL;
+		res->id = RI_STACK;
 		emit(res, "pushn #1");
 	} else if (cur == TOK_ID) {
 		res->id = RI_FRAME;
