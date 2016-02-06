@@ -115,9 +115,26 @@ static void emit(struct result *res, char *fmt, ...)
 	list_add_tail(&inst->node, &res->code);
 }
 
+static void parse_top(struct result *res)
+{
+	if (accept(TOK_NULL)) {
+		res->id = RI_NULL;
+		emit(res, "push null");
+	} else {
+		CRIT("unexpected token '%s'", token_str[cur]);
+	}
+}
+
 void parse_test(void)
 {
 	lxr = lxr_create(stdin, 256);
 	CRIT_ON(!lxr, "lxr_create() failed");
 	consume();
+	struct result res;
+	list_init(&res.code);
+	parse_top(&res);
+	list_foreach(l, &res.code) {
+		struct inst *inst = list_entry(l, struct inst, node);
+		printf("%s\n", inst->str);
+	}
 }
