@@ -125,10 +125,18 @@ static void parse_top(struct result *res)
 {
 	if (accept(TOK_NULL)) {
 		res->id = RI_NULL;
-		emit(res, "push null");
+		emit(res, "pushn #1");
+	} else if (cur == TOK_ID) {
+		res->id = RI_FRAME;
+		char *name = lxr_buffer(lxr);
+		//printf("name=%s\n", name);
+		res->arg = var_get(name);
+		//printf("name=%s id=%d\n", name, res->arg);
+		emit(res, "pushf #%d", res->arg);
 	} else {
 		CRIT("unexpected token '%s'", token_str[cur]);
 	}
+	consume();
 }
 
 void parse_test(void)
