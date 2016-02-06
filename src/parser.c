@@ -137,12 +137,19 @@ static void parse_top(struct result *res)
 		res->id = RI_STACK;
 		char *value = lxr_buffer(lxr);
 		//printf("value=%s\n", value);
-		emit(res, "push #%s", value);
+		emit(res, "pushi #%s", value);
+	} else if (cur == TOK_STR) {
+		res->id = RI_STACK;
+		char *value = lxr_buffer(lxr);
+		//printf("value=%s\n", value);
+		emit(res, "pushs \"%s\"", value);
 	} else {
 		CRIT("unexpected token '%s'", token_str[cur]);
 	}
 	consume();
 }
+
+staticc void parse_sfx(struct result 
 
 void parse_test(void)
 {
