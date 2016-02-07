@@ -214,6 +214,23 @@ static void parse_sfx(struct result *res)
 	parse_sfx_tail(res);
 }
 
+static void parse_list_tail(struct result *res)
+{
+	if (!accept(TOK_SEP))
+		return res;
+	res->next = new_result();
+	parse_sfx(res->next);
+	parse_list_tail(res->next);
+}
+
+static struct result *parse_list(void)
+{
+	struct result *res = new_result();
+	parse_sfx(res);
+	parse_list_tail(res);
+	return res;
+}
+
 void parse_test(void)
 {
 	lxr = lxr_create(stdin, 256);
@@ -221,11 +238,11 @@ void parse_test(void)
 	consume();
 	struct result res;
 	list_init(&res.code);
-	while (cur != TOK_EOF)
-		parse_sfx(&res);
-
-	list_foreach(l, &res.code) {
-		struct inst *inst = list_entry(l, struct inst, node);
-		printf("%s\n", inst->str);
+	while (cur != TOK_EOF) {
+		struct result *lst = parse_list();
+		flatten(&res, lst);
 	}
+
+	printf("-------- FINAL -----------\n");
+	dump_result(&res);
 }
