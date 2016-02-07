@@ -101,6 +101,30 @@ struct result {
 	struct result *next;
 };
 
+static struct result *new_result(void)
+{
+	struct result *res = malloc(sizeof *res);
+	res->next = NULL;
+	list_init(&res->code);
+	return res;
+}
+
+static void dump_result(struct result *res)
+{
+	char *id_to_str[] = {
+		[RI_STACK] = "stack",
+		[RI_FRAME] = "frame",
+		[RI_GLOBAL] = "global",
+		[RI_FIELD] = "field",
+	};
+	printf("%s arg=%d next=%p\n", id_to_str[res->id], res->arg,
+		(void*)res->next);
+	list_foreach(l, &res->code) {
+		struct inst *inst = list_entry(l, struct inst, node);
+		printf("\t%s\n", inst->str);
+	}
+}
+
 static void emit(struct result *res, char *fmt, ...)
 {
 	va_list va;
@@ -130,6 +154,17 @@ static void push(struct result *res)
 	} else if (res->id == RI_FIELD) {
 		emit(res, "call @getfield");
 	}
+}
+
+static void flatten(struct result *head, struct result *res)
+{
+	if (!res)
+		return;
+	printf("flatten(res=%p)\n", (void*)res);
+	dump_result(res);
+	flatten(head, res->next);
+	push(res);
+	list_splice_tail(&res->code, &head->code);
 }
 
 static void parse_top(struct result *res)
