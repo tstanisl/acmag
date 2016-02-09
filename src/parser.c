@@ -162,9 +162,9 @@ static void flatten(struct list *head, struct result *res)
 		return;
 	printf("flatten(res=%p)\n", (void*)res);
 	dump_result(res);
-	flatten(head, res->next);
 	push(res);
 	list_splice_tail(&res->code, head);
+	flatten(head, res->next);
 }
 
 static void parse_top(struct result *res)
