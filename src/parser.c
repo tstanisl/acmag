@@ -217,7 +217,7 @@ static void parse_sfx(struct result *res)
 static void parse_list_tail(struct result *res)
 {
 	if (!accept(TOK_SEP))
-		return res;
+		return;
 	res->next = new_result();
 	parse_sfx(res->next);
 	parse_list_tail(res->next);
