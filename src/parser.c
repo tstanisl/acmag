@@ -156,6 +156,17 @@ static void push(struct result *res)
 	}
 }
 
+static void pop(struct result *res)
+{
+	if (res->id == RI_FRAME) {
+		emit(res, "popf #%d", res->arg);
+	} else if (res->id == RI_GLOBAL) {
+		emit(res, "call @setglobal");
+	} else if (res->id == RI_FIELD) {
+		emit(res, "call @setfield");
+	}
+}
+
 static void drop(struct result *res)
 {
 	if (res->id == RI_GLOBAL || res->id == RI_STACK) {
@@ -180,6 +191,14 @@ static void flatten(struct result *head, struct result *res, int expects)
 		drop(res);
 	list_splice_tail(&res->code, &head->code);
 	flatten(head, res->next, expects - 1);
+}
+
+static int length(struct result *head)
+{
+	int len = 0;
+	for (; head; head = head->next)
+		++len;
+	return len;
 }
 
 static void parse_top(struct result *res)
@@ -246,6 +265,39 @@ static struct result *parse_list(void)
 	return res;
 }
 
+// TODO: use 'left =  expects - depth' as argument
+static void assign_rec(struct result *head, struct result *dst, int expects, int depth)
+{
+	if (!dst) {
+		if (expects > depth)
+			emit(head, "pushn #%d", expects - depth);
+		return;
+	}
+	assign_rec(head, dst->next, expects, depth + 1);
+
+	if (depth + 1 == expects) {
+		emit(head, "pushi #%d", expects);
+		emit(head, "call @duplicate");
+	}
+
+	pop(dst);
+	list_splice_tail(&dst->code, &head->code);
+}
+
+static void parse_assign(struct result *res, int expects)
+{
+	struct result *dst = parse_list();
+
+	if (!accept(TOK_ASSIGN)) {
+		flatten(res, dst, expects);
+		return;
+	}
+
+	int len = length(dst);
+	parse_assign(res, len);
+	assign_rec(res, dst, expects, 0);
+}
+
 void parse_test(void)
 {
 	lxr = lxr_create(stdin, 256);
@@ -254,8 +306,7 @@ void parse_test(void)
 	struct result res;
 	list_init(&res.code);
 	while (cur != TOK_EOF) {
-		struct result *lst = parse_list();
-		flatten(&res, lst, 4);
+		parse_assign(&res, 0);
 	}
 
 	printf("-------- FINAL -----------\n");
