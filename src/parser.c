@@ -203,6 +203,8 @@ static int length(struct result *head)
 	return len;
 }
 
+static void parse_scalar(struct result *res);
+
 static void parse_top(struct result *res)
 {
 	if (cur == TOK_NULL) {
@@ -250,19 +252,24 @@ static void parse_sfx(struct result *res)
 	parse_sfx_tail(res);
 }
 
+static void parse_scalar(struct result *res)
+{
+	parse_sfx(res);
+}
+
 static void parse_list_tail(struct result *res)
 {
 	if (!accept(TOK_SEP))
 		return;
 	res->next = new_result();
-	parse_sfx(res->next);
+	parse_scalar(res->next);
 	parse_list_tail(res->next);
 }
 
 static struct result *parse_list(void)
 {
 	struct result *res = new_result();
-	parse_sfx(res);
+	parse_scalar(res);
 	parse_list_tail(res);
 	return res;
 }
