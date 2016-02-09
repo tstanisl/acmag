@@ -164,6 +164,8 @@ static void pop(struct result *res)
 		emit(res, "call @setglobal");
 	} else if (res->id == RI_FIELD) {
 		emit(res, "call @setfield");
+	} else {
+		CRIT("storing to LHS value");
 	}
 }
 
