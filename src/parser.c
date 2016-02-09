@@ -156,15 +156,30 @@ static void push(struct result *res)
 	}
 }
 
-static void flatten(struct result *head, struct result *res)
+static void drop(struct result *res)
 {
-	if (!res)
+	if (res->id == RI_GLOBAL || res->id == RI_STACK) {
+		emit(res, "popn #1");
+	} else if (res->id == RI_FIELD) {
+		emit(res, "popn #2");
+	}
+}
+
+static void flatten(struct result *head, struct result *res, int expects)
+{
+	if (!res) {
+		if (expects > 0)
+			emit(head, "pushn #%d", expects);
 		return;
+	}
 	printf("flatten(res=%p)\n", (void*)res);
 	dump_result(res);
-	push(res);
+	if (expects > 0)
+		push(res);
+	else
+		drop(res);
 	list_splice_tail(&res->code, &head->code);
-	flatten(head, res->next);
+	flatten(head, res->next, expects - 1);
 }
 
 static void parse_top(struct result *res)
@@ -240,7 +255,7 @@ void parse_test(void)
 	list_init(&res.code);
 	while (cur != TOK_EOF) {
 		struct result *lst = parse_list();
-		flatten(&res, lst);
+		flatten(&res, lst, 4);
 	}
 
 	printf("-------- FINAL -----------\n");
