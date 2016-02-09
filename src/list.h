@@ -73,4 +73,8 @@ static inline void list_splice_tail(struct list *ohead, struct list *nhead)
 	for (struct list *it = (head)->next, *__next; \
 	     __next = (it)->next, it != (head); it = __next)
 
+#define list_foreach_rev(it,head) \
+	for (struct list *it = (head)->prev, *__prev; \
+	     __prev = (it)->prev, it != (head); it = __prev)
+
 #endif /* LIST_H */
