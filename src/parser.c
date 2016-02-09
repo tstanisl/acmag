@@ -156,7 +156,7 @@ static void push(struct result *res)
 	}
 }
 
-static void flatten(struct result *head, struct result *res)
+static void flatten(struct list *head, struct result *res)
 {
 	if (!res)
 		return;
@@ -164,7 +164,7 @@ static void flatten(struct result *head, struct result *res)
 	dump_result(res);
 	flatten(head, res->next);
 	push(res);
-	list_splice_tail(&res->code, &head->code);
+	list_splice_tail(&res->code, head);
 }
 
 static void parse_top(struct result *res)
@@ -240,7 +240,7 @@ void parse_test(void)
 	list_init(&res.code);
 	while (cur != TOK_EOF) {
 		struct result *lst = parse_list();
-		flatten(&res, lst);
+		flatten(&res.code, lst);
 	}
 
 	printf("-------- FINAL -----------\n");
