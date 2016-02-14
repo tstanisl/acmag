@@ -199,10 +199,10 @@ static void arg_flatten(struct result *head, struct result *res)
 {
 	if (!res)
 		return;
-	arg_flatten(head, res->next);
 	dump_result(res);
 	push(res);
-	list_splice_tail(&res->code, &head->code);
+	list_splice(&res->code, &head->code);
+	arg_flatten(head, res->next);
 }
 
 static int length(struct result *head)
