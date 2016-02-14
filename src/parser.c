@@ -92,6 +92,7 @@ enum result_id {
 	RI_GLOBAL,
 	//RI_CONST,
 	RI_FIELD,
+	//RI_CALL,
 };
 
 struct result {
