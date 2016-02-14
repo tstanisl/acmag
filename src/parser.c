@@ -237,20 +237,26 @@ static void parse_top(struct result *res)
 		res->arg = var_get(name);
 		//printf("name=%s id=%d\n", name, res->arg);
 		//emit(res, "pushf #%d", res->arg);
+		consume();
 	} else if (cur == TOK_NUM) {
 		res->id = RI_STACK;
 		char *value = lxr_buffer(lxr);
 		//printf("value=%s\n", value);
 		emit(res, "pushi #%s", value);
+		consume();
 	} else if (cur == TOK_STR) {
 		res->id = RI_STACK;
 		char *value = lxr_buffer(lxr);
 		//printf("value=%s\n", value);
 		emit(res, "pushs \"%s\"", value);
+		consume();
+	} else if (accept(TOK_LPAR)) {
+		parse_scalar(res);
+		if (!accept(TOK_RPAR))
+			CRIT("missing )");
 	} else {
 		CRIT("unexpected token '%s'", token_str[cur]);
 	}
-	consume();
 }
 
 static struct result *parse_list(void);
