@@ -195,6 +195,16 @@ static void flatten(struct result *head, struct result *res, int expects)
 	flatten(head, res->next, expects - 1);
 }
 
+static void arg_flatten(struct result *head, struct result *res)
+{
+	if (!res)
+		return;
+	arg_flatten(head, res->next);
+	dump_result(res);
+	push(res);
+	list_splice_tail(&res->code, &head->code);
+}
+
 static int length(struct result *head)
 {
 	int len = 0;
@@ -233,6 +243,8 @@ static void parse_top(struct result *res)
 	consume();
 }
 
+static struct result *parse_list(void);
+
 static void parse_sfx_tail(struct result *res)
 {
 	if (accept(TOK_DOT)) {
@@ -242,6 +254,18 @@ static void parse_sfx_tail(struct result *res)
 		emit(res, "pushs \"%s\"", value);
 		consume();
 		res->id = RI_FIELD;
+		parse_sfx_tail(res);
+	} else if (accept(TOK_LPAR)) { // function call
+		struct result *args = NULL;
+		if (cur != TOK_RPAR)
+			args = parse_list();
+		int n_args = length(args);
+		if (!accept(TOK_RPAR))
+			CRIT(") expected");
+		push(res);
+		arg_flatten(res, args);
+		emit(res, "call #%d, #1", n_args);
+		res->id = RI_STACK;
 		parse_sfx_tail(res);
 	}
 }
