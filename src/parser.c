@@ -310,11 +310,9 @@ static struct result *parse_list(void)
 // TODO: use 'left =  expects - depth' as argument
 static void assign_rec(struct result *head, struct result *dst, int expects, int depth)
 {
-	if (!dst) {
-		if (expects > depth)
-			emit(head, "pushn #%d", expects - depth);
+	if (!dst)
 		return;
-	}
+
 	assign_rec(head, dst->next, expects, depth + 1);
 
 	if (depth + 1 == expects)
@@ -336,6 +334,8 @@ static void parse_assign(struct result *res, int expects)
 	int len = length(dst);
 	parse_assign(res, len);
 	assign_rec(res, dst, expects, 0);
+	if (expects > len)
+		emit(res, "pushn #%d", expects - len);
 }
 
 void parse_test(void)
