@@ -254,6 +254,12 @@ static void parse_top(struct result *res)
 		parse_scalar(res);
 		if (!accept(TOK_RPAR))
 			CRIT("missing )");
+	} else if (accept(TOK_COLON)) {
+		CRIT_ON(cur != TOK_ID, "id expected after ':'");
+		char *value = lxr_buffer(lxr);
+		emit(res, "pushs \"%s\"", value);
+		res->id = RI_GLOBAL;
+		consume();
 	} else {
 		CRIT("unexpected token '%s'", token_str[cur]);
 	}
