@@ -286,9 +286,33 @@ static void parse_sfx(struct result *res)
 	parse_sfx_tail(res);
 }
 
-static void parse_scalar(struct result *res)
+static void parse_sum_tail(struct result *res)
+{
+	int add;
+	if (accept(TOK_PLUS)) {
+		add = 1;
+	} else if (accept(TOK_MINUS)) {
+		add = 0;
+	} else {
+		return;
+	}
+	push(res);
+	parse_sfx(res);
+	push(res);
+	emit(res, "call @%s", add ? "add" : "sub");
+	res->id = RI_STACK;
+	parse_sum_tail(res);
+}
+
+static void parse_sum(struct result *res)
 {
 	parse_sfx(res);
+	parse_sum_tail(res);
+}
+
+static void parse_scalar(struct result *res)
+{
+	parse_sum(res);
 }
 
 static void parse_list_tail(struct result *res)
