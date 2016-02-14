@@ -125,6 +125,15 @@ static void dump_result(struct result *res)
 	}
 }
 
+static void dump_result_rec(struct result *res, int depth)
+{
+	if (res) {
+		printf("%*s", 2 * depth, "");
+		dump_result(res);
+		dump_result_rec(res->next, depth + 1);
+	}
+}
+
 static void emit(struct result *res, char *fmt, ...)
 {
 	va_list va;
