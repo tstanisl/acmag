@@ -223,6 +223,7 @@ static int length(struct result *head)
 	return len;
 }
 
+static void parse_expr(struct result *res);
 static void parse_scalar(struct result *res);
 
 static void parse_top(struct result *res)
@@ -251,7 +252,7 @@ static void parse_top(struct result *res)
 		emit(res, "pushs \"%s\"", value);
 		consume();
 	} else if (accept(TOK_LPAR)) {
-		parse_scalar(res);
+		parse_expr(res);
 		if (!accept(TOK_RPAR))
 			CRIT("missing )");
 	} else if (accept(TOK_COLON)) {
@@ -373,6 +374,11 @@ static void parse_assign(struct result *res, int expects)
 	assign_rec(res, dst, expects, 0);
 	if (expects > len)
 		emit(res, "pushn #%d", expects - len);
+}
+
+static void parse_expr(struct result *res)
+{
+	parse_assign(res, 1);
 }
 
 void parse_test(void)
