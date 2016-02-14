@@ -308,10 +308,8 @@ static void assign_rec(struct result *head, struct result *dst, int expects, int
 	}
 	assign_rec(head, dst->next, expects, depth + 1);
 
-	if (depth + 1 == expects) {
-		emit(head, "pushi #%d", expects);
-		emit(head, "call @duplicate");
-	}
+	if (depth + 1 == expects)
+		emit(head, "call @dup%d", expects);
 
 	pop(dst);
 	list_splice_tail(&dst->code, &head->code);
