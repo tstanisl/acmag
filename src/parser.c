@@ -86,7 +86,7 @@ struct inst {
 };
 
 enum result_id {
-	//RI_NULL,
+	RI_NULL,
 	RI_STACK,
 	RI_FRAME,
 	RI_GLOBAL,
@@ -113,6 +113,7 @@ static struct result *new_result(void)
 static void dump_result(struct result *res)
 {
 	char *id_to_str[] = {
+		[RI_NULL] = "null",
 		[RI_STACK] = "stack",
 		[RI_FRAME] = "frame",
 		[RI_GLOBAL] = "global",
@@ -163,6 +164,8 @@ static void push(struct result *res)
 		emit(res, "call @getglobal");
 	} else if (res->id == RI_FIELD) {
 		emit(res, "call @getfield");
+	} else if (res->id == RI_NULL) {
+		emit(res, "pushn #1");
 	}
 }
 
