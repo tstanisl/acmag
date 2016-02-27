@@ -258,6 +258,11 @@ static void parse_top(struct result *res)
 		parse_expr(res, 1);
 		if (!accept(TOK_RPAR))
 			CRIT("missing )");
+	} else if (accept(TOK_LBRA)) {
+		parse_expr(res, 0);
+		if (!accept(TOK_RBRA))
+			CRIT("missing }");
+		res->id = RI_NULL;
 	} else if (accept(TOK_COLON)) {
 		CRIT_ON(cur != TOK_ID, "id expected after ':'");
 		char *value = lxr_buffer(lxr);
