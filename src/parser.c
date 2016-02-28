@@ -258,6 +258,7 @@ static void parse_top(struct result *res)
 		parse_expr(res, 1);
 		if (!accept(TOK_RPAR))
 			CRIT("missing )");
+		res->id = RI_STACK;
 	} else if (accept(TOK_LBRA)) {
 		parse_expr(res, 0);
 		if (!accept(TOK_RBRA))
