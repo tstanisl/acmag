@@ -385,9 +385,20 @@ static void parse_assign(struct result *res, int expects)
 		emit(res, "pushn #%d", expects - len);
 }
 
-static void parse_expr(struct result *res, int expects)
+static void parse_sep(struct result *res, int expects)
 {
 	parse_assign(res, expects);
+	if (!accept(TOK_SCOLON))
+		return;
+	drop(res);
+	if (cur == TOK_EOF || cur == TOK_RPAR || cur == TOK_RBRA)
+		return;
+	parse_sep(res, expects);
+}
+
+static void parse_expr(struct result *res, int expects)
+{
+	parse_sep(res, expects);
 }
 
 void parse_test(void)
@@ -395,10 +406,11 @@ void parse_test(void)
 	lxr = lxr_create(stdin, 256);
 	CRIT_ON(!lxr, "lxr_create() failed");
 	consume();
-	struct result res;
+	struct result res = { .id = RI_NULL };
 	list_init(&res.code);
 	while (cur != TOK_EOF) {
-		parse_assign(&res, 0);
+		parse_expr(&res, 0);
+		drop(&res);
 	}
 
 	printf("-------- FINAL -----------\n");
