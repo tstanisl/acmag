@@ -1,0 +1,222 @@
+11
+10
+nic
+0 1 6 0 0 0 0.0 0 0
+pazury
+0 1 6 0 +1 0 0.0 0 0
+ukaszenie zmiji
+0 1 4 0 0 0 0.0 0 1 2 2 2 3 1 2 0
+udr. zywiolaka ognia
+0 2 6 0 0 +2 0.0 0 1 2 10 0 4 2 2 10 0
+udr. biesa otchlani
+0 2 10 0 0 +4 0.0 0 1 2 10 0 4 1 2 10 0
+ukaszenie kobry
+0 1 4 0 0 0 0.0 0 1 2 2 10 3 1 4 0
+ugryzienie
+0 1 10 +1 +1 0 0.0 0 0
+ukaszenie pajeczycy
+0 1 20 +2 +2 0 0.0 0 1 2 2 15 3 1 6 0
+uderzenie
+0 1 10 +1 +1 0 0.0 0 0
+uderzenie smoka
+0 8 10 +10 +5 +4 0.0 0 0
+15
+sztylet
+1 1 4 +1 +1 0 3.0 10 4.0 9 0
+maczuga
+2 1 6 0 0 0 5.0 10 5.0 6 0
+krotki miecz
+1 1 6 0 +1 0 5.0 20 10.0 9 0
+wakiera
+2 2 4 +1 0 0 5.0 20 15.0 7 0
+dˆugi miecz
+1 1 10 0 0 0 15.0 30 25.0 9 0
+bulawa
+2 1 10 +2 -2 0 15.0 50 30.0 6 0
+sztylet +1
+1 1 4 +1 +1 +1 2.5 20 50.0 9 0
+maczuga +1
+2 1 6 0 0 +1 5.0 20 65.0 6 0
+dˆugi miecz +1
+1 1 10 0 0 +1 13.0 40 100.0 9 0
+zatruty sztylet +1
+1 1 4 +1 +1 +1 10.0 20 250.0 10 1 2 2 5 3 1 4 0
+krotki miecz +2
+1 1 6 0 +1 +2 4.0 40 150.0 1 0
+wakiera +2
+2 2 4 +1 0 +2 4.0 50 200.0 7 0
+dˆugi miecz +2
+1 1 10 0 0 +2 10.0 50 350.0 1 0
+Maczuga Rozlupywacz Czaczek +3
+2 1 6 0 0 +3 5.0 60 1400.0 5 0
+Dˆugi Miecz Krwi +4
+1 1 10 0 0 +4 15.0 100 8000.0 14 0
+11
+kij
+2 1 6 0 0 0 10.0 20 8.0 6 0
+wlocznia
+4 1 10 0 -1 0 20.0 30 20.0 3 0
+krotki luk
+3 1 0 1 0 0 10.0 10 40.0 8 0
+miecz obureczny
+1 1 12 0 -1 0 30.0 35 30.0 9 0
+kusza
+3 2 0 +2 +1 0 25.0 25 60.0 7 0
+dlugi luk +1
+3 1 0 +1 +1 +1 15.0 20 200.0 8 0
+kij +1
+2 1 6 0 0 +1 8.0 30 60.0 6 0
+wlocznia +2
+4 1 10 0 -1 +2 15.0 40 300.0 3 0
+Topor Torina +2
+2 1 10 0 0 +2 20.0 60 500.0 1 0
+Kusza Celnosci +3
+3 2 0 +2 +1 +3 20.0 55 2000.0 7 0
+Ogniste Ci©cie +4
+1 1 12 0 -1 +4 60.0 200 15000.0 4 1 2 10 0 4 2 1 10 0
+12
+zbroja skorzana
+2 0 0 20.0 10 10.0 6 0
+zbroja cwiekowana
+2 0 0 30.0 15 20.0 6 0
+zbroja paskowa
+4 1 0 40.0 20 40.0 9 0
+zbroja cwiekowana +1
+3 1 0 25.0 20 80.0 6 0
+kolczuga
+5 2 0 50.0 30 120.0 1 0
+zbroja paskowa +2
+6 3 0 30.0 40 450.0 9 0
+Elfia Kolczuga
+7 2 0 40.0 50 600.0 10 0
+pelna zbroja plytowa
+9 4 0 70.0 80 3000.0 1 0
+Skorzana Zbroja Nietykalnosci
+12 0 0 10.0 40 2300.0 8 0
+Mithrilowa Kolczuga +4
+9 6 0 30.0 80 5000.0 14 0
+Smocza Skora 
+3 10 0 100.0 150 9000.0 4 0
+Pancerz Kamiennych Golemow
+12 8 0 180.0 300 22500.0 8 0
+5
+czapka skorzana
+0 5 1 1.0 5 5.0 6 0
+szyszak
+1 5 1 2.0 8 15.0 9 0
+przylbica
+2 5 1 5.0 15 90.0 1 0
+Maska Przekletych
+3 5 1 10.0 20 500.0 12 0
+Glowa Smoka
+5 5 1 40.0 50 1500.0 4 0
+5
+puklerz
+1 33 0 9.0 8 20.0 9 0
+maˆa tarcza
+1 33 0 8.0 10 30.0 6 0
+prawez
+2 33 0 20.0 20 200.0 1 0
+Obronca +2
+3 33 0 30.0 30 1500.0 14 0
+Prawez Twierdzy +2
+4 33 0 15.0 70 4000.0 1 0
+8
+strzala
+1 6 0 0.05 1 0.5 6 0
+belt
+2 8 0 0.05 1 0.6 9 0
+strzala +1
+1 6 +1 0.05 2 4.0 6 0
+belt +1
+2 8 +1 0.05 2 5.0 9 0
+belt zranien +1
+2 12 +1 0.05 2 10.0 2 1 2 2 0 3 1 6 0
+strzala +2
+1 6 +2 0.05 3 10.0 14 0
+strzala przebicia
+1 6 +10 0.05 8 12.0 13 0
+belt smiertelnego ciosu
+2 20 +5 0.05 10 14.0 5 0
+10
+mikstura leczenia
+3 5 0 2.0 2 20.0 4 0
+mikstura antidotum
+3 36 0 1.0 2 25.0 2 0
+zwoj Magicznego Pocisku
+4 10 0 0.2 1 22.0 15 0
+zwoj Ognistej Strzaly
+4 30 0 0.2 1 80.0 15 0
+Laska Magicznych Pociskow
+5 10 10 5.0 5 350.0 5 0
+Laska Ognia
+5 31 10 8.0 10 2500.0 5 0
+zwoj Uzdrowienia
+4 80 0 0.2 1 1500.0 15 0
+Laska Mrozu
+5 60 10 10.0 15 5600.0 5 0
+Rozdzka Smierci
+5 103 10 10.0 20 25000.0 5 0
+Rozdzka Zepsucia
+5 120 10 10.0 25 35700.0 5 0
+6
+zwloki kobolta
+5 0 0 50.0 20 0.0 2 0
+zniszczony miecz
+5 0 0 10.0 4 0.0 1 0
+glowa orka
+5 0 0 10.0 5 0.0 8 0
+mlotek
+5 0 0 5.0 10 2.0 7 0
+skrawek papieru
+5 0 0 0.1 1 0.0 15 0
+liczydlo
+5 0 0 0.3 5 1.0 5 0
+8
+sztuka zlota
+5 0 0 0.01 10 1.0 14 0
+agat
+5 0 0 0.1 20 15.0 13 0
+szafir
+5 0 0 0.1 25 20.0 1 0
+rubin
+5 0 0 0.1 50 35.0 4 0
+topaz
+5 0 0 0.1 30 45.0 14 0
+szmaragd
+5 0 0 0.1 35 60.0 2 0
+sztuka mithrilu
+5 0 0 0.1 60 80.0 9 0
+diament
+5 0 0 0.1 100 120.0 15 0
+6
+srebrny pierscien
+5 0 0 0.1 5 10.0 9 0
+zloty naszyjnik
+4 0 0 0.1 6 25.0 14 0
+Pier˜cien Tarczy
+5 0 0 0.1 10 540.0 1 1 1 8 0 1 3
+Amulet Regeneracji
+4 0 0 0.1 12 1200.0 9 1 1 14 0 1 1
+Pier˜cien Odpornosci na Ogien
+5 0 0 0.1 13 2200.0 4 1 1 12 0 1 2
+Pier˜cien Niesmiertelnych
+5 0 0 0.1 50 40000.0 10 5 1 12 0 1 1 1 12 0 1 2 1 12 0 1 3 1 12 0 1 4 1 12 0 1 5
+/////////OPIS///////////
+<dla broni>
+nazwa 
+bieglosc ile_kostek typ_kostki bonus PdA umagicznienie masa wyt cena kolor ile_czarow tryb rodzaj czas l_parametrow itd
+
+//////TYPY///////
+0 nic
+1 bron I-reczna
+2 bron II-reczna
+3 zbroja
+4 helm
+5 tarcza
+6 amunicja
+7 przedmiot magiczny
+8 questowy
+9 kamien szlachetny
+10 bizuteria
+ 

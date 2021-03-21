@@ -1,0 +1,297 @@
+0 szczur
+1 0 0 0 0
+1 8 1 s 7
+0 0 0 1 0 0 0 0 0
+0 
+0
+1 kobold
+1 2 1 0 0
+1 0 1 k 2
+0 3 0 1 0 0 0 0 0 0
+0 
+0
+2 ork
+2 1 4 1 0
+2 1 1 o 2
+0 3 0 1 1 5 0 0 0 0 0
+0
+0 
+3 gnoll
+4 1 4 1 6
+3 0 1 g 9
+0 3 1 2 1 0 0 0 0 0
+0
+0
+4 kobold weteran
+2 8 2 3 1
+4 0 1 k 4
+4 0 3 2 1 4 5 0 0 0 0 0
+0
+0
+5 kobold lucznik
+1 3 1 6 1
+3 0 1 k 2
+0 3 3 2 2 0 0 0 0 6 0 15
+1 1 2
+0
+6 szaman koboldow
+2 0 10 1 0
+5 0 4 k 5
+0 3 1 2 0 0 0 0 0 0
+0
+0
+7 general koboldow
+2 12 6 4 0
+6 0 1 k 10
+4 1 3 4 2 3 0 0 0 0 0
+0
+0
+8 wodz trolli
+10 1 20 8 1
+10 2 1 T 7
+0 3 5 1 11 0 0 0 0 0
+0
+0
+9 Drow
+3 24 1 6 2
+12 7 1 @ 14
+4 2 3 6 1 12 5 3 0 0 0 0
+1 7 1 1
+0
+10 Tarczowy Krasnolud
+4 1 30 20 5
+15 4 1 K 13
+4 3 3 7 2 8 0 0 0 0 0
+1 7 0 1
+0
+11 Mroczny Czarodziej
+1 14 1 1 1
+18 3 3 C 1
+4 3 3 8 2 6 0 0 10 4 10 2 0
+2 7 0 1 7 3 1 
+0
+12 Balrog
+8 60 30 10 12
+30 5 1 B 4
+4 4 3 11 2 10 0 0 0 10 5 0
+3 9 0 5 9 1 4 9 2 3
+0
+13 mala dziewczynka
+1 0 0 0 0
+1 3 1 D 1
+0 0 0 0 0 0 0 0 6 0 10
+2 7 1 1 9 1 2
+0
+14 farmer
+2 1 3 1 0
+3 3 1 f 7
+0 3 0 1 0 0 0 0 0 0
+0 
+0
+15 szkielet
+0 4 2 2 0
+2 6 1 s 15
+4 1 3 2 2 3 0 0 0 0 0
+0 
+0
+16 Zywiolak Ognia
+20 1 1 1 1
+10 5 1 Z 4
+0 0 0 3 0 0 0 0 0
+0 
+1 13 1 2
+17 waz
+1 0 0 0 0
+1 9 1 w 2
+0 0 0 2 0 0 0 0 0
+0 
+0
+18 zona farmera
+2 1 3 1 0
+3 3 1 f 12
+0 3 0 0 0 0 0 0 0 0
+1 9 3 1 
+0
+19 burmistrz Winnie
+2 1 3 1 0
+3 3 1 W 14
+0 0 0 0 0 0 0 10 0 0
+2 9 3 2 9 1 1
+0
+20 zebrak
+1 0 0 0 0
+1 3 1 z 8
+0 0 0 0 0 0 0 0 0
+0
+0
+21 Edek Wielkolapy
+2 8 2 3 1
+4 0 1 E 13
+4 0 3 2 5 0 0 0 0 0 0
+0
+0
+22 Baba Jaga
+2 0 10 1 0
+5 0 4 J 5
+0 3 1 2 0 0 0 0 0 0
+0
+0
+23 Bies Otchlani
+30 1 1 1 1
+15 5 1 B 4
+0 0 0 4 0 0 0 0 0
+0
+0
+50 szczur
+1 0 0 0 0
+1 8 1 s 7
+0 0 0 1 0 0 0 0 0
+0 
+0
+51 zmutowany szczur
+6 0 0 0 0
+3 8 1 s 9
+0 0 0 1 0 0 0 0 0
+0 
+0
+60 wilk
+6 0 0 0 0
+2 8 1 w 8
+0 0 0 1 0 0 0 0 0
+0 
+0
+62 straszny wilk
+12 0 0 0 0
+5 8 1 w 4
+0 0 0 1 0 0 0 0 0
+0 
+0
+65 wilkolak
+22 0 0 0 0
+10 8 1 W 4
+0 0 0 1 0 0 0 0 0
+0 
+0
+70 niedzwiedz
+14 0 0 0 0
+5 8 1 n 4
+0 0 0 1 0 0 0 0 0
+0 
+0
+71 niedzwiedz jaskiniowy
+14 0 0 0 0
+5 8 1 n 4
+0 0 0 1 0 0 0 0 0
+0 
+0
+75 niedzwiedziolak
+28 0 0 0 0
+12 8 1 N 4
+0 0 0 1 0 0 0 0 0
+0 
+0
+-1 KONIEC
+pajak
+ogromny pajak
+pajeczyca
+krolowa pajakow
+
+zajac
+jelen
+sarna
+
+malpa
+szypans
+goryl
+neandertal
+King Kong
+
+krolik
+zaba
+krowa
+kurczak
+ges
+
+swinia
+dzik
+Guziec Ludojad
+
+rys
+pantera
+tygrys
+lew
+
+
+zmija
+kobra
+amakonda
+
+kobold
+kobold weteran
+kobold zwiadowca
+kobold lucznik
+szaman koboldow
+kobold general
+
+ork
+elita orkow
+szaman orkow
+
+gnoll
+elita gnoli
+gnoll straznik
+przywodca gnoli
+
+trolatko
+troll siepacz
+troll 
+troll miotacz
+troll jaskiniowy
+
+Drow lucznik
+Drow mag
+Drow wojownik
+Drow kaplan
+Drow zabojca
+
+Lodowy Golem
+Kamienny Golem
+Mithrilowy Golem
+Golem z Ducha
+
+zjawa
+upior
+zagubiona dusza
+Duch Kosci
+Kacper
+
+szkielet
+zombie
+ghul
+mumia
+wampir
+plonacy szkielet
+topielec
+ghast
+nosferatu
+lisz
+Hrabia Dracula
+
+Czerwony Smok
+
+Piaskowy Golem
+Golem z Ciala
+Gliniany Golem
+Zelazny Golem
+Diamentowy Golem
+
+swinioczlek
+
+przydalby sie edytor
+
+/////////OPIS/////////////
+nr_id imie
+umiejetnosci wwr bt bo bs bd 
+poziom rasa profesja znak kolor
+na sobie (0 lub numer, przy broni typ numer lub 0 numer dla broni w Prêce) ile pociskow
+ile_przedmiotow typ numer typ numer ...

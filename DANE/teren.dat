@@ -1,0 +1,48 @@
+0 mur
+35 8 0 0 255
+1 gory
+94 7 0 0 255
+2 skala
+127 7 0 0 255
+3 czaszki
+1 7 0 0 255
+4 lodowiec
+35 11 0 0 255
+5 plot
+158 6 0 0 200
+6 marmur
+15 7 0 0 255
+20 lochy
+44 7 1 1 100
+21 trawa
+-15 2 1 1 120
+22 piasek
+44 6 1 1 150
+23 bagno
+126 2 1 1 200
+24 popiol
+-17 7 1 1 130
+25 snieg
+44 15 1 1 150
+26 lod
+61 11 1 1 130
+27 step
+-15 6 1 1 100
+30 drzewo
+30 2 0 1 110
+32 jungla
+30 2 0 0 255
+35 woda
+61 1 1 0 170
+36 magma
+61 4 1 0 230
+40 otwarte drzwi
+47 6 1 1 120
+41 zamkniete drzwi
+43 6 0 0 255
+50 pulaka
+21 4 1 1 100
+-1 KONIEC
+
+
+
